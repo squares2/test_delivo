@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delivo</title>
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/all.min.css" rel="stylesheet">
+  <link href="css/styles.css" rel="stylesheet">
+  <link href="css/styles2.css" rel="stylesheet">
+  <link href="css/styles3.css" rel="stylesheet">
+  <link href="css/sidebar.css" rel="stylesheet">
+  <link href="css/category-sidebar.css" rel="stylesheet">
+  <link href="css/product-card5.css" rel="stylesheet">
+  <link href="css/location.css" rel="stylesheet">
+  <link href="css/passmodal.css" rel="stylesheet">
+  
+  <script src="javascript/bootstrap.bundle.min.js"></script>
+  <script src="javascript/sidebar.js"></script>
+  <script src="javascript/profileSidebar.js"></script>
+  <script type="module" src="javascript/database.js"></script> 
+  <script src="javascript/themes.js"></script>
+<script type="module">
+    import { distribute, startPage,getCategories,applyShopTheme } from './javascript/database.js';
+
+    async function initializePage() 
+	{
+        try {
+            // 1. Fill products first and wait for completion
+            // 2. Now call other methods; products[] is guaranteed to be full
+			const params = new URLSearchParams(window.location.search);
+			const categories = params.getAll('category'); 
+			const categories2 = params.getAll('category2'); 
+			const pattern = params.getAll('pattern'); 
+			const location = params.getAll('location'); 
+			if(categories.length==1)
+			{
+				document.getElementById('company').innerHTML=categories[0];
+				document.getElementById('company2').innerHTML=categories[0];
+			}
+			else 
+			{
+				document.getElementById('company').innerHTML=location[0];
+				document.getElementById('company2').innerHTML=location[0];
+			}
+			if(categories2.length==0)
+			{
+				getCategories(document.getElementById('company').innerHTML);
+			}
+			else
+			{
+				await distribute(categories,categories2);
+				getCategories(document.getElementById('company').innerHTML);
+			}
+			if(pattern.length==1)
+			{
+				applyShopTheme(pattern[0]);
+			}
+            startPage();
+        } catch (error) {
+            console.error("Initialization failed:", error);
+        }
+    }
+
+    // Trigger initialization on load
+    window.addEventListener('DOMContentLoaded', initializePage);
+</script>
+</head>
+<body>
+<ul id="topcompany2"class="navbar-nav">
+<li class="nav-item dropdown mega">
+<a class="nav-link dropdown-toggle dynamic-nav" href="#" data-bs-toggle="dropdown"><span id="company">SHOP</span></a>
+<div class="dropdown-menu dropdown-menu-end p-4 mega-menu">
+  <div id="categorieslist"class="row g-3">
+	<div class="col-6 col-lg-3">
+	  <h6 class="fw-semibold">Loading...</h6>
+	</div>
+  </div>
+</div>
+</li>
+</ul>
+
+<div class="category-sidebar">
+  <!-- Main Category Flipper (Previous code remains here) -->
+  <div class="main-cat-flipper">
+    <button class="flip-arrow" onclick="prevCategory()"><i class="fa-solid fa-chevron-left"></i></button>
+    <span id="currentMainTitle" class="current-main-cat">Fruits</span>
+    <button class="flip-arrow" onclick="nextCategory()"><i class="fa-solid fa-chevron-right"></i></button>
+  </div>
+
+  <!-- NEW: Sub-Category Navigation Wrapper -->
+  <div class="sub-nav-wrapper">
+    <button class="nav-btn left" onclick="scrollSub(-200)"><i class="fa-solid fa-angle-left"></i></button>
+    
+    <div id="subCategoryRow" class="sub-chip-container">
+      <!-- Chips like "Fresh Fruits", "Dried Fruits" go here -->
+    </div>
+    
+    <button class="nav-btn right" onclick="scrollSub(200)"><i class="fa-solid fa-angle-right"></i></button>
+  </div>
+</div>
+<div id="categoryGrid">
+</div>
+	<div id="topbar"></div>
+	<div id="userbar"></div>
+	<div id="changepassword"></div>
+	<div id="footer"></div>
+	<div id="maintenance"></div>
+	<script>
+	fetch('topbar.html')
+		.then(response => response.text())
+		.then(data => { document.getElementById('topbar').innerHTML = data; });
+		
+	fetch('usersidebar.html')
+		.then(response => response.text())
+		.then(data => { document.getElementById('userbar').innerHTML = data; });
+
+	fetch('changepassword.html')
+		.then(response => response.text())
+		.then(data => { document.getElementById('changepassword').innerHTML = data; });
+
+	fetch('footer.html')
+		.then(response => response.text())
+		.then(data => { document.getElementById('footer').innerHTML = data; });
+
+	fetch('maintenance.html')
+		.then(response => response.text())
+		.then(data => { document.getElementById('maintenance').innerHTML = data; });
+	</script> 
+
+<!-- Bottom Navigation Bar (Visible only on mobile/tablet) -->
+<nav class="navbar navbar-light bg-white border-top fixed-bottom py-2">
+  <div class="container-fluid d-flex justify-content-around text-center">
+    
+    <a href="index.html" class="nav-link text-dark">
+      <i class="fa-solid fa-house d-block mb-1"></i>
+      <small>Home</small>
+    </a>
+<ul class="navbar-nav">
+  <!-- 1. Add 'position-static' to the li -->
+  <li class="nav-item dropup mega position-static">
+    <a class="nav-link dropdown-toggle dynamic-nav" href="#" data-bs-toggle="dropdown">
+      <span id="company2">SHOP</span>
+    </a>
+    <!-- 2. Add 'w-100' and 'start-0' to the menu -->
+    <div class="dropdown-menu w-100 start-0 p-4 mega-menu">
+      <div id="categorieslist2" class="row g-3">
+        <div class="col-6 col-lg-3">
+          <h6 class="fw-semibold">Loading...</h6>
+        </div>
+      </div>
+    </div>
+  </li>
+</ul>    
+	<a class="nav-link position-relative" href="#" data-bs-toggle="offcanvas" data-bs-target="#cartSidebar">
+		<i class="fa-solid fa-cart-shopping"></i>
+		<span id="cartCount2" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+		<small></small>
+    </a>
+  </div>
+</nav>
+  <div class="offcanvas offcanvas-end text-white" tabindex="-1" id="cartSidebar" style="background-color: #1a1a1a !important;">
+    <div class="offcanvas-header border-bottom border-secondary">
+      <h5 class="offcanvas-title fw-bold">Your Cart</h5>
+      <!-- Changed close button to white variant -->
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <!-- Removed 'list-group' class to stop Bootstrap from forcing white backgrounds -->
+      <div id="cartList" class="mb-3"></div>
+      
+      <div class="d-flex justify-content-between align-items-center border-top border-secondary pt-3">
+        <div class="fw-semibold">Total</div>
+        <div id="cartTotal" class="fw-bold" style="color: #2ecc71;">$0.00</div>
+      </div>
+      
+      <!-- Applied your Stylish Blue Gradient to the button -->
+      <a href="checkout.html" id="checkoutbutton"class="btn btn-primary-gradient w-100 mt-3 fw-bold py-2" style="text-transform: uppercase; letter-spacing: 1px;">Checkout</a>
+    </div>
+	</div>
+
+<div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Sign In</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Username</label>
+          <input type="text" id="loginUser" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Password</label>
+          <input type="password" id="loginPass" class="form-control">
+        </div>
+        <button type="button" id="loginBtn" class="btn btn-primary w-100 fw-bold">Login</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Registration Modal -->
+<div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="registerModalLabel">Create New Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="registrationForm">
+          <div class="mb-3 position-relative">
+            <label class="form-label">Username</label>
+            <div class="d-flex align-items-center">
+              <input type="text" class="form-control" id="username" placeholder="username" required autocomplete="off">
+              <div id="username-status" class="ms-2" style="min-width: 100px; font-size: 0.85rem;"></div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phone Number</label>
+            <input type="tel" class="form-control" id="phone" placeholder="e.g. 76123456" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="confirmPassword" required>
+          </div>
+          
+          <!-- NEW: Location Toggle -->
+          <div class="mb-3 form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="shareLocation">
+            <label class="form-check-label" for="shareLocation">Share Live Location on Map</label>
+          </div>
+
+          <button type="submit" id="registerBtn" class="btn btn-primary w-100">Register</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Custom Alert Popup -->
+<div id="customAlert" class="hidden alert-overlay">
+    <div class="alert-content">
+        <p id="alertMessage"></p>
+        <button class="alert-btn" onclick="closeAlert()">OK</button>
+    </div>
+</div>
+
+
+<!-- START OF LOCATION MODAL -->
+<div id="mapModal" class="map-modal-overlay">
+    <div class="map-modal-content profile-location-container">
+        <span id="close-modal" class="close-x">&times;</span>
+        <h3>Select Your Location</h3>
+        
+        <div id="map-box"></div>
+        
+        <button id="one-click-locate" class="loc-btn btn-locate">📍 Press To Set Your Live Location</button>
+		<p class="map-hint">Press on map to update your location or drag the red pin manually to your location</p>
+        <button id="confirm-save-btn" class="loc-btn btn-save">Confirm & Save</button>
+		<p class="map-hint">Press Confirm & Save after changing location otherwise location will not update</p>
+    </div>
+</div>
+<!-- END OF LOCATION MODAL -->
+  <script type="module"src="javascript/location.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA36vu2A9AyTlGcXLApPrhtUrnhWCxyQ6c&callback=initMap" async defer></script>
+</body>
+</html>
