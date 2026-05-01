@@ -2223,100 +2223,192 @@ if (locationCheckbox2) {
         }
     });
 }
-// Registration Submit:
+// database.js (FRONTEND - Runs in Browser)
+
+let pendingUserData = null; 
+
+// 1. Function to trigger the WhatsApp OTP via your Backend
+async function sendWhatsAppOTP(phone, username) {
+    try {
+        // We call our LOCAL server (server.js), NOT Twilio directly
+        const response = await fetch('http://localhost:3000/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, username })
+        });
+
+        const data = await response.json();
+        return data; // Returns { success: true } or { success: false, error: ... }
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        return { success: false, error: "Cannot connect to security server." };
+    }
+}
+
+// 2. Registration Submit Logic
 const registrationForm = document.getElementById('registrationForm');
-if (registrationForm) registrationForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    let isValid = true;
-    const inputs = e.target.querySelectorAll('input[required]');
+if (registrationForm) {
+    registrationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        let isValid = true;
+        const inputs = e.target.querySelectorAll('input[required]');
 
-    // Apply Red Blur to empty fields
-    inputs.forEach(input => {
-        if (!input.value.trim()) {
-            input.classList.add('input-error');
-            isValid = false;
-        } else {
-            input.classList.remove('input-error');
-        }
-    });
+        inputs.forEach(input => {
+            if (!input.value.trim()) {
+                input.classList.add('input-error');
+                isValid = false;
+            } else {
+                input.classList.remove('input-error');
+            }
+        });
 
-    if (!isValid) {
-        showPopup("Please fill all fields!");
-        return;
-    }
-
-    const username = document.getElementById('username').value;
-    const phone = document.getElementById('phone').value;
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    if (password !== confirmPassword) {
-        showPopup("Passwords do not match!");
-        return;
-    }
-
-    if (document.getElementById('username-status').innerHTML.includes('Username Taken')) {
-        showPopup("Username Exists!");
-        return;
-    }
-
-    // --- START OF ASYNC CHECK ---
-    const deviceId = localStorage.getItem('deliveryplusids');
-    
-    countUUIDNoIndex(deviceId, (total) => {
-        if (total >= 3) {
-            showPopup('Your Device Cannot register more than 3 users');
-            return; // Stops execution here
+        if (!isValid) {
+            showPopup("Please fill all fields!");
+            return;
         }
 
-        // --- SUCCESS: NOW SAVE DATA ---
-        const requestRef = ref(db, 'users');
-        const newPushRef = push(requestRef); 
-        const newUserId = newPushRef.key;
+        const username = document.getElementById('username').value;
+        const phone = document.getElementById('phone').value;
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
 
-        // Prepare data object
-        const userData = {
-            username: username.toLowerCase().trim(),
-            fullname: "",
-            phone: phone,
-            password: password,
-            status: "online",
-            timestamp: new Date().toLocaleDateString('en-CA'),
-            points: 0,
-            uuid: deviceId
-        };
-
-        // Add location if available (not default 34)
-        if (typeof userLat !== 'undefined' && userLat !== 34) {
-            userData.lat = userLat;
-            userData.lng = userLng;
+        if (password !== confirmPassword) {
+            showPopup("Passwords do not match!");
+            return;
         }
 
-        set(newPushRef, userData)
-        .then(() => {
-            showPopup("Registration Succeed");
-            
-            const modalElement = document.getElementById('registerModal');
-            const modalInstance = bootstrap.Modal.getInstance(modalElement);
-            if (modalInstance) modalInstance.hide();
-            
-            localStorage.setItem('delivoUser', JSON.stringify({
-                id: newUserId,
-                username: username.toLowerCase().trim()
-            }));
+        const statusLabel = document.getElementById('username-status').innerHTML;
+        if (statusLabel.includes('Username Taken')) {
+            showPopup("Username Exists!");
+            return;
+        }
 
-            updateNavToLoggedIn(username.toLowerCase().trim());
-            distributeHistory(username.toLowerCase().trim());
-            document.getElementById('registrationForm').reset();
-            
-            // Short delay before reload to let user see the popup
-            setTimeout(() => { window.location.reload(); }, 1500); 
-        
-        }).catch((error) => {
-            showPopup("Error: " + error.message);
+        const deviceId = localStorage.getItem('deliveryplusids');
+
+        // Check registration limit
+        countUUIDNoIndex(deviceId, async (total) => {
+            if (total >= 3) {
+                showPopup('Your Device Cannot register more than 3 users');
+                return;
+            }
+
+            // --- STEP 1: PREPARE DATA ---
+            pendingUserData = {
+                username: username.toLowerCase().trim(),
+                fullname: "",
+                phone: phone,
+                password: password,
+                status: "online",
+                timestamp: new Date().toLocaleDateString('en-CA'),
+                points: 0,
+                uuid: deviceId
+            };
+
+            if (typeof userLat !== 'undefined' && userLat !== 34) {
+                pendingUserData.lat = userLat;
+                pendingUserData.lng = userLng;
+            }
+
+            // --- STEP 2: SEND WHATSAPP OTP VIA BACKEND ---
+            const result = await sendWhatsAppOTP(phone, username);
+
+            if (result.success) {
+                // Hide main form fields, show OTP input
+                document.querySelectorAll('#registrationForm .form-control').forEach(el => {
+                    if(el.id !== 'otpSection') el.style.display = 'none';
+                });
+                document.getElementById('otpSection').style.display = 'block';
+                showPopup("Code sent to WhatsApp!");
+            } else {
+                showPopup("Failed: " + result.error);
+            }
         });
     });
-});
+}
+
+// 3. Triggered when they enter the code and click "Verify"
+async function verifyCode() {
+    // 1. Get the 6-digit code the user typed in the UI
+    const otpInput = document.getElementById('otpInput');
+    const enteredCode = otpInput.value.trim();
+    
+    // 2. Get the phone number from the pending registration data
+    if (!pendingUserData || !pendingUserData.phone) {
+        showPopup("Registration data missing. Please refresh and try again.");
+        return;
+    }
+    const phone = pendingUserData.phone;
+
+    try {
+        // 3. Send the phone and code to your local security server
+        const response = await fetch('http://localhost:3000/verify-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                phone: phone, 
+                otp: enteredCode  // Matches the backend 'otp' variable
+            })
+        });
+
+        const result = await response.json();
+
+        // 4. Handle the result
+        if (result.success) {
+            showPopup("Verification successful!");
+            
+            // --- STEP 5: SAVE TO YOUR DATABASE ---
+            // Now that we know the phone is real, save the user
+            await saveUserToDatabase(pendingUserData); 
+            
+            // Clean up and redirect
+            pendingUserData = null; 
+            window.location.href = "index.html"; 
+        } else {
+            // result.message will contain "Invalid or expired code"
+            showPopup("Error: " + (result.message || "Invalid code"));
+            otpInput.classList.add('input-error');
+        }
+    } catch (error) {
+        console.error("Verification failed:", error);
+        showPopup("Cannot reach the security server.");
+    }
+}
+// --- STEP 3: FINAL VERIFICATION AND FIREBASE SAVE ---
+async function verifyAndRegister() {
+    const userEnteredCode = document.getElementById('otpCode').value;
+
+    if (userEnteredCode == generatedOTP) {
+        const requestRef = ref(db, 'users');
+        const newPushRef = push(requestRef);
+        const newUserId = newPushRef.key;
+
+        set(newPushRef, pendingUserData)
+            .then(() => {
+                showPopup("Registration Succeed");
+
+                const modalElement = document.getElementById('registerModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) modalInstance.hide();
+
+                localStorage.setItem('delivoUser', JSON.stringify({
+                    id: newUserId,
+                    username: pendingUserData.username
+                }));
+
+                updateNavToLoggedIn(pendingUserData.username);
+                distributeHistory(pendingUserData.username);
+                document.getElementById('registrationForm').reset();
+
+                setTimeout(() => { window.location.reload(); }, 1500);
+            })
+            .catch((error) => {
+                showPopup("Error: " + error.message);
+            });
+    } else {
+        showPopup("Invalid Code. Please check WhatsApp again.");
+    }
+}
+
 let timeout = null;
 const usernameInput = document.getElementById('username');
 const statusDiv = document.getElementById('username-status');
