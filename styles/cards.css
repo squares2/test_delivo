@@ -668,3 +668,20 @@
     min-height: unset;
     margin-top: clamp(2px, 0.5vw, 6px);
 }
+
+.categories {
+    padding: var(--section-py) 0;
+    overflow: hidden;
+}
+
+.stores {
+    padding: var(--section-py) 0;
+    background: var(--clr-white);
+    overflow: hidden;
+}
+
+.offers {
+    padding: var(--section-py) 0;
+    background: var(--clr-white);
+    overflow: hidden;
+}
