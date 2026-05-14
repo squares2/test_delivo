@@ -1,0 +1,147 @@
+/* ============================================================
+   styles/base.css
+   Global variables, reset, fonts, shared utilities.
+   All other CSS files depend on variables defined here.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap');
+
+/* --- Design Tokens --- */
+:root {
+    --clr-orange:       #FF5C00;
+    --clr-orange-light: #fff0e8;
+    --clr-black:        #111111;
+    --clr-white:        #ffffff;
+    --clr-gray-50:      #f9fafb;
+    --clr-gray-100:     #f3f4f6;
+    --clr-gray-200:     #e5e7eb;
+    --clr-gray-400:     #9ca3af;
+    --clr-gray-500:     #6b7280;
+    --clr-green:        #16a34a;
+
+    --fs-hero:    clamp(1.35rem, 4.5vw, 2.6rem);
+    --fs-h2:      clamp(1.1rem, 2.5vw, 1.5rem);
+    --fs-body:    clamp(0.8rem, 1vw + 0.2rem, 1rem);
+    --fs-small:   0.75rem;
+    --fs-tiny:    0.68rem;
+
+    --radius-sm:  8px;
+    --radius-md:  12px;
+    --radius-lg:  16px;
+    --radius-xl:  24px;
+
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.10);
+
+    --container-max: 1400px;
+    --container-pad: clamp(1rem, 5vw, 4rem);
+    --section-py:    clamp(1.5rem, 4vh, 2.5rem);
+
+    --transition:    all 0.25s ease;
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: 'Almarai', sans-serif;
+    background: var(--clr-white);
+    color: var(--clr-black);
+    direction: rtl;
+    text-align: right;
+    line-height: 1.5;
+    overflow-x: hidden;
+    font-size: var(--fs-body);
+}
+
+img { display: block; max-width: 100%; }
+a   { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+ul, ol { list-style: none; }
+
+/* --- Layout --- */
+.container {
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 0 var(--container-pad);
+}
+
+.section { padding: var(--section-py) 0; }
+.section--gray { background: var(--clr-gray-50); }
+
+/* --- Scrollbar hide --- */
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* --- Section title with orange left border --- */
+.section-title {
+    font-size: var(--fs-h2);
+    font-weight: 800;
+    padding-right: 12px;
+    border-right: 4px solid var(--clr-orange);
+    margin-bottom: 1.5rem;
+    line-height: 1.2;
+}
+
+/* --- Primary button --- */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--clr-orange);
+    color: var(--clr-white);
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    padding: 10px 24px;
+    font-size: var(--fs-small);
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+}
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* --- Ghost button (white outline) --- */
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    color: var(--clr-white);
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    padding: 10px 24px;
+    font-size: var(--fs-small);
+    border: 1px solid rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: var(--transition);
+    backdrop-filter: blur(8px);
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.2); }
+
+/* --- Prevent bg scroll when modal is open --- */
+body.modal-open { overflow: hidden; }
+
+/* --- Store thumbnail (CSS bg, no onerror loop) --- */
+.store-thumb {
+    background-color: var(--clr-gray-100);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+}
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+body { visibility: hidden; }
+body.loaded { visibility: visible; }

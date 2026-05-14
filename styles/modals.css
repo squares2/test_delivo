@@ -1,0 +1,101 @@
+/* ============================================================
+   styles/modals.css
+   ============================================================ */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.modal-box {
+    background: var(--clr-white);
+    border-radius: var(--radius-xl);
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 420px;
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.25s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-overlay.active .modal-box { transform: translateY(0); }
+
+.modal-close {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--clr-gray-100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--clr-gray-500);
+    transition: background 0.2s;
+    border: none;
+}
+.modal-close:hover { background: var(--clr-gray-200); }
+
+.modal-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    margin-bottom: 6px;
+    padding-right: 12px;
+    border-right: 4px solid var(--clr-orange);
+}
+.modal-subtitle {
+    font-size: var(--fs-tiny);
+    color: var(--clr-gray-400);
+    margin-bottom: 24px;
+}
+
+/* Form fields inside modals */
+.modal-field {
+    margin-bottom: 16px;
+}
+.modal-field label {
+    display: block;
+    font-size: var(--fs-tiny);
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--clr-gray-500);
+}
+.modal-field input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--clr-gray-200);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: var(--fs-small);
+    direction: rtl;
+    transition: border-color 0.2s;
+    outline: none;
+}
+.modal-field input:focus { border-color: var(--clr-orange); }
+
+.modal-footer-text {
+    text-align: center;
+    font-size: var(--fs-tiny);
+    color: var(--clr-gray-400);
+    margin-top: 16px;
+}
+.modal-footer-text a {
+    color: var(--clr-orange);
+    font-weight: 700;
+}

@@ -1,0 +1,103 @@
+/* ============================================================
+   styles/footer.css
+   ============================================================ */
+
+.footer {
+    background: var(--clr-black);
+    color: #666;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding: 48px 0 24px;
+}
+
+.footer__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 40px;
+}
+@media (min-width: 640px)  { .footer__grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .footer__grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
+
+/* Brand column */
+.footer__brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.footer__brand-logo img  { width: 28px; height: 28px; object-fit: contain; }
+.footer__brand-logo span { color: var(--clr-white); font-weight: 800; font-size: 1rem; }
+.footer__brand-desc {
+    font-size: var(--fs-tiny);
+    line-height: 1.7;
+    color: #555;
+    max-width: 220px;
+}
+
+/* Columns */
+.footer__col-title {
+    color: var(--clr-white);
+    font-weight: 800;
+    font-size: var(--fs-small);
+    margin-bottom: 16px;
+    padding-right: 10px;
+    border-right: 3px solid var(--clr-orange);
+}
+.footer__links {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.footer__links a {
+    font-size: var(--fs-tiny);
+    color: #555;
+    transition: color 0.2s;
+}
+.footer__links a:hover { color: var(--clr-orange); }
+
+/* Contact column */
+.footer__contact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--fs-tiny);
+    color: #555;
+    margin-bottom: 10px;
+}
+.footer__contact-item .icon { font-size: 0.85rem; }
+
+/* Payment icons */
+.footer__payment { padding: var(--section-py) 0 0; }
+.footer__payment-title {
+    color: var(--clr-white);
+    font-weight: 800;
+    font-size: var(--fs-small);
+    margin-bottom: 12px;
+    padding-right: 10px;
+    border-right: 3px solid var(--clr-orange);
+}
+.footer__payment-icons { display: flex; gap: 10px; flex-wrap: wrap; }
+.payment-badge {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-size: var(--fs-tiny);
+    font-weight: 800;
+    color: var(--clr-white);
+}
+.payment-badge.visa  { color: #1a73e8; }
+.payment-badge.mc    { color: #eb001b; }
+.payment-badge.cash  { color: #aaa; }
+
+/* Bottom bar */
+.footer__bottom {
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-top: 20px;
+    text-align: center;
+    font-size: var(--fs-tiny);
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}

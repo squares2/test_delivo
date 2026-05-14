@@ -1,0 +1,177 @@
+/* ============================================================
+   styles/navbar.css
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@800&display=swap');
+
+.navbar {
+    background: var(--clr-black);
+    color: var(--clr-white);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    box-shadow:
+        0 1px 0 rgba(255,255,255,0.10),
+        0 2px 12px rgba(0,0,0,0.6);
+}
+
+.navbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px var(--container-pad);
+    max-width: var(--container-max);
+    margin: 0 auto;
+    gap: 1rem;
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.navbar__logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.navbar__logo img { width: 28px; height: 28px; object-fit: contain; }
+
+.navbar__brand {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 800;
+    font-size: 1.25rem;
+    letter-spacing: -0.5px;
+    font-style: italic;
+    background: linear-gradient(135deg, #ffffff 40%, #FF5C00 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Nav links — visible by default, hidden via JS if no fit ── */
+.navbar__links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--clr-gray-400);
+    flex-shrink: 0;
+}
+.navbar__links.hidden { display: none; }
+
+.navbar__links .nav-link { transition: color 0.2s; }
+.navbar__links .nav-link:hover { color: var(--clr-white); }
+.navbar__links .nav-link.active { color: var(--clr-orange); }
+
+/* ── Controls ─────────────────────────────────────────────── */
+.navbar__controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-width: fit-content;   /* ← add this */
+}
+
+/* Location pill */
+.navbar__location {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 8px;
+    padding: 5px 11px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    white-space: nowrap;
+}
+.navbar__location:hover {
+    border-color: rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.05);
+}
+.navbar__pin-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Cart */
+.navbar__cart {
+    position: relative;
+    cursor: pointer;
+    line-height: 0;
+}
+.navbar__cart svg {
+    width: 22px;
+    height: 22px;
+    stroke: var(--clr-white);
+}
+#cart-badge {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    background: var(--clr-orange);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+/* ── Hamburger — always in DOM, JS shows/hides it ─────────── */
+.navbar__hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 4px;
+    background: none;
+    border: none;
+    flex-shrink: 0;
+}
+.navbar__hamburger.visible { display: flex; }
+
+.navbar__hamburger span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--clr-white);
+    border-radius: 2px;
+}
+
+/* ── Mobile dropdown ──────────────────────────────────────── */
+.navbar__mobile {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 199;
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    flex-direction: column;
+}
+.navbar__mobile.open { display: flex; }
+
+.navbar__mobile .nav-link {
+    padding: 13px var(--container-pad);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--clr-gray-400);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.2s, color 0.2s;
+}
+.navbar__mobile .nav-link:hover,
+.navbar__mobile .nav-link.active {
+    background: rgba(255,92,0,0.08);
+    color: var(--clr-orange);
+}
