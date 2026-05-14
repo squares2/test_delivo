@@ -4,100 +4,182 @@
 
 .footer {
     background: var(--clr-black);
-    color: #666;
+    color: #555;
     border-top: 1px solid rgba(255,255,255,0.05);
-    padding: 48px 0 24px;
+    padding: clamp(32px, 6vw, 56px) 0 clamp(16px, 3vw, 24px);
 }
 
+/* ── Grid ─────────────────────────────────────────────────── */
 .footer__grid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 32px;
-    margin-bottom: 40px;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(20px, 4vw, 36px);
+    margin-bottom: clamp(24px, 5vw, 40px);
 }
-@media (min-width: 640px)  { .footer__grid { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 1024px) { .footer__grid { grid-template-columns: 2fr 1fr 1fr 1fr; } }
 
-/* Brand column */
+@media (min-width: 600px) {
+    .footer__grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 900px) {
+    .footer__grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+}
+
+/* ── Brand ────────────────────────────────────────────────── */
 .footer__brand-logo {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: clamp(6px, 1.5vw, 10px);
+    margin-bottom: clamp(8px, 2vw, 14px);
 }
-.footer__brand-logo img  { width: 28px; height: 28px; object-fit: contain; }
-.footer__brand-logo span { color: var(--clr-white); font-weight: 800; font-size: 1rem; }
-.footer__brand-desc {
-    font-size: var(--fs-tiny);
-    line-height: 1.7;
-    color: #555;
-    max-width: 220px;
+.footer__brand-logo img {
+    width: clamp(22px, 4vw, 30px);
+    height: clamp(22px, 4vw, 30px);
+    object-fit: contain;
+}
+.footer__brand-logo span {
+    color: var(--clr-white);
+    font-weight: 800;
+    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
 }
 
-/* Columns */
+.footer__brand-desc {
+    font-size: clamp(0.58rem, 1.5vw, 0.7rem);
+    line-height: 1.7;
+    color: #555;
+    margin-bottom: clamp(12px, 2.5vw, 18px);
+}
+
+/* Social */
+.footer__social {
+    display: flex;
+    gap: clamp(6px, 1.5vw, 10px);
+    flex-wrap: wrap;
+}
+.footer__social-btn {
+    width: clamp(28px, 6vw, 34px);
+    height: clamp(28px, 6vw, 34px);
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.75rem, 2vw, 0.95rem);
+    text-decoration: none;
+    transition: border-color 0.2s;
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
+}
+.footer__social-btn:hover { border-color: var(--clr-orange); }
+
+/* ── Columns ──────────────────────────────────────────────── */
 .footer__col-title {
     color: var(--clr-white);
     font-weight: 800;
-    font-size: var(--fs-small);
-    margin-bottom: 16px;
-    padding-right: 10px;
+    font-size: clamp(0.68rem, 1.8vw, 0.82rem);
+    margin-bottom: clamp(10px, 2vw, 16px);
+    padding-right: 8px;
     border-right: 3px solid var(--clr-orange);
 }
+
 .footer__links {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: clamp(7px, 1.5vw, 11px);
 }
 .footer__links a {
-    font-size: var(--fs-tiny);
+    font-size: clamp(0.58rem, 1.5vw, 0.7rem);
     color: #555;
     transition: color 0.2s;
+    text-decoration: none;
+    min-height: var(--touch-min);
+    display: flex;
+    align-items: center;
 }
 .footer__links a:hover { color: var(--clr-orange); }
 
-/* Contact column */
+/* ── Contact ──────────────────────────────────────────────── */
+.footer__contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(7px, 1.5vw, 10px);
+    margin-bottom: clamp(14px, 3vw, 20px);
+}
 .footer__contact-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: var(--fs-tiny);
+    gap: clamp(7px, 1.5vw, 10px);
+    font-size: clamp(0.58rem, 1.5vw, 0.7rem);
     color: #555;
-    margin-bottom: 10px;
+    text-decoration: none;
+    transition: color 0.2s;
+    min-height: var(--touch-min);
 }
-.footer__contact-item .icon { font-size: 0.85rem; }
+.footer__contact-item:hover { color: #888; }
 
-/* Payment icons */
-.footer__payment { padding: var(--section-py) 0 0; }
+.footer__contact-icon {
+    width: clamp(24px, 5vw, 30px);
+    height: clamp(24px, 5vw, 30px);
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.7rem, 1.8vw, 0.85rem);
+    flex-shrink: 0;
+}
+
+/* ── Payment ──────────────────────────────────────────────── */
 .footer__payment-title {
     color: var(--clr-white);
     font-weight: 800;
-    font-size: var(--fs-small);
-    margin-bottom: 12px;
-    padding-right: 10px;
+    font-size: clamp(0.68rem, 1.8vw, 0.82rem);
+    margin-bottom: clamp(8px, 2vw, 12px);
+    padding-right: 8px;
     border-right: 3px solid var(--clr-orange);
 }
-.footer__payment-icons { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.footer__payment-icons {
+    display: flex;
+    gap: clamp(6px, 1.5vw, 10px);
+    flex-wrap: wrap;
+}
+
 .payment-badge {
     background: #1a1a1a;
     border: 1px solid #2a2a2a;
     border-radius: var(--radius-sm);
-    padding: 6px 14px;
-    font-size: var(--fs-tiny);
+    padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 14px);
+    font-size: clamp(0.58rem, 1.5vw, 0.72rem);
     font-weight: 800;
     color: var(--clr-white);
+    white-space: nowrap;
 }
 .payment-badge.visa  { color: #1a73e8; }
 .payment-badge.mc    { color: #eb001b; }
 .payment-badge.cash  { color: #aaa; }
 
-/* Bottom bar */
+/* ── Bottom bar ───────────────────────────────────────────── */
 .footer__bottom {
     border-top: 1px solid rgba(255,255,255,0.05);
-    padding-top: 20px;
-    text-align: center;
-    font-size: var(--fs-tiny);
+    padding-top: clamp(14px, 3vw, 20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: clamp(6px, 1.5vw, 10px);
+    font-size: clamp(0.52rem, 1.3vw, 0.65rem);
     font-weight: 700;
     color: #333;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+}
+
+.footer__bottom-tagline {
+    color: #444;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
 }

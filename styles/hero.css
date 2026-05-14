@@ -7,9 +7,7 @@
     width: 100%;
     background: #000;
     overflow: hidden;
-    height: 56vw;
-    min-height: 280px;
-    max-height: 500px;
+    height: clamp(260px, 55vw, 520px);
 }
 
 /* ── Background image ─────────────────────────────────────── */
@@ -19,7 +17,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center top;
+    object-position: 30% center;
     opacity: 0.92;
     display: block;
 }
@@ -31,8 +29,8 @@
     background: linear-gradient(
         to left,
         rgba(0,0,0,0.92) 0%,
-        rgba(0,0,0,0.78) 30%,
-        rgba(0,0,0,0.30) 55%,
+        rgba(0,0,0,0.75) 30%,
+        rgba(0,0,0,0.25) 55%,
         rgba(0,0,0,0.00) 75%
     );
 }
@@ -40,19 +38,23 @@
 .hero__gradient-bottom {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 40%);
+    background: linear-gradient(
+        to top,
+        rgba(0,0,0,0.6) 0%,
+        transparent 45%
+    );
 }
 
 /* ── Content wrapper ──────────────────────────────────────── */
 .hero__content {
     position: relative;
     z-index: 10;
-    width: 100%;        /* ← THIS was the missing fix */
+    width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    direction: ltr;     /* ← neutralize RTL on the flex container */
+    direction: ltr;
     max-width: var(--container-max);
     margin: 0 auto;
     padding: 0 var(--container-pad);
@@ -62,21 +64,21 @@
 .hero__text {
     width: 100%;
     text-align: center;
-    direction: rtl;     /* ← restore RTL for Arabic text */
-    padding: 1rem 0;
+    direction: rtl;
+    padding: clamp(0.5rem, 2vw, 1.5rem) 0;
 }
 
 @media (min-width: 768px) {
-    .hero__text { width: 65%; }
+    .hero__text { width: 60%; }
 }
 
 /* ── Title ────────────────────────────────────────────────── */
 .hero__title {
     color: #fff;
     font-weight: 800;
-    line-height: 1.2;
-    margin-bottom: 0.5rem;
-    font-size: clamp(1.5rem, 5vw, 3rem);
+    line-height: 1.15;
+    margin-bottom: clamp(0.3rem, 1vw, 0.6rem);
+    font-size: var(--fs-hero);
     text-align: center;
 }
 
@@ -88,32 +90,34 @@
 /* ── Subtitle ─────────────────────────────────────────────── */
 .hero__subtitle {
     color: #c8c8c8;
-    font-size: clamp(0.72rem, 1.6vw, 0.9rem);
-    margin-bottom: 1rem;
+    font-size: clamp(0.65rem, 2vw, 0.9rem);
+    margin-bottom: clamp(0.6rem, 2vw, 1rem);
     text-align: center;
+    line-height: 1.5;
 }
 
 /* ── Stat badges ──────────────────────────────────────────── */
 .hero__badges {
     display: flex;
-    direction: ltr;     /* ← flex centering works correctly with ltr */
-    gap: 10px;
+    direction: ltr;
+    gap: clamp(6px, 2vw, 12px);
     justify-content: center;
     flex-wrap: wrap;
-    margin-bottom: 1.1rem;
+    margin-bottom: clamp(0.8rem, 2vw, 1.2rem);
 }
 
 .hero__badge {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: clamp(5px, 1.5vw, 8px);
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.18);
-    border-radius: 12px;
-    padding: 8px 14px;
-    direction: rtl;     /* ← text inside badge stays Arabic */
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: clamp(8px, 2vw, 12px);
+    padding: clamp(5px, 1.5vw, 8px) clamp(8px, 2vw, 14px);
+    direction: rtl;
+    flex: 0 0 auto;
 }
 
 .hero__badge-icon {
@@ -121,8 +125,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
+    width: clamp(14px, 2.5vw, 18px);
+    height: clamp(14px, 2.5vw, 18px);
+}
+
+.hero__badge-icon svg {
+    width: 100%;
+    height: 100%;
 }
 
 .hero__badge-body {
@@ -134,51 +143,49 @@
 
 .hero__badge-body strong {
     color: #fff;
-    font-size: 0.68rem;
+    font-size: clamp(0.55rem, 1.5vw, 0.68rem);
     font-weight: 800;
     line-height: 1.2;
+    white-space: nowrap;
 }
 
 .hero__badge-body small {
     color: var(--clr-orange);
-    font-size: 0.62rem;
+    font-size: clamp(0.5rem, 1.2vw, 0.62rem);
     font-weight: 700;
     line-height: 1.2;
+    white-space: nowrap;
 }
 
 /* ── CTA buttons ──────────────────────────────────────────── */
 .hero__actions {
     display: flex;
-    direction: ltr;     /* ← same fix for buttons row */
-    gap: 10px;
+    direction: ltr;
+    gap: clamp(8px, 2vw, 12px);
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 .hero__actions .btn-primary,
 .hero__actions .btn-ghost {
-    padding: clamp(8px, 1.4vw, 14px) clamp(18px, 3vw, 36px);
-    font-size: clamp(0.72rem, 1.4vw, 0.9rem);
-    border-radius: 10px;
+    padding: clamp(8px, 2vw, 12px) clamp(16px, 4vw, 32px);
+    font-size: clamp(0.7rem, 2vw, 0.9rem);
+    border-radius: var(--radius-md);
+    min-height: var(--touch-min);
 }
 
-/* ── Mobile ───────────────────────────────────────────────── */
-@media (max-width: 480px) {
-    .hero {
-        height: auto;
-        min-height: 260px;
-        padding: 2rem 0;
-    }
-    .hero__bg { object-position: 65% center; }
-    .hero__badges { gap: 6px; }
+/* ── Mobile 360px ─────────────────────────────────────────── */
+@media (max-width: 400px) 
+{
     .hero__badge {
-        padding: 6px 10px;
         flex: 1 1 calc(50% - 6px);
         min-width: 0;
+        justify-content: center;
     }
-    .hero__badge:last-child { flex: 1 1 100%; }
-    .hero__actions .btn-primary,
-    .hero__actions .btn-ghost {
-        padding: 9px 18px;
-        font-size: 0.75rem;
+    .hero__badge:last-child {
+        flex: 1 1 100%;
+    }
+    .hero__actions {
+        gap: 6px;
     }
 }

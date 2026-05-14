@@ -10,7 +10,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: clamp(12px, 3vw, 20px);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -20,82 +20,178 @@
     pointer-events: all;
 }
 
+/* ── Box ──────────────────────────────────────────────────── */
 .modal-box {
     background: var(--clr-white);
     border-radius: var(--radius-xl);
-    padding: 32px 28px;
+    padding: clamp(20px, 5vw, 32px) clamp(16px, 4vw, 28px);
     width: 100%;
-    max-width: 420px;
+    max-width: clamp(300px, 88vw, 420px);
     position: relative;
     transform: translateY(20px);
     transition: transform 0.25s ease;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    max-height: 90vh;
+    overflow-y: auto;
 }
-.modal-overlay.active .modal-box { transform: translateY(0); }
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
 
+/* ── Close button ─────────────────────────────────────────── */
 .modal-close {
     position: absolute;
-    top: 16px;
-    left: 16px;
-    width: 32px;
-    height: 32px;
+    top: clamp(10px, 2vw, 16px);
+    left: clamp(10px, 2vw, 16px);
+    width: clamp(28px, 6vw, 34px);
+    height: clamp(28px, 6vw, 34px);
+    min-width: var(--touch-min);
+    min-height: var(--touch-min);
     border-radius: 50%;
     background: var(--clr-gray-100);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 1.1rem;
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
     color: var(--clr-gray-500);
     transition: background 0.2s;
     border: none;
 }
 .modal-close:hover { background: var(--clr-gray-200); }
 
-.modal-title {
-    font-size: 1.2rem;
-    font-weight: 800;
-    margin-bottom: 6px;
-    padding-right: 12px;
-    border-right: 4px solid var(--clr-orange);
+/* ── Brand ────────────────────────────────────────────────── */
+.modal-brand {
+    display: flex;
+    align-items: center;
+    gap: clamp(6px, 1.5vw, 10px);
+    margin-bottom: clamp(14px, 3vw, 20px);
 }
-.modal-subtitle {
-    font-size: var(--fs-tiny);
-    color: var(--clr-gray-400);
-    margin-bottom: 24px;
+.modal-brand-icon {
+    width: clamp(28px, 6vw, 36px);
+    height: clamp(28px, 6vw, 36px);
+    background: var(--clr-orange);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--clr-white);
+    font-weight: 800;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    flex-shrink: 0;
+}
+.modal-brand-name {
+    color: var(--clr-black);
+    font-weight: 800;
+    font-size: clamp(0.8rem, 2vw, 0.95rem);
 }
 
-/* Form fields inside modals */
+/* ── Title ────────────────────────────────────────────────── */
+.modal-title {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    font-weight: 800;
+    margin-bottom: clamp(3px, 1vw, 6px);
+    color: var(--clr-black);
+}
+.modal-subtitle {
+    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
+    color: var(--clr-gray-400);
+    margin-bottom: clamp(16px, 4vw, 24px);
+}
+
+/* ── Fields ───────────────────────────────────────────────── */
 .modal-field {
-    margin-bottom: 16px;
+    margin-bottom: clamp(10px, 2.5vw, 16px);
 }
 .modal-field label {
     display: block;
-    font-size: var(--fs-tiny);
+    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: clamp(4px, 1vw, 6px);
     color: var(--clr-gray-500);
 }
 .modal-field input {
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--clr-gray-200);
-    border-radius: var(--radius-sm);
+    padding: clamp(8px, 2vw, 12px) clamp(10px, 2.5vw, 14px);
+    border: 1.5px solid var(--clr-gray-200);
+    border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: var(--fs-small);
+    font-size: clamp(0.72rem, 2vw, 0.85rem);
     direction: rtl;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
     outline: none;
+    color: var(--clr-black);
+    background: var(--clr-white);
+    min-height: var(--touch-min);
 }
-.modal-field input:focus { border-color: var(--clr-orange); }
+.modal-field input:focus {
+    border-color: var(--clr-orange);
+    box-shadow: 0 0 0 3px rgba(255,92,0,0.08);
+}
 
+/* ── Submit button ────────────────────────────────────────── */
+.modal-submit-btn {
+    width: 100%;
+    padding: clamp(10px, 2.5vw, 14px);
+    justify-content: center;
+    border-radius: var(--radius-md);
+    font-size: clamp(0.78rem, 2vw, 0.9rem);
+    margin-top: clamp(4px, 1vw, 6px);
+    min-height: var(--touch-min);
+}
+
+/* ── Divider ──────────────────────────────────────────────── */
+.modal-divider {
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 2vw, 12px);
+    margin: clamp(10px, 2.5vw, 16px) 0;
+}
+.modal-divider__line {
+    flex: 1;
+    height: 1px;
+    background: var(--clr-gray-100);
+}
+.modal-divider__text {
+    font-size: clamp(0.58rem, 1.5vw, 0.68rem);
+    color: var(--clr-gray-200);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* ── WhatsApp button ──────────────────────────────────────── */
+.modal-whatsapp-btn {
+    width: 100%;
+    padding: clamp(8px, 2vw, 12px);
+    background: var(--clr-white);
+    border: 1.5px solid #25d366;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: clamp(0.72rem, 2vw, 0.85rem);
+    font-weight: 800;
+    color: #25d366;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(6px, 1.5vw, 10px);
+    transition: background 0.2s;
+    min-height: var(--touch-min);
+}
+.modal-whatsapp-btn:hover { background: #f0fff4; }
+
+/* ── Footer text ──────────────────────────────────────────── */
 .modal-footer-text {
     text-align: center;
-    font-size: var(--fs-tiny);
+    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
     color: var(--clr-gray-400);
-    margin-top: 16px;
+    margin-top: clamp(12px, 3vw, 18px);
 }
 .modal-footer-text a {
     color: var(--clr-orange);
     font-weight: 700;
+    text-decoration: none;
+    min-height: var(--touch-min);
+    display: inline-flex;
+    align-items: center;
 }
