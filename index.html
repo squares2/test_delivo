@@ -18,6 +18,12 @@
     <!-- NAVBAR: inlined to avoid fetch/cache issues -->
     <nav class="navbar">
         <div class="navbar__inner">
+			<button id="mobile-menu-btn" class="navbar__hamburger"
+					aria-expanded="false" aria-label="القائمة">
+				<span></span>
+				<span></span>
+				<span></span>
+			</button>
             <div class="navbar__logo">
                 <img src="assets/logo.png" alt="Delivo">
                 <span class="navbar__brand">Delivo</span>
@@ -26,8 +32,8 @@
                 <a href="#" class="nav-link active">الرئيسية</a>
                 <a href="#" class="nav-link">المتاجر</a>
                 <a href="#" class="nav-link">العروض</a>
-                <a href="#" class="nav-link">تتبع الطلب</a>
-                <a href="#" class="nav-link">انضم كشريك</a>
+                <!--<a href="#" class="nav-link">تتبع الطلب</a>-->
+                <!--<a href="#" class="nav-link">انضم كشريك</a>-->
                 <a href="#" class="nav-link">تواصل معنا</a>
             </div>
             <div class="navbar__controls"><!--
@@ -45,12 +51,6 @@
                     </svg>
                     <span id="cart-badge">0</span>
                 </div>
-                <button id="mobile-menu-btn" class="navbar__hamburger"
-                        aria-expanded="false" aria-label="القائمة">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </button>
             </div>
         </div>
         <div class="navbar__mobile" id="mobile-menu">
