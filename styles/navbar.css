@@ -59,12 +59,12 @@
 .navbar__links {
     display: flex;
     align-items: center;
-    gap: clamp(10px, 2vw, 22px);
+    gap: clamp(4px, 1.2vw, 22px);
     white-space: nowrap;
-    font-size: clamp(0.62rem, 1.4vw, 0.75rem);
+    font-size: clamp(0.55rem, 1.2vw, 0.75rem);
     font-weight: 700;
     color: var(--clr-gray-400);
-    flex-shrink: 0;
+    flex-shrink: 1;
 }
 .navbar__links.hidden { display: none; }
 

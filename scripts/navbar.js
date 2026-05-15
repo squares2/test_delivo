@@ -27,7 +27,7 @@ function initNavbar() {
         const linksW = navLinks.offsetWidth;
         const ctrlW  = controlEl.offsetWidth;
 
-        if (logoW + linksW + ctrlW + 150 > innerW) {
+        if (logoW + linksW + ctrlW + 16 > innerW) {
             navLinks.classList.add('hidden');
             menuBtn.classList.add('visible');
         }
