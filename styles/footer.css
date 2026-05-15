@@ -1,26 +1,27 @@
 /* ============================================================
    styles/footer.css
+   Dark, compact, professional PWA footer.
    ============================================================ */
 
 .footer {
-    background: #0e0e0e;
+    background: #0d0d0d;
     color: #555;
     border-top: 1px solid rgba(255,255,255,0.05);
-    padding: clamp(18px, 3vw, 32px) 0 clamp(8px, 1.5vw, 14px);
+    padding: clamp(14px, 3vw, 28px) 0 clamp(8px, 1.5vw, 12px);
 }
 
 .footer__grid {
     display: grid;
-    grid-template-columns: 1.8fr 1fr 1fr 1fr 1fr;
-    gap: clamp(10px, 2vw, 28px);
-    margin-bottom: clamp(10px, 2vw, 20px);
+    grid-template-columns: 1.7fr 1fr 1fr 1fr;
+    gap: clamp(10px, 2vw, 24px);
+    margin-bottom: clamp(10px, 2vw, 18px);
     align-items: start;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 640px) {
     .footer__grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: clamp(10px, 3vw, 18px);
+        gap: clamp(10px, 3vw, 16px);
     }
 }
 
@@ -29,31 +30,32 @@
     display: flex;
     align-items: center;
     gap: clamp(5px, 1vw, 8px);
-    margin-bottom: clamp(6px, 1.2vw, 10px);
+    margin-bottom: clamp(5px, 1.2vw, 9px);
 }
 .footer__brand-logo img {
-    width: clamp(20px, 3.5vw, 28px);
-    height: clamp(20px, 3.5vw, 28px);
+    width: clamp(18px, 3.5vw, 26px);
+    height: clamp(18px, 3.5vw, 26px);
     object-fit: contain;
 }
 .footer__brand-logo span {
     color: var(--clr-white);
     font-weight: 800;
-    font-size: clamp(0.85rem, 2vw, 1.1rem);
+    font-size: clamp(0.82rem, 2vw, 1.05rem);
+    font-style: italic;
 }
 
 .footer__brand-desc {
-    font-size: clamp(0.5rem, 1.2vw, 0.65rem);
+    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
     line-height: 1.7;
-    color: #666;
+    color: #5a5a6a;
 }
 
 /* ── Column titles ────────────────────────────────────────── */
 .footer__col-title {
-    color: var(--clr-white);
+    color: rgba(255,255,255,0.82);
     font-weight: 800;
-    font-size: clamp(0.6rem, 1.4vw, 0.78rem);
-    margin-bottom: clamp(8px, 1.5vw, 14px);
+    font-size: clamp(0.58rem, 1.4vw, 0.74rem);
+    margin-bottom: clamp(7px, 1.5vw, 12px);
     display: block;
 }
 
@@ -61,62 +63,62 @@
 .footer__links {
     display: flex;
     flex-direction: column;
-    gap: clamp(4px, 1vw, 8px);
+    gap: clamp(3px, 0.8vw, 7px);
 }
 .footer__links a {
-    font-size: clamp(0.5rem, 1.2vw, 0.65rem);
-    color: #666;
+    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
+    color: #5a5a6a;
     text-decoration: none;
-    transition: color 0.2s;
-    line-height: 1.8;
+    transition: color 0.18s;
+    line-height: 1.9;
 }
-.footer__links a:hover { color: var(--clr-white); }
+.footer__links a:hover { color: rgba(255,255,255,0.75); }
 
 /* ── Contact ──────────────────────────────────────────────── */
 .footer__contact-list {
     display: flex;
     flex-direction: column;
-    gap: clamp(4px, 1vw, 8px);
-    margin-bottom: clamp(8px, 1.5vw, 14px);
+    gap: clamp(3px, 0.8vw, 7px);
+    margin-bottom: clamp(6px, 1.5vw, 12px);
 }
 .footer__contact-item {
     display: flex;
     align-items: center;
-    gap: clamp(5px, 1vw, 8px);
-    font-size: clamp(0.5rem, 1.2vw, 0.65rem);
-    color: #666;
+    gap: clamp(4px, 1vw, 7px);
+    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
+    color: #5a5a6a;
     text-decoration: none;
-    transition: color 0.2s;
-    line-height: 1.8;
+    transition: color 0.18s;
+    line-height: 1.9;
     direction: ltr;
     justify-content: flex-end;
 }
-.footer__contact-item:hover { color: var(--clr-white); }
+.footer__contact-item:hover { color: rgba(255,255,255,0.75); }
 .footer__contact-icon {
-    font-size: clamp(0.65rem, 1.4vw, 0.8rem);
+    font-size: clamp(0.62rem, 1.4vw, 0.76rem);
     flex-shrink: 0;
 }
 
 /* ── Payment ──────────────────────────────────────────────── */
 .footer__payment-title {
-    color: var(--clr-white);
+    color: rgba(255,255,255,0.82);
     font-weight: 800;
-    font-size: clamp(0.6rem, 1.4vw, 0.78rem);
-    margin-bottom: clamp(8px, 1.5vw, 14px);
+    font-size: clamp(0.58rem, 1.4vw, 0.74rem);
+    margin-bottom: clamp(7px, 1.5vw, 12px);
     display: block;
 }
 .footer__payment-icons {
     display: flex;
-    gap: clamp(6px, 1.2vw, 10px);
+    gap: clamp(5px, 1.2vw, 9px);
     flex-wrap: wrap;
-    margin-bottom: clamp(6px, 1.2vw, 10px);
+    margin-bottom: clamp(5px, 1.2vw, 9px);
 }
 .payment-badge {
-    background: #1c1c1c;
-    border: 1px solid #2a2a2a;
-    border-radius: var(--radius-sm);
-    padding: clamp(4px, 0.8vw, 8px) clamp(8px, 1.5vw, 16px);
-    font-size: clamp(0.6rem, 1.4vw, 0.78rem);
+    background: #1a1a1a;
+    border: 1px solid #252525;
+    border-radius: var(--radius-xs);
+    padding: clamp(3px, 0.7vw, 6px) clamp(7px, 1.5vw, 14px);
+    font-size: clamp(0.58rem, 1.4vw, 0.72rem);
     font-weight: 800;
     white-space: nowrap;
 }
@@ -124,17 +126,17 @@
 .payment-badge.mc   { color: #eb001b; }
 .payment-badge.cash {
     color: #888;
-    font-size: clamp(0.48rem, 1.1vw, 0.62rem);
+    font-size: clamp(0.46rem, 1.1vw, 0.58rem);
     display: block;
-    margin-top: clamp(4px, 0.8vw, 6px);
+    margin-top: clamp(3px, 0.7vw, 5px);
 }
 
 /* ── Bottom bar ───────────────────────────────────────────── */
 .footer__bottom {
     border-top: 1px solid rgba(255,255,255,0.05);
-    padding-top: clamp(8px, 1.5vw, 14px);
+    padding-top: clamp(7px, 1.5vw, 12px);
     text-align: center;
-    font-size: clamp(0.48rem, 1.1vw, 0.62rem);
-    color: #444;
+    font-size: clamp(0.46rem, 1.1vw, 0.60rem);
+    color: #404050;
     font-weight: 700;
 }

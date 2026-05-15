@@ -1,16 +1,17 @@
 /* ============================================================
    styles/modals.css
+   Bottom-sheet style modals — PWA native feel.
    ============================================================ */
 
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.65);
+    background: rgba(0,0,0,0.68);
     z-index: 999;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    padding: clamp(12px, 3vw, 20px);
+    padding: 0;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease;
@@ -20,29 +21,62 @@
     pointer-events: all;
 }
 
+/* On larger screens, center like a dialog */
+@media (min-width: 540px) {
+    .modal-overlay {
+        align-items: center;
+        padding: clamp(12px, 3vw, 20px);
+    }
+}
+
 /* ── Box ──────────────────────────────────────────────────── */
 .modal-box {
     background: var(--clr-white);
-    border-radius: var(--radius-xl);
-    padding: clamp(20px, 5vw, 32px) clamp(16px, 4vw, 28px);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: clamp(20px, 5vw, 30px) clamp(16px, 4vw, 26px);
+    padding-bottom: calc(clamp(20px, 5vw, 30px) + env(safe-area-inset-bottom, 0px));
     width: 100%;
-    max-width: clamp(300px, 88vw, 420px);
+    max-width: clamp(300px, 100vw, 440px);
     position: relative;
-    transform: translateY(20px);
-    transition: transform 0.25s ease;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    max-height: 90vh;
+    transform: translateY(30px);
+    transition: transform 0.28s cubic-bezier(0.34, 1.2, 0.64, 1);
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+    max-height: 92vh;
     overflow-y: auto;
 }
-.modal-overlay.active .modal-box {
-    transform: translateY(0);
+.modal-overlay.active .modal-box { transform: translateY(0); }
+
+@media (min-width: 540px) {
+    .modal-box {
+        border-radius: var(--radius-xl);
+        transform: translateY(16px) scale(0.97);
+        padding-bottom: clamp(20px, 5vw, 30px);
+        max-width: 420px;
+    }
+    .modal-overlay.active .modal-box {
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ── Drag handle (mobile sheet indicator) ─────────────────── */
+.modal-box::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--clr-gray-200);
+    border-radius: 4px;
+    margin: -8px auto 16px;
+}
+@media (min-width: 540px) {
+    .modal-box::before { display: none; }
 }
 
 /* ── Close button ─────────────────────────────────────────── */
 .modal-close {
     position: absolute;
-    top: clamp(10px, 2vw, 16px);
-    left: clamp(10px, 2vw, 16px);
+    top: clamp(10px, 2vw, 14px);
+    left: clamp(10px, 2vw, 14px);
     width: clamp(28px, 6vw, 34px);
     height: clamp(28px, 6vw, 34px);
     min-width: var(--touch-min);
@@ -53,9 +87,9 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    font-size: clamp(0.72rem, 2vw, 0.88rem);
     color: var(--clr-gray-500);
-    transition: background 0.2s;
+    transition: background 0.18s;
     border: none;
 }
 .modal-close:hover { background: var(--clr-gray-200); }
@@ -65,11 +99,11 @@
     display: flex;
     align-items: center;
     gap: clamp(6px, 1.5vw, 10px);
-    margin-bottom: clamp(14px, 3vw, 20px);
+    margin-bottom: clamp(12px, 3vw, 18px);
 }
 .modal-brand-icon {
-    width: clamp(28px, 6vw, 36px);
-    height: clamp(28px, 6vw, 36px);
+    width: clamp(28px, 6vw, 34px);
+    height: clamp(28px, 6vw, 34px);
     background: var(--clr-orange);
     border-radius: var(--radius-md);
     display: flex;
@@ -77,37 +111,35 @@
     justify-content: center;
     color: var(--clr-white);
     font-weight: 800;
-    font-size: clamp(0.85rem, 2vw, 1rem);
+    font-size: clamp(0.82rem, 2vw, 0.96rem);
     flex-shrink: 0;
 }
 .modal-brand-name {
     color: var(--clr-black);
     font-weight: 800;
-    font-size: clamp(0.8rem, 2vw, 0.95rem);
+    font-size: clamp(0.78rem, 2vw, 0.92rem);
 }
 
 /* ── Title ────────────────────────────────────────────────── */
 .modal-title {
-    font-size: clamp(1rem, 3vw, 1.25rem);
+    font-size: clamp(1rem, 3vw, 1.2rem);
     font-weight: 800;
-    margin-bottom: clamp(3px, 1vw, 6px);
+    margin-bottom: clamp(3px, 0.8vw, 5px);
     color: var(--clr-black);
 }
 .modal-subtitle {
-    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
+    font-size: clamp(0.60rem, 1.5vw, 0.70rem);
     color: var(--clr-gray-400);
-    margin-bottom: clamp(16px, 4vw, 24px);
+    margin-bottom: clamp(14px, 3.5vw, 22px);
 }
 
 /* ── Fields ───────────────────────────────────────────────── */
-.modal-field {
-    margin-bottom: clamp(10px, 2.5vw, 16px);
-}
+.modal-field { margin-bottom: clamp(9px, 2.2vw, 14px); }
 .modal-field label {
     display: block;
-    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
+    font-size: clamp(0.60rem, 1.5vw, 0.70rem);
     font-weight: 700;
-    margin-bottom: clamp(4px, 1vw, 6px);
+    margin-bottom: clamp(4px, 0.9vw, 6px);
     color: var(--clr-gray-500);
 }
 .modal-field input {
@@ -116,9 +148,9 @@
     border: 1.5px solid var(--clr-gray-200);
     border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: clamp(0.72rem, 2vw, 0.85rem);
+    font-size: clamp(0.72rem, 2vw, 0.84rem);
     direction: rtl;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color 0.18s, box-shadow 0.18s;
     outline: none;
     color: var(--clr-black);
     background: var(--clr-white);
@@ -126,16 +158,16 @@
 }
 .modal-field input:focus {
     border-color: var(--clr-orange);
-    box-shadow: 0 0 0 3px rgba(255,92,0,0.08);
+    box-shadow: 0 0 0 3px var(--clr-orange-glow);
 }
 
-/* ── Submit button ────────────────────────────────────────── */
+/* ── Submit ───────────────────────────────────────────────── */
 .modal-submit-btn {
     width: 100%;
-    padding: clamp(10px, 2.5vw, 14px);
+    padding: clamp(10px, 2.5vw, 13px);
     justify-content: center;
     border-radius: var(--radius-md);
-    font-size: clamp(0.78rem, 2vw, 0.9rem);
+    font-size: clamp(0.76rem, 2vw, 0.88rem);
     margin-top: clamp(4px, 1vw, 6px);
     min-height: var(--touch-min);
 }
@@ -145,7 +177,7 @@
     display: flex;
     align-items: center;
     gap: clamp(8px, 2vw, 12px);
-    margin: clamp(10px, 2.5vw, 16px) 0;
+    margin: clamp(10px, 2.5vw, 14px) 0;
 }
 .modal-divider__line {
     flex: 1;
@@ -153,8 +185,8 @@
     background: var(--clr-gray-100);
 }
 .modal-divider__text {
-    font-size: clamp(0.58rem, 1.5vw, 0.68rem);
-    color: var(--clr-gray-200);
+    font-size: clamp(0.56rem, 1.4vw, 0.66rem);
+    color: var(--clr-gray-400);
     font-weight: 700;
     white-space: nowrap;
 }
@@ -167,7 +199,7 @@
     border: 1.5px solid #25d366;
     border-radius: var(--radius-md);
     font-family: inherit;
-    font-size: clamp(0.72rem, 2vw, 0.85rem);
+    font-size: clamp(0.72rem, 2vw, 0.84rem);
     font-weight: 800;
     color: #25d366;
     cursor: pointer;
@@ -175,23 +207,20 @@
     align-items: center;
     justify-content: center;
     gap: clamp(6px, 1.5vw, 10px);
-    transition: background 0.2s;
+    transition: background 0.18s;
     min-height: var(--touch-min);
 }
-.modal-whatsapp-btn:hover { background: #f0fff4; }
+.modal-whatsapp-btn:hover { background: #f0fff5; }
 
 /* ── Footer text ──────────────────────────────────────────── */
 .modal-footer-text {
     text-align: center;
-    font-size: clamp(0.6rem, 1.5vw, 0.72rem);
+    font-size: clamp(0.58rem, 1.5vw, 0.70rem);
     color: var(--clr-gray-400);
-    margin-top: clamp(12px, 3vw, 18px);
+    margin-top: clamp(10px, 2.5vw, 16px);
 }
 .modal-footer-text a {
     color: var(--clr-orange);
     font-weight: 700;
     text-decoration: none;
-    min-height: var(--touch-min);
-    display: inline-flex;
-    align-items: center;
 }

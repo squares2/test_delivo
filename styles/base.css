@@ -1,54 +1,66 @@
 /* ============================================================
    styles/base.css
    Global variables, reset, fonts, shared utilities.
+   Mobile-first PWA design system.
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap');
 
 /* ── Design Tokens ────────────────────────────────────────── */
 :root {
-    /* Colors */
+    /* Brand Colors */
     --clr-orange:        #FF5C00;
-    --clr-orange-light:  #fff0e8;
-    --clr-black:         #111111;
+    --clr-orange-dim:    #cc4a00;
+    --clr-orange-light:  #fff3ed;
+    --clr-orange-glow:   rgba(255,92,0,0.14);
+    --clr-black:         #0f0f0f;
+    --clr-surface:       #1a1a1a;
     --clr-white:         #ffffff;
-    --clr-gray-50:       #f9fafb;
-    --clr-gray-100:      #f3f4f6;
-    --clr-gray-200:      #e5e7eb;
-    --clr-gray-400:      #9ca3af;
-    --clr-gray-500:      #6b7280;
+    --clr-gray-50:       #f7f7f8;
+    --clr-gray-100:      #f0f0f2;
+    --clr-gray-200:      #e2e2e6;
+    --clr-gray-400:      #9898a6;
+    --clr-gray-500:      #65657a;
     --clr-green:         #16a34a;
 
-    /* Fluid font sizes — clamp(min, preferred, max) */
-    --fs-hero:    clamp(1.4rem,  6vw,  3rem);
-    --fs-h2:      clamp(1rem,    3vw,  1.5rem);
-    --fs-body:    clamp(0.8rem,  2vw,  1rem);
-    --fs-small:   clamp(0.7rem,  1.8vw, 0.85rem);
-    --fs-tiny:    clamp(0.6rem,  1.5vw, 0.75rem);
-    --fs-micro:   clamp(0.5rem,  1.2vw, 0.65rem);
+    /* Typography — fluid, mobile-first */
+    --fs-hero:   clamp(1.3rem,  5.5vw, 2.5rem);
+    --fs-h2:     clamp(0.88rem, 2.6vw, 1.25rem);
+    --fs-body:   clamp(0.78rem, 2vw,   0.92rem);
+    --fs-small:  clamp(0.68rem, 1.8vw, 0.80rem);
+    --fs-tiny:   clamp(0.60rem, 1.5vw, 0.72rem);
+    --fs-micro:  clamp(0.50rem, 1.2vw, 0.60rem);
 
     /* Border radius */
-    --radius-sm:  6px;
-    --radius-md:  10px;
-    --radius-lg:  14px;
+    --radius-xs:  4px;
+    --radius-sm:  8px;
+    --radius-md:  12px;
+    --radius-lg:  16px;
     --radius-xl:  20px;
-    --radius-2xl: 28px;
+    --radius-2xl: 26px;
+    --radius-pill: 50px;
 
     /* Shadows */
-    --shadow-sm:  0 1px 4px rgba(0,0,0,0.08);
-    --shadow-md:  0 4px 16px rgba(0,0,0,0.10);
-    --shadow-lg:  0 8px 32px rgba(0,0,0,0.12);
+    --shadow-xs:     0 1px 3px rgba(0,0,0,0.07);
+    --shadow-sm:     0 2px 8px rgba(0,0,0,0.09);
+    --shadow-md:     0 6px 20px rgba(0,0,0,0.11);
+    --shadow-lg:     0 12px 36px rgba(0,0,0,0.14);
+    --shadow-orange: 0 4px 16px rgba(255,92,0,0.28);
 
     /* Layout */
     --container-max: 1400px;
-    --container-pad: clamp(1rem, 4vw, 4rem);
-    --section-py:    clamp(1.25rem, 3vh, 2.5rem);
+    --container-pad: clamp(12px, 4vw, 3rem);
 
-    /* Touch target minimum */
+    /* Section spacing — TIGHT on mobile */
+    --section-py:  clamp(10px, 2.2vh, 18px);
+    --section-gap: clamp(6px,  1.8vw, 12px);
+
+    /* Touch targets */
     --touch-min: 44px;
 
     /* Transitions */
-    --transition: all 0.22s ease;
+    --transition:      all 0.2s ease;
+    --transition-slow: all 0.32s ease;
 }
 
 /* ── Reset ────────────────────────────────────────────────── */
@@ -61,7 +73,6 @@
 
 html {
     scroll-behavior: smooth;
-    /* Prevent font inflation on mobile */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
 }
@@ -72,18 +83,15 @@ body {
     color: var(--clr-black);
     direction: rtl;
     text-align: right;
-    line-height: 1.6;
+    line-height: 1.55;
     overflow-x: hidden;
     font-size: var(--fs-body);
     min-width: 320px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-img {
-    display: block;
-    max-width: 100%;
-    height: auto;
-}
-a   { text-decoration: none; color: inherit; }
+img  { display: block; max-width: 100%; height: auto; }
+a    { text-decoration: none; color: inherit; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; }
 ul, ol { list-style: none; }
 
@@ -95,7 +103,7 @@ ul, ol { list-style: none; }
     width: 100%;
 }
 
-.section     { padding: var(--section-py) 0; }
+.section       { padding: var(--section-py) 0; }
 .section--gray { background: var(--clr-gray-50); }
 
 /* ── Scrollbar hide ───────────────────────────────────────── */
@@ -106,10 +114,11 @@ ul, ol { list-style: none; }
 .section-title {
     font-size: var(--fs-h2);
     font-weight: 800;
-    padding-right: 10px;
+    padding-right: 9px;
     border-right: 3px solid var(--clr-orange);
-    margin-bottom: 1.25rem;
+    margin-bottom: clamp(8px, 1.8vw, 14px);
     line-height: 1.2;
+    color: var(--clr-black);
 }
 
 /* ── Buttons ──────────────────────────────────────────────── */
@@ -122,44 +131,39 @@ ul, ol { list-style: none; }
     font-family: inherit;
     font-weight: 800;
     border-radius: var(--radius-md);
-    padding: clamp(8px, 2vw, 12px) clamp(16px, 4vw, 28px);
+    padding: clamp(7px, 1.8vw, 10px) clamp(14px, 3.5vw, 24px);
     font-size: var(--fs-small);
     min-height: var(--touch-min);
     transition: var(--transition);
     border: none;
     cursor: pointer;
     white-space: nowrap;
+    box-shadow: var(--shadow-orange);
 }
-.btn-primary:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-}
-.btn-primary:active {
-    transform: translateY(0);
-    filter: brightness(0.95);
-}
+.btn-primary:hover  { background: var(--clr-orange-dim); transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
 
 .btn-ghost {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.09);
     color: var(--clr-white);
     font-family: inherit;
     font-weight: 800;
     border-radius: var(--radius-md);
-    padding: clamp(8px, 2vw, 12px) clamp(16px, 4vw, 28px);
+    padding: clamp(7px, 1.8vw, 10px) clamp(14px, 3.5vw, 24px);
     font-size: var(--fs-small);
     min-height: var(--touch-min);
-    border: 1px solid rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.18);
     cursor: pointer;
     transition: var(--transition);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(10px);
     white-space: nowrap;
 }
-.btn-ghost:hover { background: rgba(255,255,255,0.2); }
+.btn-ghost:hover { background: rgba(255,255,255,0.16); }
 
-/* ── Store thumb (bg image) ───────────────────────────────── */
+/* ── Store thumb (bg-image) ───────────────────────────────── */
 .store-thumb {
     background-color: var(--clr-gray-100);
     background-repeat: no-repeat;
@@ -167,9 +171,16 @@ ul, ol { list-style: none; }
     background-position: center;
 }
 
-/* ── Modal open lock ──────────────────────────────────────── */
+/* ── Section hairline divider ─────────────────────────────── */
+.section-divider {
+    height: 1px;
+    background: var(--clr-gray-100);
+    margin: 0 var(--container-pad);
+}
+
+/* ── Modal open body lock ─────────────────────────────────── */
 body.modal-open { overflow: hidden; }
 
-/* ── Visibility ───────────────────────────────────────────── */
-body { visibility: hidden; }
-body.loaded { visibility: visible; }
+/* ── FOUC guard ───────────────────────────────────────────── */
+body          { visibility: hidden; }
+body.loaded   { visibility: visible; }

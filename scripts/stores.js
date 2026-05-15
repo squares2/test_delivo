@@ -1,13 +1,8 @@
-/* ============================================================
-   scripts/stores.js
-   ============================================================ */
-
 function initStores() {
 
-    // --- Drag to scroll (categories + stores + offers) ---
     const scrollRows = document.querySelectorAll(
-    '.categories__scroll, .stores__scroll, .offers__scroll'
-);
+        '.categories__scroll, .stores__scroll, .offers__scroll'
+    );
 
     scrollRows.forEach(row => {
         let isDown = false;
@@ -52,7 +47,6 @@ function initStores() {
             }
         }, true);
 
-        // Touch support
         let touchStartX, touchScrollLeft;
         row.addEventListener('touchstart', (e) => {
             touchStartX = e.touches[0].pageX - row.offsetLeft;
@@ -65,7 +59,6 @@ function initStores() {
         }, { passive: true });
     });
 
-    // --- Category filter ---
     const categoryBtns = document.querySelectorAll('[data-category]');
     const storeCards   = document.querySelectorAll('[data-store-type]');
 
@@ -81,7 +74,6 @@ function initStores() {
         });
     });
 
-    // --- Store card click ---
     storeCards.forEach(card => {
         card.addEventListener('click', () => {
             const storeId = card.getAttribute('data-store-id');
@@ -89,11 +81,89 @@ function initStores() {
         });
     });
 
-    // --- Wishlist toggle ---
     document.querySelectorAll('.store-card__wish').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             btn.classList.toggle('active');
         });
     });
+
+    initOffersCarousel();
+}
+
+function initOffersCarousel() {
+    const scroll = document.getElementById('offers-scroll');
+    const dotsEl = document.getElementById('offers-dots');
+    if (!scroll || !dotsEl) return;
+
+    const cards = scroll.querySelectorAll('.offer-card');
+    const total = cards.length;
+    if (total === 0) return;
+
+    let current   = 0;
+    let autoTimer = null;
+    const isPhone = () => window.innerWidth < 540;
+
+    function buildDots() {
+        dotsEl.innerHTML = '';
+        if (!isPhone()) return;
+        cards.forEach((_, i) => {
+            const dot = document.createElement('span');
+            dot.className = 'offers__dot' + (i === current ? ' active' : '');
+            dot.addEventListener('click', () => goTo(i));
+            dotsEl.appendChild(dot);
+        });
+    }
+
+    function updateDots() {
+        dotsEl.querySelectorAll('.offers__dot').forEach((d, i) => {
+            d.classList.toggle('active', i === current);
+        });
+    }
+
+    function goTo(index) {
+        if (!isPhone()) return;
+        current = (index + total) % total;
+        const card    = cards[current];
+        const padLeft = parseInt(getComputedStyle(scroll).paddingLeft) || 0;
+        scroll.scrollTo({ left: card.offsetLeft - padLeft, behavior: 'smooth' });
+        updateDots();
+    }
+
+    function next() { goTo(current + 1); }
+
+    function startAuto() {
+        stopAuto();
+        if (!isPhone()) return;
+        autoTimer = setInterval(next, 3000);
+    }
+
+    function stopAuto() {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    }
+
+    scroll.addEventListener('touchstart', stopAuto, { passive: true });
+    scroll.addEventListener('mousedown',  stopAuto);
+    scroll.addEventListener('touchend',   () => setTimeout(startAuto, 4000), { passive: true });
+    scroll.addEventListener('mouseup',    () => setTimeout(startAuto, 4000));
+
+    scroll.addEventListener('scrollend', () => {
+        if (!isPhone()) return;
+        const center = scroll.scrollLeft + scroll.clientWidth / 2;
+        let closest = 0, minDist = Infinity;
+        cards.forEach((c, i) => {
+            const dist = Math.abs(c.offsetLeft + c.offsetWidth / 2 - center);
+            if (dist < minDist) { minDist = dist; closest = i; }
+        });
+        current = closest;
+        updateDots();
+    });
+
+    window.addEventListener('resize', () => {
+        buildDots();
+        if (isPhone()) startAuto(); else stopAuto();
+    });
+
+    buildDots();
+    startAuto();
 }
