@@ -1,5 +1,7 @@
 /* ============================================================
    scripts/loader.js
+   Loads only the dynamic components (not navbar or modals,
+   those are inlined directly in index.html).
    ============================================================ */
 
 async function loadComponent(slotId, file) {
@@ -15,28 +17,20 @@ async function loadComponent(slotId, file) {
 }
 
 async function loadAll() {
-
-    // ✅ Load navbar FIRST alone — must be in DOM before initNavbar runs
-    await loadComponent('navbar', 'navbar.html');
-
-    // ✅ Then load everything else in parallel
+    // Load only dynamic sections — navbar and modals are inlined in index.html
     await Promise.all([
-        loadComponent('categories',      'categories.html'),
-        loadComponent('stores',          'stores.html'),
-        loadComponent('offers',          'offers.html'),
-        loadComponent('why-delivo',      'why-delivo.html'),
-        loadComponent('app-download',    'app-download.html'),
-        loadComponent('join-partner',    'join-partner.html'),
-        loadComponent('footer',          'footer.html'),
-        loadComponent('modal-login',     'modal-login.html'),
-        loadComponent('modal-subscribe', 'modal-subscribe.html'),
+        loadComponent('categories',   'categories.html'),
+        loadComponent('offers',       'offers.html'),
+        loadComponent('join-partner', 'join-partner.html'),
+        loadComponent('footer',       'footer.html'),
     ]);
 
-    // ✅ Now navbar is guaranteed in DOM — init it
-    if (typeof initNavbar   === 'function') initNavbar();
-    if (typeof initModals   === 'function') initModals();
-    if (typeof initStores   === 'function') initStores();
-    if (typeof initCart     === 'function') initCart();
+    // Init all scripts — DOM is guaranteed ready
+    if (typeof initNavbar    === 'function') initNavbar();
+    if (typeof initModals    === 'function') initModals();
+    if (typeof initCart      === 'function') initCart();
+    if (typeof initModalAuth === 'function') initModalAuth();
+    if (typeof initStores    === 'function') initStores();
 
     document.body.classList.add('loaded');
     console.log('[Delivo] All components loaded ✓');
