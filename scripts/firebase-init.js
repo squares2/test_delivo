@@ -87,28 +87,106 @@ function onFirebaseReady() {
         return map[code] || 'Something went wrong. Please try again.';
     }
 
-    // ── Device UUID ───────────────────────────────────────────
-    // Generates a persistent UUID stored in localStorage.
-    // Used to limit how many accounts one device can create.
-    // Max 3 accounts per device UUID.
+    // ── Device Fingerprint + UUID ─────────────────────────────
+    // Two-layer device identification:
+    //
+    // Layer 1 — Browser fingerprint (survives localStorage clear)
+    //   Built from: screen, timezone, language, platform, canvas
+    //   Stored in Firestore as the document ID
+    //
+    // Layer 2 — localStorage UUID (fast lookup)
+    //   Stored locally AND in Firestore alongside the fingerprint
+    //   If localStorage is cleared, fingerprint recovers the UUID
+    //
+    // Together they make it very hard to bypass the 3-account limit.
 
     const MAX_ACCOUNTS_PER_DEVICE = 3;
 
-    function getDeviceUUID() {
-        let uuid = localStorage.getItem('delivo_device_uuid');
-        if (!uuid) {
-            uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    // Build a stable fingerprint from device characteristics
+    async function getDeviceFingerprint() {
+        const components = [
+            navigator.language        || '',
+            navigator.languages?.join(',') || '',
+            navigator.platform        || '',
+            navigator.hardwareConcurrency || '',
+            screen.width + 'x' + screen.height,
+            screen.colorDepth         || '',
+            Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+            navigator.userAgent       || '',
+        ];
+
+        // Add canvas fingerprint (unique per GPU/driver/browser combo)
+        try {
+            const canvas  = document.createElement('canvas');
+            const ctx     = canvas.getContext('2d');
+            ctx.textBaseline = 'top';
+            ctx.font      = '14px Arial';
+            ctx.fillStyle = '#FF5C00';
+            ctx.fillText('Delivo🇱🇧', 2, 2);
+            components.push(canvas.toDataURL());
+        } catch (_) {}
+
+        // Hash all components into a short stable ID
+        const raw    = components.join('|');
+        const hash   = await crypto.subtle.digest(
+            'SHA-256',
+            new TextEncoder().encode(raw)
+        );
+        const hex = Array.from(new Uint8Array(hash))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        // Use first 32 chars as fingerprint ID
+        return 'fp_' + hex.slice(0, 32);
+    }
+
+    // Get or create a UUID, cross-referencing fingerprint in Firestore
+    async function getOrCreateDeviceUUID() {
+        const fp = await getDeviceFingerprint();
+
+        // Try localStorage first (fast path)
+        const stored = localStorage.getItem('delivo_device_uuid');
+
+        try {
+            // Check Firestore for this fingerprint
+            const fpDoc = await db.collection('device_fingerprints').doc(fp).get();
+
+            if (fpDoc.exists) {
+                // Fingerprint known — use its UUID (even if localStorage was cleared)
+                const uuid = fpDoc.data().uuid;
+                localStorage.setItem('delivo_device_uuid', uuid);
+                return uuid;
+            }
+
+            // New fingerprint — generate UUID
+            const uuid = stored || ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            }));
+
+            // Save fingerprint → UUID mapping in Firestore
+            await db.collection('device_fingerprints').doc(fp).set({
+                uuid,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+
+            localStorage.setItem('delivo_device_uuid', uuid);
+            return uuid;
+
+        } catch (e) {
+            // Firestore unavailable — fall back to localStorage
+            console.warn('[Delivo] Fingerprint check failed, using localStorage:', e.message);
+            if (stored) return stored;
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
                 const r = Math.random() * 16 | 0;
                 return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
             });
             localStorage.setItem('delivo_device_uuid', uuid);
+            return uuid;
         }
-        return uuid;
     }
 
     async function checkDeviceLimit() {
-        const uuid = getDeviceUUID();
         try {
+            const uuid = await getOrCreateDeviceUUID();
             const snap = await db.collection('devices').doc(uuid).get();
             if (!snap.exists) return { allowed: true, count: 0, uuid };
             const count = snap.data().accountCount || 0;
@@ -122,12 +200,19 @@ function onFirebaseReady() {
             }
             return { allowed: true, count, uuid };
         } catch (e) {
-            console.error('[Delivo] checkDeviceLimit:', e);
-            return { allowed: true, count: 0, uuid }; // fail open
+            // Log clearly — do NOT fail open (don't allow if check fails)
+            console.error('[Delivo] checkDeviceLimit failed:', e.code, e.message);
+            return {
+                allowed: false,
+                count:   MAX_ACCOUNTS_PER_DEVICE,
+                uuid:    'unknown',
+                message: 'تعذّر التحقق من الجهاز. حاول مجدداً.',
+            };
         }
     }
 
     async function incrementDeviceCount(uuid) {
+        if (!uuid || uuid === 'unknown') return;
         try {
             await db.collection('devices').doc(uuid).set({
                 accountCount: firebase.firestore.FieldValue.increment(1),

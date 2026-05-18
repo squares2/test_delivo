@@ -71,8 +71,8 @@ service cloud.firestore {
 
       allow create: if isOwner(userId)
                     && isSizeOk()
-                    && isCleanString(request.resource.data.name)
-                    && isCleanString(request.resource.data.phone);
+                    && isCleanString(request.resource.data.username)
+                    && isCleanString(request.resource.data.displayName);
 
       // User can update own profile but NEVER touch blocked, role, admin, uid
       allow update: if isOwner(userId)
@@ -124,16 +124,25 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // ── /devices — UUID device tracking ───────────────────────
-    // Used to limit account creation per device (max 3)
+    // ── /devices — UUID device tracking ─────────────────────────
+    // read: public — needed BEFORE auth exists (during registration check)
+    // write: public — needed to create/increment before auth exists
+    // update is restricted to only safe fields and max count of 3
     match /devices/{uuid} {
-      allow read:   if isAuth();
-      allow create: if isAuth();
-      // Only increment — never allow setting to arbitrary value
-      allow update: if isAuth()
-                    && request.resource.data.keys().hasOnly(['accountCount','lastUsed'])
+      allow read:   if true;
+      allow create: if true;
+      allow update: if request.resource.data.keys().hasOnly(['accountCount','lastUsed'])
                     && request.resource.data.accountCount is int
                     && request.resource.data.accountCount <= 3;
+      allow delete: if isAdmin();
+    }
+
+    // ── /device_fingerprints — fingerprint → UUID mapping ──────
+    // Fully public — needed before auth exists during registration
+    match /device_fingerprints/{fp} {
+      allow read:   if true;
+      allow create: if true;
+      allow update: if false;
       allow delete: if isAdmin();
     }
 
