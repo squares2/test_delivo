@@ -190,7 +190,8 @@ function onFirebaseReady() {
                     try { _recaptchaVerifier.clear(); } catch(_) {}
                     _recaptchaVerifier = null;
                 }
-                return { error: true, message: authMsg(e.code) };
+                console.error('[Delivo] sendOTP error:', e.code, e.message);
+                return { error: true, message: authMsg(e.code) + ' [' + (e.code || 'unknown') + ']' };
             }
         },
 
