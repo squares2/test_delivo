@@ -2,8 +2,8 @@
     "name": "Delivo - كل شي بيوصلك لباب البيت",
     "short_name": "Delivo",
     "description": "مطاعم، سوبرماركت، قهوة، حلويات وأكثر — توصيل سريع في بعلبك",
-    "start_url": "https://squares2.github.io/test_delivo/",
-    "scope": "https://squares2.github.io/test_delivo/",
+    "start_url": "/test_delivo/index.html",
+    "scope": "/test_delivo/",
     "display": "standalone",
     "background_color": "#000000",
     "theme_color": "#FF5C00",
@@ -11,7 +11,7 @@
     "lang": "ar",
     "dir": "rtl",
     "icons": [
-        { "src": "https://squares2.github.io/test_delivo/assets/logo.png", "sizes": "192x192", "type": "image/png" },
-        { "src": "https://squares2.github.io/test_delivo/assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+        { "src": "assets/logo.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
     ]
 }
