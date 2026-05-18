@@ -129,7 +129,7 @@ function initModalAuth() {
     document.addEventListener('click', async (e) => {
         if (e.target.closest('#acct-signout-btn')) {
             const btn = e.target.closest('#acct-signout-btn');
-            btn.textContent = 'Signing out...';
+            btn.textContent = 'جاري الخروج...';
             btn.disabled    = true;
             await window.DelivoAuth.logout();
             closeModal('modal-account');
