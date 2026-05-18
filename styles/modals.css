@@ -571,3 +571,87 @@
     80%       { transform: translateX(4px); }
 }
 .otp-shake { animation: otpShake 0.45s ease; }
+
+/* ── Password input row (with show/hide toggle) ───────────── */
+.password-input-row {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--clr-gray-200);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color 0.18s, box-shadow 0.18s;
+}
+.password-input-row:focus-within {
+    border-color: var(--clr-orange);
+    box-shadow: 0 0 0 3px var(--clr-orange-glow);
+}
+.password-input-row input {
+    border: none;
+    outline: none;
+    box-shadow: none;
+    flex: 1;
+    padding: clamp(8px, 2vw, 12px) clamp(10px, 2.5vw, 14px);
+    font-family: inherit;
+    font-size: clamp(0.72rem, 2vw, 0.84rem);
+    background: transparent;
+    color: var(--clr-black);
+    min-width: 0;
+    min-height: var(--touch-min);
+}
+.password-toggle {
+    width: 40px;
+    height: 100%;
+    min-height: var(--touch-min);
+    background: none;
+    border: none;
+    border-right: 1.5px solid var(--clr-gray-200);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--clr-gray-400);
+    transition: color 0.18s, background 0.18s;
+    flex-shrink: 0;
+}
+.password-toggle:hover { background: var(--clr-gray-50); color: var(--clr-orange); }
+
+/* ── Field hint ───────────────────────────────────────────── */
+.field-hint {
+    display: block;
+    font-size: 10.5px;
+    color: var(--clr-gray-400);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* ── Location button ──────────────────────────────────────── */
+.location-btn {
+    width: 100%;
+    padding: clamp(8px, 2vw, 11px) clamp(10px, 2.5vw, 14px);
+    border: 1.5px dashed var(--clr-gray-200);
+    border-radius: var(--radius-md);
+    background: var(--clr-gray-50);
+    color: var(--clr-gray-500);
+    font-family: inherit;
+    font-size: clamp(0.72rem, 2vw, 0.82rem);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: border-color 0.18s, background 0.18s, color 0.18s;
+    min-height: var(--touch-min);
+}
+.location-btn:hover:not(:disabled) {
+    border-color: var(--clr-orange);
+    color: var(--clr-orange);
+    background: var(--clr-orange-light);
+}
+.location-btn--success {
+    border-color: #16a34a;
+    border-style: solid;
+    background: #edfaf3;
+    color: #16a34a;
+}
+.location-btn:disabled { opacity: 0.6; cursor: wait; }
