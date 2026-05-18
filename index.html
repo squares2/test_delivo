@@ -44,7 +44,7 @@
             <div class="navbar__controls">
 
                 <!-- Single circle account button — no pill, no label -->
-                <button class="navbar__account" id="account-btn" aria-label="My Account">
+                <button class="navbar__account" id="account-btn" aria-label="حسابي">
                     <svg viewBox="0 0 24 24" fill="none">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               stroke="currentColor" d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -368,7 +368,7 @@
     <div class="modal-overlay" id="modal-account">
         <div class="modal-box modal-box--account">
             <div class="acct-header">
-                <span class="acct-header__title">My Account</span>
+                <span class="acct-header__title">حسابي</span>
                 <button class="modal-close" data-close aria-label="Close">✕</button>
             </div>
             <!-- Guest state -->
@@ -379,8 +379,8 @@
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                         </svg>
                     </div>
-                    <h2 class="acct-guest__title">You're not signed in</h2>
-                    <p class="acct-guest__sub">Sign in to track your orders, manage your profile and enjoy a faster checkout.</p>
+                    <h2 class="acct-guest__title">أنت غير مسجّل</h2>
+                    <p class="acct-guest__sub">سجّل دخولك لتتابع طلباتك وتدير حسابك وتستمتع بتجربة طلب أسرع.</p>
                 </div>
                 <div class="acct-guest__btns">
                     <button class="acct-btn-signin">
@@ -389,20 +389,20 @@
                         </svg>
                         Sign In
                     </button>
-                    <button class="acct-btn-register">Create a free account</button>
+                    <button class="acct-btn-register">إنشاء حساب مجاني</button>
                 </div>
                 <div class="acct-perks">
                     <div class="acct-perk">
                         <div class="acct-perk__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M9 3H5a2 2 0 0 0-2 2v14"/><rect x="9" y="3" width="12" height="18" rx="2"/></svg></div>
-                        <span class="acct-perk__label">Track Orders</span>
+                        <span class="acct-perk__label">تتبع الطلبات</span>
                     </div>
                     <div class="acct-perk">
                         <div class="acct-perk__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-                        <span class="acct-perk__label">Faster Checkout</span>
+                        <span class="acct-perk__label">دفع أسرع</span>
                     </div>
                     <div class="acct-perk">
                         <div class="acct-perk__icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-                        <span class="acct-perk__label">Exclusive Offers</span>
+                        <span class="acct-perk__label">عروض حصرية</span>
                     </div>
                 </div>
             </div>
@@ -415,35 +415,35 @@
                         <div class="acct-profile__email" id="acct-email"></div>
                         <button class="acct-edit-chip" id="acct-edit-btn">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                            Edit Profile
+                            تعديل الملف
                         </button>
                     </div>
                 </div>
-                <p class="acct-sec-label">Account</p>
+                <p class="acct-sec-label">الحساب</p>
                 <div class="acct-menu">
                     <button class="acct-row" id="acct-orders-btn">
                         <div class="acct-row__icon acct-row__icon--blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B6FD8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M9 3H5a2 2 0 0 0-2 2v14"/><rect x="9" y="3" width="12" height="18" rx="2"/></svg></div>
-                        <div class="acct-row__body"><span class="acct-row__title">My Orders</span><span class="acct-row__sub">Track &amp; view order history</span></div>
+                        <div class="acct-row__body"><span class="acct-row__title">طلباتي</span><span class="acct-row__sub">تتبع وعرض سجل الطلبات</span></div>
                         <div class="acct-row__end"><span class="acct-badge" id="acct-orders-badge" style="display:none;">0</span><span class="acct-chevron">›</span></div>
                     </button>
                 </div>
-                <p class="acct-sec-label">Settings</p>
+                <p class="acct-sec-label">الإعدادات</p>
                 <div class="acct-menu">
                     <button class="acct-row" id="acct-profile-btn">
                         <div class="acct-row__icon acct-row__icon--orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-                        <div class="acct-row__body"><span class="acct-row__title">Personal Information</span><span class="acct-row__sub">Name, phone &amp; details</span></div>
+                        <div class="acct-row__body"><span class="acct-row__title">المعلومات الشخصية</span><span class="acct-row__sub">الاسم، الهاتف والتفاصيل</span></div>
                         <div class="acct-row__end"><span class="acct-chevron">›</span></div>
                     </button>
                     <button class="acct-row" id="acct-password-btn">
                         <div class="acct-row__icon acct-row__icon--orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-                        <div class="acct-row__body"><span class="acct-row__title">Change Password</span><span class="acct-row__sub">Update your credentials</span></div>
+                        <div class="acct-row__body"><span class="acct-row__title">تغيير كلمة المرور</span><span class="acct-row__sub">تحديث بيانات الدخول</span></div>
                         <div class="acct-row__end"><span class="acct-chevron">›</span></div>
                     </button>
                 </div>
                 <div class="acct-signout-wrap">
                     <button class="acct-signout-btn" id="acct-signout-btn">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                        Sign Out
+                        تسجيل الخروج
                     </button>
                 </div>
                 <p class="acct-version">Delivo v1.0</p>
