@@ -454,6 +454,25 @@
     <!-- ═══════════════════════════════════════════════════════
          SCRIPTS
     ═══════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════════════
+         PWA INSTALL BANNER
+    ═══════════════════════════════════════════════ -->
+    <div id="install-banner" class="install-banner" style="display:none;">
+        <div class="install-banner__content">
+            <div class="install-banner__icon">
+                <img src="assets/logo.png" alt="Delivo" onerror="this.style.display='none'">
+            </div>
+            <div class="install-banner__text">
+                <strong>Delivo</strong>
+                <span>حمّل التطبيق للوصول السريع</span>
+            </div>
+        </div>
+        <div class="install-banner__actions">
+            <button class="install-banner__dismiss" id="install-dismiss" aria-label="إغلاق">✕</button>
+            <button class="install-banner__install" id="install-btn">تثبيت</button>
+        </div>
+    </div>
+
     <script src="scripts/firebase-init.js"></script>
     <script src="scripts/modal-auth.js"></script>
     <script src="scripts/loader.js"></script>
