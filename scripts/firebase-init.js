@@ -362,6 +362,84 @@ function onFirebaseReady() {
             }
         },
 
+        // ── Update profile (display name + phone + location) ────
+        async updateProfile({ displayName, phone, lat, lng }) {
+            const user = auth.currentUser;
+            if (!user) return { error: true, message: 'يجب تسجيل الدخول أولاً.' };
+
+            if (!displayName || displayName.trim().length < 2)
+                return { error: true, message: 'أدخل الاسم الظاهر (حرفان على الأقل).' };
+
+            try {
+                const safeName  = sanitize(displayName.trim());
+                const safePhone = sanitize((phone || '').trim());
+
+                // Update Firebase Auth display name
+                await user.updateProfile({ displayName: safeName });
+
+                // Build Firestore update
+                const updateData = {
+                    displayName: safeName,
+                    updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+                };
+                if (safePhone) updateData.phone = safePhone;
+
+                // Save location if provided
+                if (lat && lng) {
+                    updateData.location = {
+                        lat: parseFloat(lat),
+                        lng: parseFloat(lng),
+                    };
+                }
+
+                await db.collection('users').doc(user.uid).update(updateData);
+
+                // Update local DelivoUser
+                if (window.DelivoUser) {
+                    window.DelivoUser.displayName = safeName;
+                    if (safePhone) window.DelivoUser.phone = safePhone;
+                    if (lat && lng) window.DelivoUser.location = {
+                        lat: parseFloat(lat),
+                        lng: parseFloat(lng),
+                    };
+                }
+
+                return { success: true };
+            } catch (e) {
+                console.error('[Delivo] updateProfile:', e);
+                return { error: true, message: authMsg(e.code) };
+            }
+        },
+
+        // ── Change password ────────────────────────────────────
+        async changePassword({ currentPassword, newPassword }) {
+            const user = auth.currentUser;
+            if (!user) return { error: true, message: 'يجب تسجيل الدخول أولاً.' };
+
+            if (!currentPassword)
+                return { error: true, message: 'أدخل كلمة المرور الحالية.' };
+            if (!newPassword || newPassword.length < 8)
+                return { error: true, message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل.' };
+            if (currentPassword === newPassword)
+                return { error: true, message: 'كلمة المرور الجديدة يجب أن تختلف عن الحالية.' };
+
+            try {
+                // Re-authenticate first (required by Firebase before password change)
+                const email      = user.email;
+                const credential = firebase.auth.EmailAuthProvider.credential(email, currentPassword);
+                await user.reauthenticateWithCredential(credential);
+
+                // Change password
+                await user.updatePassword(newPassword);
+                return { success: true };
+            } catch (e) {
+                console.error('[Delivo] changePassword:', e);
+                if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential')
+                    return { error: true, message: 'كلمة المرور الحالية غير صحيحة.' };
+                return { error: true, message: authMsg(e.code) };
+            }
+        },
+
         async logout() {
             try {
                 await auth.signOut();

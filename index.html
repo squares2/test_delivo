@@ -6,12 +6,13 @@
     <meta name="theme-color" content="#000000">
     <title>Delivo - كل شي بيوصلك لباب البيت</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="styles/base.css">
-    <link rel="stylesheet" href="styles/navbar.css">
-    <link rel="stylesheet" href="styles/hero.css">
-    <link rel="stylesheet" href="styles/cards.css">
-    <link rel="stylesheet" href="styles/modals.css">
-    <link rel="stylesheet" href="styles/footer.css">
+    <link rel="stylesheet" href="styles/base.css?v=7">
+    <link rel="stylesheet" href="styles/navbar.css?v=7">
+    <link rel="stylesheet" href="styles/hero.css?v=7">
+    <link rel="stylesheet" href="styles/cards.css?v=7">
+    <link rel="stylesheet" href="styles/modals.css?v=7">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="styles/footer.css?v=7">
 </head>
 <body>
 
@@ -72,7 +73,7 @@
             <a href="#" class="nav-link">تتبع الطلب</a>
             <a href="#" class="nav-link">انضم كشريك</a>
             <a href="#" class="nav-link">تواصل معنا</a>
-            <button class="nav-link nav-link--signin" id="mobile-signin-btn">Sign In / Register</button>
+            <button class="nav-link nav-link--signin" id="mobile-signin-btn">تسجيل الدخول / إنشاء حساب</button>
         </div>
     </nav>
 
@@ -341,15 +342,35 @@
                 </div>
             </div>
 
-            <!-- Location (optional GPS) -->
+            <!-- Location (optional) — GPS or Map picker -->
             <div class="modal-field">
                 <label>موقعك <span style="color:var(--clr-gray-400)">(اختياري - لتوصيل أسرع)</span></label>
-                <button type="button" class="location-btn" id="reg-location-btn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    <span id="reg-location-label">تحديد موقعي</span>
-                </button>
+
+                <!-- Two option buttons -->
+                <div class="location-options">
+                    <button type="button" class="location-opt-btn" id="reg-location-gps">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+                        </svg>
+                        موقعي الحالي
+                    </button>
+                    <button type="button" class="location-opt-btn" id="reg-location-map">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+                        </svg>
+                        اختر على الخريطة
+                    </button>
+                </div>
+
+                <!-- Status line -->
+                <p class="location-status" id="reg-location-status" style="display:none;"></p>
+
+                <!-- Map container (hidden until user clicks map option) -->
+                <div class="location-map-wrap" id="reg-map-wrap" style="display:none;">
+                    <div id="reg-map" class="location-map"></div>
+                    <p class="location-map-hint">📍 اسحب الدبوس أو انقر • اضغط 🗺/🛰 لتغيير نوع الخريطة</p>
+                </div>
+
                 <input type="hidden" id="reg-lat">
                 <input type="hidden" id="reg-lng">
             </div>
@@ -387,7 +408,7 @@
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
                         </svg>
-                        Sign In
+                        تسجيل الدخول
                     </button>
                     <button class="acct-btn-register">إنشاء حساب مجاني</button>
                 </div>
@@ -451,6 +472,100 @@
         </div>
     </div>
 
+    <!-- Edit Profile modal -->
+    <div class="modal-overlay" id="modal-edit-profile">
+        <div class="modal-box">
+            <button class="modal-close" data-close aria-label="إغلاق">✕</button>
+            <h2 class="modal-title">تعديل الملف الشخصي</h2>
+            <p class="modal-subtitle">عدّل معلوماتك الشخصية</p>
+            <p id="edit-error" class="modal-error" style="display:none;"></p>
+            <p id="edit-success" class="modal-success" style="display:none;"></p>
+
+            <div class="modal-field">
+                <label for="edit-displayname">الاسم الظاهر</label>
+                <input type="text" id="edit-displayname" placeholder="أحمد علي" autocomplete="name">
+            </div>
+
+            <div class="modal-field">
+                <label for="edit-phone">رقم الهاتف <span style="color:var(--clr-gray-400)">(اختياري)</span></label>
+                <div class="phone-input-row">
+                    <span class="phone-prefix">🇱🇧 +961</span>
+                    <input type="tel" id="edit-phone" placeholder="03 123 456"
+                           dir="ltr" autocomplete="tel" maxlength="10">
+                </div>
+            </div>
+
+            <!-- Location section -->
+            <div class="modal-field">
+                <label>موقعك <span style="color:var(--clr-gray-400)">(اختياري - لتوصيل أسرع)</span></label>
+                <div class="location-options">
+                    <button type="button" class="location-opt-btn" id="edit-location-gps">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+                        </svg>
+                        موقعي الحالي
+                    </button>
+                    <button type="button" class="location-opt-btn" id="edit-location-map">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+                        </svg>
+                        اختر على الخريطة
+                    </button>
+                </div>
+                <p class="location-status" id="edit-location-status" style="display:none;"></p>
+                <div class="location-map-wrap" id="edit-map-wrap" style="display:none;">
+                    <div id="edit-map" class="location-map"></div>
+                    <p class="location-map-hint">📍 اسحب الدبوس أو انقر • اضغط 🗺/🛰 لتغيير نوع الخريطة</p>
+                </div>
+                <input type="hidden" id="edit-lat">
+                <input type="hidden" id="edit-lng">
+            </div>
+
+            <button id="edit-submit" class="btn-primary"
+                    style="width:100%;justify-content:center;padding:12px;">
+                حفظ التغييرات
+            </button>
+
+            <!-- Divider -->
+            <div style="display:flex;align-items:center;gap:10px;margin:18px 0 14px;">
+                <div style="flex:1;height:1px;background:var(--clr-gray-100);"></div>
+                <span style="font-size:0.72rem;color:var(--clr-gray-400);font-weight:600;">تغيير كلمة المرور</span>
+                <div style="flex:1;height:1px;background:var(--clr-gray-100);"></div>
+            </div>
+
+            <div class="modal-field">
+                <label for="edit-current-password">كلمة المرور الحالية</label>
+                <div class="password-input-row">
+                    <input type="password" id="edit-current-password" placeholder="••••••••"
+                           autocomplete="current-password">
+                    <button type="button" class="password-toggle" data-target="edit-current-password">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label for="edit-new-password">كلمة المرور الجديدة</label>
+                <div class="password-input-row">
+                    <input type="password" id="edit-new-password" placeholder="8 أحرف على الأقل"
+                           autocomplete="new-password">
+                    <button type="button" class="password-toggle" data-target="edit-new-password">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button id="edit-password-submit" class="btn-secondary"
+                    style="width:100%;justify-content:center;padding:12px;">
+                تغيير كلمة المرور
+            </button>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════════════════════════════════
          SCRIPTS
     ═══════════════════════════════════════════════════════ -->
@@ -473,14 +588,15 @@
         </div>
     </div>
 
-    <script src="scripts/firebase-init.js"></script>
-    <script src="scripts/modal-auth.js"></script>
-    <script src="scripts/loader.js"></script>
-    <script src="scripts/navbar.js"></script>
-    <script src="scripts/modals.js"></script>
-    <script src="scripts/stores.js"></script>
-    <script src="scripts/cart.js"></script>
-    <script src="scripts/pwa.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="scripts/firebase-init.js?v=7"></script>
+    <script src="scripts/modal-auth.js?v=7"></script>
+    <script src="scripts/loader.js?v=7"></script>
+    <script src="scripts/navbar.js?v=7"></script>
+    <script src="scripts/modals.js?v=7"></script>
+    <script src="scripts/stores.js?v=7"></script>
+    <script src="scripts/cart.js?v=7"></script>
+    <script src="scripts/pwa.js?v=7"></script>
 
 </body>
 </html>

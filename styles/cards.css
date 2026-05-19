@@ -308,7 +308,7 @@
 .offer-card {
     flex: 0 0 calc(100vw - (var(--container-pad) * 2));
     min-width: calc(100vw - (var(--container-pad) * 2));
-    height: clamp(90px, 25vw, 115px);
+    height: clamp(110px, 28vw, 140px);
     scroll-snap-align: center;
     border-radius: var(--radius-lg);
     padding: clamp(10px, 2.5vw, 14px) clamp(14px, 3.5vw, 18px);
@@ -320,9 +320,6 @@
     overflow: hidden;
     position: relative;
     color: var(--clr-white);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
     box-shadow: var(--shadow-md);
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -331,7 +328,7 @@
     .offer-card {
         flex: 0 0 clamp(200px, 38vw, 280px);
         min-width: clamp(200px, 38vw, 280px);
-        height: clamp(85px, 20vw, 110px);
+        height: clamp(105px, 22vw, 130px);
         scroll-snap-align: start;
         padding: clamp(10px, 2.5vw, 14px) clamp(12px, 3vw, 18px);
         gap: clamp(8px, 2vw, 12px);
@@ -343,29 +340,65 @@
     box-shadow: var(--shadow-lg);
 }
 
+/* Gradient backgrounds — one per card theme */
+.offer-card--orange {
+    background: linear-gradient(135deg, #FF5C00 0%, #ff8c00 40%, #ffb347 100%);
+}
+.offer-card--dark {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+.offer-card--green {
+    background: linear-gradient(135deg, #134e2a 0%, #1a6b3a 50%, #22943e 100%);
+}
+.offer-card--purple {
+    background: linear-gradient(135deg, #2d1b69 0%, #4a2c8a 50%, #6d3fbd 100%);
+}
+
+/* Blurred decorative circle behind image */
 .offer-card::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.36);
-    border-radius: inherit;
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    filter: blur(28px);
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
     z-index: 0;
+    pointer-events: none;
+}
+
+/* Second decorative blurred orb */
+.offer-card::after {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    filter: blur(18px);
+    left: 20px;
+    bottom: -10px;
+    z-index: 0;
+    pointer-events: none;
 }
 
 .offer-card__img-wrap {
     position: relative;
     z-index: 1;
     flex-shrink: 0;
-    width: clamp(60px, 17vw, 85px);
-    height: clamp(60px, 17vw, 85px);
+    width: clamp(90px, 24vw, 120px);
+    height: clamp(90px, 24vw, 120px);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 @media (min-width: 540px) {
     .offer-card__img-wrap {
-        width: clamp(50px, 12vw, 70px);
-        height: clamp(50px, 12vw, 70px);
+        width: clamp(70px, 16vw, 95px);
+        height: clamp(70px, 16vw, 95px);
     }
 }
 
@@ -422,7 +455,12 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.35));
+    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.4));
+    transform: scale(1.08);
+    transition: transform 0.3s ease;
+}
+.offer-card:hover .offer-card__img {
+    transform: scale(1.14);
 }
 
 .offers__dots {
