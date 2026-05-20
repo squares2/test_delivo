@@ -180,7 +180,7 @@ function initCart() {
     function _renderCartItem(item) {
         const itemIdParts = item.id.split('__');
         const rawId       = itemIdParts[itemIdParts.length - 1];
-        const imgUrl      = `./items/${rawId}.png`;
+        const imgUrl      = `./items/${rawId.toLowerCase()}.png`;
         const uniqueKey   = `${item.storeName}__${item.id}`;
         return `
         <div class="cart-item" id="ci-${_cslug(uniqueKey)}">

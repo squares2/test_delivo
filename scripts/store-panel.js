@@ -175,7 +175,7 @@ function renderItem(item, storeName) {
     const hasSale  = sale > 0 && sale < price;
     const dispPrice = hasSale ? sale : price;
     const pngExist = item.pngExist === '1' || item.pngExist === 1;
-    const imgUrl   = pngExist ? `${GH_IMAGES}/${id}.png` : '';
+    const imgUrl   = pngExist ? `${GH_IMAGES}/${String(id).toLowerCase()}.png` : '';
     const cartQty  = _getItemQty(`${storeName}__${id}`);
     const uniqueId = `${storeName}__${id}`;
     const sType    = _currentStore ? _currentStore.type : '';
