@@ -96,7 +96,7 @@ function _storeCardHTML(store, catKey, fbType) {
     const name   = store.companyname;
     const rank   = store.rank ? parseFloat(store.rank).toFixed(1) : null;
     const isSoon = store.soon == '1' || store.soon === 1;
-    const imgUrl = `${STORE_IMG}/${encodeURIComponent(name)}.png`;
+    const imgUrl = `${STORE_IMG}/${encodeURIComponent(name.toLowerCase())}.png`;
     const id     = name.toLowerCase().replace(/\s+/g, '-');
     return `
     <div class="store-card ${isSoon ? 'store-card--soon' : ''}"
