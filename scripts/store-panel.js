@@ -1,0 +1,439 @@
+/* ============================================================
+   scripts/store-panel.js
+   Fetches store items from Firebase Realtime Database,
+   renders a full-screen store menu panel.
+
+   Firebase paths used:
+     pattern/{CompanyType}         → store list (companyname, rank, soon)
+     items/{companyname}/{itemID}  → items (name, price, sale, catmain, pngExist, ID)
+
+   Images: https://raw.githubusercontent.com/squares2/delivery-plus/main/items/{ID}.png
+   ============================================================ */
+
+const RTDB_URL  = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+const GH_IMAGES = './items';
+
+/* ── Category emoji map ───────────────────────────────────── */
+const STORE_TYPE_EMOJI = {
+    Restaurants  : '🍽️',
+    BakeryShops  : '🥖',
+    ButcherShops : '🥩',
+    CoffeeShops  : '☕',
+    Markets      : '🛒',
+    SweetsShops  : '🍰',
+    FishShops    : '🐟',
+};
+
+/* ── Helpers ──────────────────────────────────────────────── */
+function rtdbGet(path) {
+    return fetch(`${RTDB_URL}/${path}.json`)
+        .then(r => {
+            if (!r.ok) throw new Error(`RTDB ${r.status}`);
+            return r.json();
+        });
+}
+
+function formatPrice(p) {
+    const n = parseFloat(p);
+    if (isNaN(n)) return '';
+    if (n < 1000) return '$' + n.toFixed(n % 1 === 0 ? 0 : 2);   // dollar
+    return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + ' ألف ل.ل'; // Lebanese
+}
+
+/* ── Panel state ──────────────────────────────────────────── */
+let _currentStore = null;   // { id, name, type }
+let _activeTab    = null;
+
+/* ── Open store panel ─────────────────────────────────────── */
+function openStorePanel(storeId, storeName, storeType) {
+    _currentStore = { id: storeId, name: storeName, type: storeType };
+
+    const overlay = document.getElementById('store-panel-overlay');
+    const panel   = document.getElementById('store-panel');
+    if (!overlay || !panel) return;
+
+    // Reset panel body
+    document.getElementById('sp-hero-name').textContent = storeName;
+    document.getElementById('sp-hero-meta').innerHTML   = '';
+    document.getElementById('sp-tabs-inner').innerHTML  = '';
+    document.getElementById('sp-body').innerHTML        = renderSkeleton();
+    document.getElementById('sp-cart-bar').classList.remove('visible');
+
+    // Show
+    overlay.classList.add('active');
+    panel.classList.add('active');
+    document.body.classList.add('modal-open');
+
+    // Fetch
+    _loadStorePanel(storeName, storeType);
+}
+
+function closeStorePanel() {
+    const overlay = document.getElementById('store-panel-overlay');
+    const panel   = document.getElementById('store-panel');
+    if (overlay) overlay.classList.remove('active');
+    if (panel)   panel.classList.remove('active');
+    document.body.classList.remove('modal-open');
+    _currentStore = null;
+    _activeTab    = null;
+}
+
+/* ── Load & render ────────────────────────────────────────── */
+async function _loadStorePanel(storeName, storeType) {
+    const body = document.getElementById('sp-body');
+    try {
+        // 1. Fetch store meta from pattern to check "soon"
+        const patternData = await rtdbGet(`pattern/${storeType}`);
+        let storeMeta = null;
+        if (patternData && typeof patternData === 'object') {
+            storeMeta = Object.values(patternData)
+                .find(s => s && s.companyname === storeName);
+        }
+
+        // 2. Update hero badges
+        const metaEl = document.getElementById('sp-hero-meta');
+        const emoji  = STORE_TYPE_EMOJI[storeType] || '🏪';
+        if (storeMeta) {
+            metaEl.innerHTML = `
+                <span class="sp-hero__badge">${emoji} ${_typeLabel(storeType)}</span>
+                ${storeMeta.rank ? `<span class="sp-hero__badge sp-hero__badge--orange">⭐ ${storeMeta.rank}</span>` : ''}
+                ${storeMeta.soon == '1' || storeMeta.soon === 1 ? '<span class="sp-hero__badge sp-hero__badge--soon">⏳ قريباً</span>' : ''}
+            `;
+            // Show "coming soon" if flagged
+            if (storeMeta.soon == '1' || storeMeta.soon === 1) {
+                body.innerHTML = `
+                    <div class="sp-soon">
+                        <div class="sp-soon__icon">🚧</div>
+                        <div class="sp-soon__title">قريباً!</div>
+                        <div class="sp-soon__sub">هذا المتجر سيكون متاحاً قريباً.<br>ترقّبوا العروض والأصناف الجديدة.</div>
+                    </div>`;
+                return;
+            }
+        }
+
+        // 3. Fetch items
+        const items = await rtdbGet(`items/${storeName}`);
+        if (!items) {
+            body.innerHTML = `<div class="sp-empty">
+                <div class="sp-empty__icon">🛍️</div>
+                <div class="sp-empty__title">لا توجد أصناف</div>
+                <div class="sp-empty__sub">لم يتم إضافة منتجات لهذا المتجر بعد</div>
+            </div>`;
+            return;
+        }
+
+        // 4. Group by catmain
+        const groups = {};
+        Object.values(items).forEach(item => {
+            if (!item || !item.name) return;
+            const cat = item.catmain || 'عام';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(item);
+        });
+
+        const cats = Object.keys(groups).sort();
+
+        // 5. Build tabs
+        const tabsEl = document.getElementById('sp-tabs-inner');
+        tabsEl.innerHTML = cats.map((cat, i) => `
+            <button class="sp-tab ${i === 0 ? 'active' : ''}"
+                    data-cat="${cat}" onclick="spScrollToSection('${cat}')">
+                ${cat}
+            </button>`).join('');
+
+        // 6. Build body sections
+        body.innerHTML = cats.map(cat => `
+            <div class="sp-section" id="sp-sec-${_slugify(cat)}" data-cat="${cat}">
+                <div class="sp-section__title">${cat}</div>
+                <div class="sp-items">
+                    ${groups[cat].map(item => renderItem(item, storeName)).join('')}
+                </div>
+            </div>`).join('');
+
+        // 7. Observe sections for tab highlighting
+        _initSectionObserver(cats);
+
+        // 8. Update cart bar
+        _updateSpCartBar();
+
+    } catch (err) {
+        console.error('[StorePanel]', err);
+        body.innerHTML = `<div class="sp-error">
+            <div class="sp-error__icon">⚠️</div>
+            <div class="sp-error__title">تعذّر تحميل المنتجات</div>
+            <div class="sp-error__sub">تحقق من اتصالك وحاول مجدداً</div>
+        </div>`;
+    }
+}
+
+/* ── Render one item card ─────────────────────────────────── */
+function renderItem(item, storeName) {
+    const id       = item.ID || item.id || '';
+    const name     = item.name || '';
+    const price    = parseFloat(item.price) || 0;
+    const sale     = parseFloat(item.sale)  || 0;
+    const hasSale  = sale > 0 && sale < price;
+    const dispPrice = hasSale ? sale : price;
+    const pngExist = item.pngExist === '1' || item.pngExist === 1;
+    const imgUrl   = pngExist ? `${GH_IMAGES}/${id}.png` : '';
+    const cartQty  = _getItemQty(`${storeName}__${id}`);
+    const uniqueId = `${storeName}__${id}`;
+    const sType    = _currentStore ? _currentStore.type : '';
+
+    return `
+    <div class="sp-item" id="sp-item-${_slugify(uniqueId)}">
+        <div class="sp-item__img-wrap">
+            ${pngExist
+                ? `<img class="sp-item__img" src="${imgUrl}" alt="${name}"
+                       onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                       loading="lazy">
+                   <div class="sp-item__img-fallback" style="display:none">${_typeEmoji(item.companytype)}</div>`
+                : `<div class="sp-item__img-fallback">${_typeEmoji(item.companytype)}</div>`
+            }
+            ${hasSale ? `<span class="sp-item__sale-badge">خصم</span>` : ''}
+        </div>
+        <div class="sp-item__info">
+            <div class="sp-item__name">${name}</div>
+            ${item.catar ? `<div class="sp-item__cat">${item.catar}</div>` : ''}
+            <div class="sp-item__price-row">
+                <span class="sp-item__price">${formatPrice(dispPrice)}</span>
+                ${hasSale ? `<span class="sp-item__price-old">${formatPrice(price)}</span>` : ''}
+            </div>
+        </div>
+        <div class="sp-item__actions">
+            ${cartQty > 0 ? `
+            <div class="sp-item__qty-control" id="sp-qty-ctrl-${_slugify(uniqueId)}">
+                <button class="sp-item__qty-btn"
+                        onclick="spChangeQty('${uniqueId}','${name}',${dispPrice},-1,'${storeName}','${sType}')">−</button>
+                <span class="sp-item__qty-num" id="sp-qty-${_slugify(uniqueId)}">${cartQty}</span>
+                <button class="sp-item__qty-btn"
+                        onclick="spChangeQty('${uniqueId}','${name}',${dispPrice},1,'${storeName}','${sType}')">+</button>
+            </div>` : `
+            <button class="sp-item__add-btn" id="sp-add-btn-${_slugify(uniqueId)}"
+                    onclick="spAddItem('${uniqueId}','${name}',${dispPrice},'${storeName}','${sType}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </button>`}
+        </div>
+    </div>`;
+}
+
+/* ── Cart interactions from store panel ───────────────────── */
+function spAddItem(uniqueId, name, price, storeName, storeType) {
+    if (!window.DelivoCart) return;
+    window.DelivoCart.addItem(uniqueId, name, price, storeName, storeType);
+
+    // Swap add button → qty control
+    const slug     = _slugify(uniqueId);
+    const addBtn   = document.getElementById(`sp-add-btn-${slug}`);
+    const actionsEl = addBtn ? addBtn.parentElement : null;
+    if (actionsEl) {
+        actionsEl.innerHTML = `
+            <div class="sp-item__qty-control" id="sp-qty-ctrl-${slug}">
+                <button class="sp-item__qty-btn"
+                        onclick="spChangeQty('${uniqueId}','${name}',${price},-1,'${storeName}')">−</button>
+                <span class="sp-item__qty-num" id="sp-qty-${slug}">1</span>
+                <button class="sp-item__qty-btn"
+                        onclick="spChangeQty('${uniqueId}','${name}',${price},1,'${storeName}')">+</button>
+            </div>`;
+    }
+    _updateSpCartBar();
+    if (window.renderCartSidebar) window.renderCartSidebar();
+}
+
+function spChangeQty(uniqueId, name, price, delta, storeName, storeType) {
+    if (!window.DelivoCart) return;
+    const slug = _slugify(uniqueId);
+
+    if (delta > 0) {
+        window.DelivoCart.addItem(uniqueId, name, price, storeName, storeType);
+    } else {
+        window.DelivoCart.decrementItem(uniqueId, storeName);
+    }
+
+    const qty = _getItemQty(uniqueId);
+    const actionsEl = document.getElementById(`sp-qty-ctrl-${slug}`)?.parentElement;
+
+    if (qty <= 0 && actionsEl) {
+        // Swap back to add button
+        actionsEl.innerHTML = `
+            <button class="sp-item__add-btn" id="sp-add-btn-${slug}"
+                    onclick="spAddItem('${uniqueId}','${name}',${price},'${storeName}')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5"
+                     stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            </button>`;
+    } else {
+        const qtyEl = document.getElementById(`sp-qty-${slug}`);
+        if (qtyEl) qtyEl.textContent = qty;
+    }
+
+    _updateSpCartBar();
+    if (window.renderCartSidebar) window.renderCartSidebar();
+}
+
+function _updateSpCartBar() {
+    const bar      = document.getElementById('sp-cart-bar');
+    const countEl  = document.getElementById('sp-cart-count');
+    const totalEl  = document.getElementById('sp-cart-total');
+    if (!bar) return;
+    const count = window.DelivoCart ? window.DelivoCart.getCount() : 0;
+    // Total always in USD
+    const totalUSD = window.DelivoCart ? window.DelivoCart.items.reduce((sum, item) => {
+        const p = parseFloat(item.price) || 0;
+        return sum + (p < 1000 ? p : p / 90000) * item.qty;
+    }, 0) : 0;
+    bar.classList.toggle('visible', count > 0);
+    if (countEl) countEl.textContent = count + ' منتج';
+    if (totalEl) totalEl.textContent = '$' + totalUSD.toFixed(2);
+}
+
+/* ── Tab scroll sync ──────────────────────────────────────── */
+function spScrollToSection(cat) {
+    const sec = document.getElementById(`sp-sec-${_slugify(cat)}`);
+    if (!sec) return;
+    const body = document.getElementById('sp-body');
+    body.scrollTo({ top: sec.offsetTop - 8, behavior: 'smooth' });
+    _setActiveTab(cat);
+}
+
+function _initSectionObserver(cats) {
+    const body = document.getElementById('sp-body');
+    if (!body || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) _setActiveTab(e.target.dataset.cat);
+        });
+    }, { root: body, threshold: 0.3 });
+
+    cats.forEach(cat => {
+        const el = document.getElementById(`sp-sec-${_slugify(cat)}`);
+        if (el) observer.observe(el);
+    });
+}
+
+function _setActiveTab(cat) {
+    document.querySelectorAll('.sp-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.cat === cat);
+    });
+    // Scroll tab into view
+    const activeTab = document.querySelector(`.sp-tab[data-cat="${cat}"]`);
+    if (activeTab) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+    _activeTab = cat;
+}
+
+/* ── Skeleton ─────────────────────────────────────────────── */
+function renderSkeleton() {
+    return `<div class="sp-skeleton">${Array(5).fill(0).map(() => `
+        <div class="sp-skeleton__item">
+            <div class="sp-skeleton__img"></div>
+            <div class="sp-skeleton__lines">
+                <div class="sp-skeleton__line"></div>
+                <div class="sp-skeleton__line"></div>
+                <div class="sp-skeleton__line"></div>
+            </div>
+        </div>`).join('')}</div>`;
+}
+
+/* ── Utilities ────────────────────────────────────────────── */
+function _slugify(s) {
+    return String(s).replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_');
+}
+function _getItemQty(id) {
+    if (!window.DelivoCart) return 0;
+    const item = window.DelivoCart.items.find(i => i.id === id);
+    return item ? item.qty : 0;
+}
+function _typeLabel(t) {
+    const map = {
+        Restaurants  : 'مطاعم',
+        CoffeeShops  : 'قهوة',
+        Markets      : 'سوبرماركت',
+        SweetsShops  : 'حلويات',
+        ButcherShops : 'ملاحم',
+        FishShops    : 'أسماك',
+        BakeryShops  : 'مخابز',
+    };
+    return map[t] || t;
+}
+function _typeEmoji(t) {
+    const map = {
+        Restaurants  : '🍔',
+        CoffeeShops  : '☕',
+        Markets      : '🛒',
+        SweetsShops  : '🍰',
+        ButcherShops : '🥩',
+        FishShops    : '🐟',
+        BakeryShops  : '🥖',
+    };
+    return map[t] || '🏪';
+}
+
+/* ── Init ─────────────────────────────────────────────────── */
+function initStorePanel() {
+    // Close on backdrop click
+    const overlay = document.getElementById('store-panel-overlay');
+    if (overlay) overlay.addEventListener('click', closeStorePanel);
+
+    // Back button
+    const backBtn = document.getElementById('sp-back-btn');
+    if (backBtn) backBtn.addEventListener('click', closeStorePanel);
+
+    // Cart bar button → open cart sidebar
+    const cartBarBtn = document.getElementById('sp-cart-bar-btn');
+    if (cartBarBtn) cartBarBtn.addEventListener('click', () => {
+        closeStorePanel();
+        setTimeout(() => openCartSidebar(), 180);
+    });
+
+    // Escape key
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeStorePanel();
+    });
+
+    // Wire up existing store cards in HTML
+    document.querySelectorAll('[data-store-id]').forEach(card => {
+        card.addEventListener('click', () => {
+            const storeId   = card.dataset.storeId;
+            const storeType = card.dataset.storeType || 'Restaurants';
+            // Map HTML data-store-id to Firebase companyname
+            const nameMap = {
+                'classic-food'   : 'Classic-Food',
+                'king-pizza'     : 'King-Pizza',
+                'zahret-lobnan'  : 'Zahret-Lobnan',
+                'store-burger'   : 'AL-Beik',
+            };
+            const fireName = nameMap[storeId] || _toFirebaseName(storeId);
+            const typeMap  = {
+                restaurants  : 'Restaurants',
+                coffee       : 'CoffeeShops',
+                supermarket  : 'Markets',
+                sweets       : 'SweetsShops',
+                meat         : 'ButcherShops',
+                fish         : 'FishShops',
+                bakery       : 'BakeryShops',
+            };
+            const fireType = typeMap[storeType] || 'Restaurants';
+            openStorePanel(storeId, fireName, fireType);
+        });
+    });
+
+    // Expose for cart sidebar to call
+    window.openStorePanel   = openStorePanel;
+    window.closeStorePanel  = closeStorePanel;
+    window.spAddItem        = spAddItem;
+    window.spChangeQty      = spChangeQty;
+    window.spScrollToSection = spScrollToSection;
+    window.updateSpCartBar  = _updateSpCartBar;
+}
+
+function _toFirebaseName(id) {
+    // Convert kebab-case store IDs to Firebase name format
+    return id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
+}

@@ -30,7 +30,9 @@ async function loadAll() {
     if (typeof initModals    === 'function') initModals();
     if (typeof initCart      === 'function') initCart();
     if (typeof initModalAuth === 'function') initModalAuth();
-    if (typeof initStores    === 'function') initStores();
+    if (typeof initStores      === 'function') initStores();
+    if (typeof initCategories  === 'function') initCategories();
+    if (typeof initStorePanel  === 'function') initStorePanel();
 
     document.body.classList.add('loaded');
     console.log('[Delivo] All components loaded ✓');

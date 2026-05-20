@@ -1,0 +1,159 @@
+/* ============================================================
+   scripts/categories.js
+   Category buttons → Firebase fetch → dropdown.
+   The dropdown div is hardcoded in index.html — no injection.
+   ============================================================ */
+
+const RTDB_BASE = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+const STORE_IMG = './assets';
+
+const CAT_MAP = {
+    restaurants : { fbKey: 'Restaurants',  label: 'المطاعم',     emoji: '🍔' },
+    meat        : { fbKey: 'ButcherShops', label: 'الملاحم',     emoji: '🥩' },
+    bakery      : { fbKey: 'BakeryShops',  label: 'المخابز',     emoji: '🥖' },
+    supermarket : { fbKey: 'Markets',      label: 'السوبرماركت', emoji: '🛒' },
+    sweets      : { fbKey: 'SweetsShops',  label: 'الحلويات',    emoji: '🍰' },
+    fish        : { fbKey: 'FishShops',    label: 'الأسماك',     emoji: '🐟' },
+    coffee      : { fbKey: 'CoffeeShops',  label: 'القهوة',      emoji: '☕' },
+};
+
+let _openCategory = null;
+let _cache        = {};
+
+function initCategories() {
+    document.querySelectorAll('.category-item[data-category]').forEach(item => {
+        item.addEventListener('click', () => _toggleCategory(item.dataset.category));
+    });
+    _initDragScroll(document.getElementById('cat-dropdown-scroll'));
+}
+
+function _toggleCategory(cat) {
+    const catMeta = CAT_MAP[cat];
+    if (!catMeta) return;
+    const dropdown = document.getElementById('cat-stores-dropdown');
+    if (!dropdown) return;
+
+    if (_openCategory === cat) { _closeDropdown(); return; }
+
+    document.querySelectorAll('.category-item').forEach(el =>
+        el.classList.toggle('active', el.dataset.category === cat));
+
+    document.getElementById('cat-dd-emoji').textContent = catMeta.emoji;
+    document.getElementById('cat-dd-title').textContent  = catMeta.label;
+    document.getElementById('cat-dd-count').textContent  = '';
+
+    const scrollEl = document.getElementById('cat-dropdown-scroll');
+    scrollEl.innerHTML = _skeletonHTML(5);
+    dropdown.classList.add('open');
+    _openCategory = cat;
+
+    _fetchStores(catMeta.fbKey)
+        .then(stores => { if (_openCategory === cat) _renderStores(stores, cat, catMeta); })
+        .catch(()    => { if (_openCategory === cat) scrollEl.innerHTML = `<div class="cat-stores-empty">⚠️ تعذّر التحميل</div>`; });
+}
+
+function _closeDropdown() {
+    const dropdown = document.getElementById('cat-stores-dropdown');
+    if (dropdown) dropdown.classList.remove('open');
+    document.querySelectorAll('.category-item').forEach(el => el.classList.remove('active'));
+    _openCategory = null;
+}
+
+async function _fetchStores(fbKey) {
+    if (_cache[fbKey]) return _cache[fbKey];
+    const res  = await fetch(`${RTDB_BASE}/pattern/${fbKey}.json`);
+    if (!res.ok) throw new Error(`Firebase ${res.status}`);
+    const data = await res.json();
+    if (!data) { _cache[fbKey] = []; return []; }
+    const arr = Object.values(data)
+        .filter(s => s && s.companyname)
+        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99));
+    _cache[fbKey] = arr;
+    return arr;
+}
+
+function _renderStores(stores, catKey, catMeta) {
+    const scrollEl = document.getElementById('cat-dropdown-scroll');
+    const countEl  = document.getElementById('cat-dd-count');
+    if (!scrollEl) return;
+    if (!stores || stores.length === 0) {
+        scrollEl.innerHTML = `<div class="cat-stores-empty">لا توجد متاجر في هذا القسم حالياً</div>`;
+        return;
+    }
+    countEl.textContent = stores.length + ' متجر';
+    scrollEl.innerHTML  = stores.map(s => _storeCardHTML(s, catKey, catMeta.fbKey)).join('');
+    scrollEl.querySelectorAll('.store-card[data-store-name]').forEach(card => {
+        if (card.classList.contains('store-card--soon')) return;
+        card.addEventListener('click', () => {
+            if (typeof openStorePanel === 'function')
+                openStorePanel(card.dataset.storeId, card.dataset.storeName, card.dataset.fbType);
+        });
+    });
+    _initDragScroll(scrollEl);
+}
+
+function _storeCardHTML(store, catKey, fbType) {
+    const name   = store.companyname;
+    const rank   = store.rank ? parseFloat(store.rank).toFixed(1) : null;
+    const isSoon = store.soon == '1' || store.soon === 1;
+    const imgUrl = `${STORE_IMG}/${encodeURIComponent(name)}.png`;
+    const id     = name.toLowerCase().replace(/\s+/g, '-');
+    return `
+    <div class="store-card ${isSoon ? 'store-card--soon' : ''}"
+         data-store-name="${name}" data-store-id="${id}" data-fb-type="${fbType}"
+         style="cursor:${isSoon?'default':'pointer'};flex-shrink:0;">
+        <div class="store-card__thumb" style="position:relative;">
+            <img src="${imgUrl}" alt="${name}"
+                 style="width:100%;height:100%;object-fit:cover;display:block;"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div style="display:none;width:100%;height:100%;align-items:center;
+                        justify-content:center;font-size:2rem;background:var(--clr-gray-100);">
+                ${_catEmoji(catKey)}</div>
+            ${rank ? `<div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${rank}</div>` : ''}
+            ${isSoon ? `<div class="store-card__soon-badge">قريباً</div>` : ''}
+        </div>
+        <div class="store-card__body">
+            <p class="store-card__name">${name}</p>
+            <p class="store-card__tags">${_catLabel(catKey)}</p>
+            <div class="store-card__footer">
+                <span class="store-card__min-label">${isSoon ? 'قريباً' : 'اضغط للطلب'}</span>
+            </div>
+        </div>
+    </div>`;
+}
+
+function _skeletonHTML(n) {
+    return Array(n).fill(0).map(() => `
+        <div class="cat-skeleton-card">
+            <div class="cat-skeleton-card__thumb"></div>
+            <div class="cat-skeleton-card__body">
+                <div class="cat-skeleton-card__line"></div>
+                <div class="cat-skeleton-card__line"></div>
+                <div class="cat-skeleton-card__line"></div>
+            </div>
+        </div>`).join('');
+}
+
+function _initDragScroll(row) {
+    if (!row) return;
+    let isDown = false, startX, scrollLeft, hasDragged = false;
+    row.addEventListener('mousedown', e => { isDown=true; hasDragged=false; row.classList.add('dragging'); startX=e.pageX-row.offsetLeft; scrollLeft=row.scrollLeft; });
+    row.addEventListener('mouseleave', () => { isDown=false; row.classList.remove('dragging'); });
+    row.addEventListener('mouseup',    () => { isDown=false; row.classList.remove('dragging'); });
+    row.addEventListener('mousemove', e => {
+        if (!isDown) return;
+        const x = e.pageX - row.offsetLeft;
+        if (Math.abs(x-startX) > 5) { hasDragged=true; e.preventDefault(); row.scrollLeft = scrollLeft-(x-startX)*1.5; }
+    });
+    row.addEventListener('click', e => { if (hasDragged) { e.preventDefault(); e.stopPropagation(); hasDragged=false; } }, true);
+}
+
+function _catEmoji(cat) {
+    return {restaurants:'🍔',meat:'🥩',bakery:'🥖',supermarket:'🛒',sweets:'🍰',fish:'🐟',coffee:'☕'}[cat]||'🏪';
+}
+function _catLabel(cat) {
+    return {restaurants:'مطعم',meat:'ملحمة',bakery:'مخبز',supermarket:'سوبرماركت',sweets:'حلويات',fish:'أسماك',coffee:'قهوة'}[cat]||'';
+}
+
+window.initCategories   = initCategories;
+window.closeCatDropdown = _closeDropdown;

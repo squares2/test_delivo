@@ -833,3 +833,172 @@
     margin-top: clamp(2px, 0.5vw, 5px);
     box-shadow: none;
 }
+/* ══════════════════════════════════════════════════════════
+   CATEGORY DROPDOWN — dynamic store grid per category
+   ══════════════════════════════════════════════════════════ */
+
+/*
+ * The dropdown is hardcoded in index.html.
+ * height:0 always → it never occupies space in the document flow.
+ * overflow:visible when open → content spills downward visually
+ * over the sections below without pushing them.
+ */
+.cat-stores-dropdown {
+    position: relative;
+    height: 0;
+    overflow: hidden;
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    background: var(--clr-white);
+}
+.cat-stores-dropdown.open {
+    overflow: visible;
+    opacity: 1;
+    pointer-events: all;
+}
+/* The actual visible panel spills out via absolute child */
+.cat-stores-dropdown__inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: var(--clr-white);
+    border-bottom: 2px solid var(--clr-orange);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+    z-index: 300;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cat-stores-dropdown.open .cat-stores-dropdown__inner {
+    max-height: 320px;
+}
+
+/* Header row: title + count pill */
+.cat-stores-dropdown__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: clamp(10px, 2.5vw, 14px) var(--container-pad) 0;
+}
+.cat-stores-dropdown__title {
+    font-size: clamp(0.88rem, 2.6vw, 1.05rem);
+    font-weight: 800;
+    color: var(--clr-black);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.cat-stores-dropdown__title-emoji {
+    font-size: 1.1em;
+}
+.cat-stores-dropdown__count {
+    font-size: clamp(0.68rem, 1.7vw, 0.78rem);
+    font-weight: 600;
+    color: var(--clr-gray-400);
+    background: var(--clr-gray-100);
+    border-radius: var(--radius-pill);
+    padding: 2px 9px;
+}
+
+/* Horizontally scrollable card row */
+.cat-stores-dropdown__scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: clamp(8px, 2vw, 14px);
+    padding: clamp(8px, 2vw, 12px) var(--container-pad) clamp(10px, 2.5vw, 16px);
+    cursor: grab;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.cat-stores-dropdown__scroll::-webkit-scrollbar { display: none; }
+.cat-stores-dropdown__scroll.dragging {
+    cursor: grabbing;
+    user-select: none;
+}
+
+/* Skeleton shimmer cards shown while fetching */
+.cat-skeleton-card {
+    flex: 0 0 clamp(100px, 25vw, 140px);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--clr-gray-100);
+}
+.cat-skeleton-card__thumb {
+    height: clamp(70px, 17vw, 100px);
+    background: var(--clr-gray-100);
+    animation: skeletonPulse 1.4s ease-in-out infinite;
+}
+.cat-skeleton-card__body {
+    padding: 8px;
+    background: var(--clr-white);
+}
+.cat-skeleton-card__line {
+    height: 10px;
+    border-radius: 5px;
+    background: var(--clr-gray-100);
+    animation: skeletonPulse 1.4s ease-in-out infinite;
+    margin-bottom: 6px;
+}
+.cat-skeleton-card__line:nth-child(1) { width: 70%; }
+.cat-skeleton-card__line:nth-child(2) { width: 50%; animation-delay: 0.1s; }
+.cat-skeleton-card__line:nth-child(3) { width: 40%; animation-delay: 0.2s; }
+
+/* Empty / error message inside dropdown */
+.cat-stores-empty {
+    flex: 1;
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--clr-gray-400);
+    font-size: var(--fs-small);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Active state on pressed category circle */
+.category-item.active .category-item__circle {
+    border-color: var(--clr-orange);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-orange);
+    background: var(--clr-orange-light);
+}
+.category-item.active .category-item__label {
+    color: var(--clr-orange);
+    font-weight: 800;
+}
+
+/* "قريباً" overlay on coming-soon store cards */
+.store-card--soon {
+    opacity: 0.68;
+    pointer-events: none;
+}
+.store-card__soon-badge {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    font-size: clamp(0.68rem, 1.8vw, 0.78rem);
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+
+/* Store thumb image (local assets) */
+.store-card__thumb {
+    background-color: var(--clr-gray-100);
+    background-size: cover;
+    background-position: center;
+}
+.store-card__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
