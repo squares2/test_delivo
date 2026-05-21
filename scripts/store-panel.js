@@ -43,9 +43,188 @@ function formatPrice(p) {
 /* ── Panel state ──────────────────────────────────────────── */
 let _currentStore = null;   // { id, name, type }
 let _activeTab    = null;
+const _spCache    = {};     // pattern data cache
 
 /* ── Open store panel ─────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════
+   STORE INTRO CARD
+════════════════════════════════════════════════════════════ */
+
+function _ensureIntroCard() {
+    if (document.getElementById('store-intro')) return;
+    const el = document.createElement('div');
+    el.className = 'store-intro';
+    el.id = 'store-intro';
+    el.innerHTML = `
+        <div class="store-intro__bg">
+            <div class="store-intro__blob"></div>
+            <div class="store-intro__blob"></div>
+            <div class="store-intro__blob"></div>
+        </div>
+        <div class="store-intro__logo-wrap" id="si-logo-wrap">
+            <img class="store-intro__logo-img" id="si-logo-img" src="" alt=""
+                 style="display:none"
+                 onerror="this.style.display='none';document.getElementById('si-logo-emoji').style.display='block'">
+            <span class="store-intro__logo-emoji" id="si-logo-emoji" style="display:none"></span>
+        </div>
+        <div class="store-intro__name"  id="si-name"></div>
+        <div class="store-intro__cat"   id="si-cat"></div>
+        <div class="store-intro__rating" id="si-rating" style="display:none">
+            <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span id="si-rating-val"></span>
+        </div>
+        <div class="store-intro__dots" id="si-dots">
+            <div class="store-intro__dot active"></div>
+            <div class="store-intro__dot"></div>
+            <div class="store-intro__dot"></div>
+        </div>
+        <div class="store-intro__progress" id="si-progress"></div>
+    `;
+    document.body.appendChild(el);
+}
+
+function showStoreIntro(storeId, storeName, storeType, storeMeta, onDone) {
+    _ensureIntroCard();
+
+    const card     = document.getElementById('store-intro');
+    const logoImg  = document.getElementById('si-logo-img');
+    const logoEmoji= document.getElementById('si-logo-emoji');
+    const nameEl   = document.getElementById('si-name');
+    const catEl    = document.getElementById('si-cat');
+    const ratingEl = document.getElementById('si-rating');
+    const ratingVal= document.getElementById('si-rating-val');
+    const progress = document.getElementById('si-progress');
+    const dots     = document.querySelectorAll('.store-intro__dot');
+
+    const DURATION = 2200; // ms total intro time
+
+    // ── Populate content ──────────────────────────────────────
+    nameEl.textContent = storeName;
+    catEl.textContent  = (_typeEmoji(storeType) || '') + '  ' + (_typeLabel(storeType) || storeType);
+
+    // Rating
+    const rank = storeMeta && storeMeta.rank ? parseFloat(storeMeta.rank) : null;
+    if (rank) {
+        ratingVal.textContent = rank.toFixed(1);
+        ratingEl.style.display = 'flex';
+    } else {
+        ratingEl.style.display = 'none';
+    }
+
+    // Logo
+    const logoPath = `assets/${storeName.toLowerCase()}.png`;
+    logoImg.style.display  = 'none';
+    logoEmoji.style.display = 'none';
+
+    logoImg.onload = () => {
+        logoImg.style.display   = 'block';
+        logoEmoji.style.display = 'none';
+    };
+    logoImg.onerror = () => {
+        logoImg.style.display   = 'none';
+        logoEmoji.textContent   = _typeEmoji(storeType) || '🏪';
+        logoEmoji.style.display = 'block';
+    };
+    logoImg.src = logoPath;
+
+    // ── Show card ─────────────────────────────────────────────
+    card.classList.remove('exit');
+    card.style.display = 'flex';
+    document.body.classList.add('modal-open');
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        card.classList.add('visible');
+    }));
+
+    // ── Progress bar ──────────────────────────────────────────
+    progress.style.transition = 'none';
+    progress.style.width = '0%';
+    requestAnimationFrame(() => {
+        progress.style.transition = `width ${DURATION}ms linear`;
+        progress.style.width = '100%';
+    });
+
+    // ── Dot animation ─────────────────────────────────────────
+    let dotIdx = 0;
+    const dotTimer = setInterval(() => {
+        dots.forEach(d => d.classList.remove('active'));
+        dotIdx = (dotIdx + 1) % dots.length;
+        dots[dotIdx].classList.add('active');
+    }, DURATION / 4);
+
+    // ── After duration: animate logo to hero, then open panel ─
+    setTimeout(() => {
+        clearInterval(dotTimer);
+
+        // Get logo wrap current position (to animate FROM)
+        const logoWrap  = document.getElementById('si-logo-wrap');
+        const fromRect  = logoWrap.getBoundingClientRect();
+
+        // Target: center of the store hero area (top of screen)
+        const heroH    = Math.min(200, window.innerHeight * 0.28);
+        const toX      = window.innerWidth / 2;
+        const toY      = heroH / 2;
+        const toScale  = 0.55; // shrinks to hero logo size
+
+        // Animate logo wrap flying to hero
+        const dX = toX - (fromRect.left + fromRect.width / 2);
+        const dY = toY - (fromRect.top  + fromRect.height / 2);
+
+        logoWrap.style.transition = 'transform 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.4s ease';
+        logoWrap.style.transformOrigin = 'center center';
+        logoWrap.style.transform = `translate(${dX}px, ${dY}px) scale(${toScale})`;
+        logoWrap.style.opacity   = '0';
+
+        // Fade out rest of intro
+        nameEl.style.transition = 'opacity 0.25s ease';
+        catEl.style.transition  = 'opacity 0.25s ease';
+        nameEl.style.opacity    = '0';
+        catEl.style.opacity     = '0';
+        if (ratingEl) { ratingEl.style.transition = 'opacity 0.25s'; ratingEl.style.opacity = '0'; }
+
+        card.classList.add('exit');
+
+        setTimeout(() => {
+            // Fully hide intro
+            card.classList.remove('visible', 'exit');
+            card.style.display = 'none';
+            // Reset for next use
+            logoWrap.style.transform  = '';
+            logoWrap.style.opacity    = '';
+            logoWrap.style.transition = '';
+            nameEl.style.opacity = catEl.style.opacity = '';
+            progress.style.width = '0%';
+
+            onDone();
+        }, 460);
+
+    }, DURATION);
+}
+
 function openStorePanel(storeId, storeName, storeType) {
+    // ── Fetch store meta for intro rating, then show intro ────
+    const _introCacheKey = `pattern_${storeType}`;
+    const _introFetch = _spCache[_introCacheKey]
+        ? Promise.resolve(_spCache[_introCacheKey])
+        : rtdbGet(`pattern/${storeType}`).then(d => { _spCache[_introCacheKey] = d; return d; });
+    _introFetch
+        .then(patternData => {
+            let storeMeta = null;
+            if (patternData && typeof patternData === 'object') {
+                storeMeta = Object.values(patternData)
+                    .find(s => s && s.companyname === storeName);
+            }
+            showStoreIntro(storeId, storeName, storeType, storeMeta, () => {
+                _openStorePanelNow(storeId, storeName, storeType);
+            });
+        })
+        .catch(() => {
+            // If fetch fails, skip intro and open directly
+            _openStorePanelNow(storeId, storeName, storeType);
+        });
+}
+
+function _openStorePanelNow(storeId, storeName, storeType) {
     _currentStore = { id: storeId, name: storeName, type: storeType };
 
     const overlay = document.getElementById('store-panel-overlay');
@@ -59,12 +238,28 @@ function openStorePanel(storeId, storeName, storeType) {
     document.getElementById('sp-body').innerHTML        = renderSkeleton();
     document.getElementById('sp-cart-bar').classList.remove('visible');
 
+    // ── Store logo in hero ─────────────────────────────────────
+    const logoImg    = document.getElementById('sp-hero-logo');
+    const fallbackEl = document.getElementById('sp-hero-fallback');
+    const logoPath   = `assets/${storeName.toLowerCase()}.png`;
+
+    if (logoImg) {
+        logoImg.style.display    = 'none';
+        fallbackEl.style.display = 'flex';
+        fallbackEl.textContent   = _typeEmoji(storeType) || '🏪';
+
+        logoImg.onload  = () => { logoImg.style.display = 'block'; fallbackEl.style.display = 'none'; };
+        logoImg.onerror = () => { logoImg.style.display = 'none';  fallbackEl.style.display = 'flex'; };
+        logoImg.src = logoPath;
+        logoImg.alt = storeName;
+    }
+
     // Show
     overlay.classList.add('active');
     panel.classList.add('active');
     document.body.classList.add('modal-open');
 
-    // Fetch
+    // Fetch (patternData already cached from intro fetch via _cache in categories.js)
     _loadStorePanel(storeName, storeType);
 }
 
@@ -82,8 +277,10 @@ function closeStorePanel() {
 async function _loadStorePanel(storeName, storeType) {
     const body = document.getElementById('sp-body');
     try {
-        // 1. Fetch store meta from pattern to check "soon"
-        const patternData = await rtdbGet(`pattern/${storeType}`);
+        // 1. Fetch store meta from pattern (use cache if available from intro)
+        const _cacheKey   = `pattern_${storeType}`;
+        const patternData = _spCache[_cacheKey] || await rtdbGet(`pattern/${storeType}`);
+        _spCache[_cacheKey] = patternData;
         let storeMeta = null;
         if (patternData && typeof patternData === 'object') {
             storeMeta = Object.values(patternData)
