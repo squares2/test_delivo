@@ -36,8 +36,7 @@ function initNavbar() {
             <!-- 3. Logo (center, elevated) -->
             <button class="bb-logo-btn" id="bb-logo-btn" aria-label="الرئيسية">
                 <div class="bb-logo-btn__circle">
-                    <img src="assets/logo.png" alt="Delivo"
-                         onerror="this.style.display='none'">
+                    <img src="assets/icon-192.png" alt="Delivo">
                 </div>
                 <span class="bb-logo-btn__label">Delivo</span>
             </button>
@@ -56,8 +55,8 @@ function initNavbar() {
 
             <!-- 5. Account -->
             <button class="bb-account-btn" id="bb-account-btn" aria-label="حسابي">
-                <span class="bb-account-btn__circle">
-                    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <span class="bb-account-btn__icon">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                     </svg>

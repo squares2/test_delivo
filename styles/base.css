@@ -182,6 +182,103 @@ ul, ol { list-style: none; }
 body.modal-open { overflow: hidden; max-width: 100vw; }
 
 /* ── FOUC guard ───────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════
+   SPLASH SCREEN
+   Full-screen, shown before body.loaded fires.
+   Orange bg, centered logo, pulsing spinner below.
+   Fades out via JS when app is ready.
+═══════════════════════════════════════════════════════════ */
+#delivo-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #FF5C00;          /* brand orange */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+    /* stays fully visible until JS removes it */
+}
+#delivo-splash.hiding {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+#delivo-splash.hidden {
+    display: none;
+}
+
+.splash__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+    padding: 24px;
+    /* prevent any overflow from causing scroll */
+    max-width: 100vw;
+    box-sizing: border-box;
+}
+
+/* ── Logo ─────────────────────────────────────────────────── */
+.splash__logo-wrap {
+    display: block;
+    /* Fixed size — never larger than 60vmin so it fits any screen */
+    width: clamp(140px, 60vmin, 220px);
+    height: clamp(140px, 60vmin, 220px);
+    border-radius: 28px;
+    background: #fff;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.22);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(12px, 4vmin, 20px);
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+.splash__logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    /* Pre-allocate space so no layout shift while image loads */
+    aspect-ratio: 1;
+}
+
+/* Slow-network fallback: if image takes > 1s show bg color  */
+.splash__logo-wrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    border-radius: 28px;
+    z-index: -1;
+}
+
+/* ── Spinner ──────────────────────────────────────────────── */
+.splash__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: splash-spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes splash-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Logo entrance animation ──────────────────────────────── */
+.splash__logo-wrap {
+    animation: splash-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes splash-pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
 body          { visibility: hidden; }
 body.loaded   { visibility: visible; }
 /* ── PWA Install Banner ───────────────────────────────────── */

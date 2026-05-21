@@ -6,6 +6,21 @@
     <meta name="theme-color" content="#000000">
     <title>Delivo - كل شي بيوصلك لباب البيت</title>
     <link rel="manifest" href="manifest.json">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32"  href="assets/favicon-32.png">
+    <link rel="shortcut icon"                         href="assets/favicon-32.png">
+
+    <!-- Apple touch icons (iOS "Add to Home Screen") -->
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/icon-152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="assets/icon-144.png">
+
+    <!-- Theme color for browser chrome -->
+    <meta name="theme-color" content="#FF5C00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Delivo">
     <link rel="stylesheet" href="styles/base.css?v=7">
     <link rel="stylesheet" href="styles/navbar.css?v=7">
     <link rel="stylesheet" href="styles/hero.css?v=7">
@@ -17,6 +32,22 @@
     <link rel="stylesheet" href="styles/footer.css?v=7">
 </head>
 <body>
+
+    <!-- SPLASH SCREEN — shown instantly, fades when loaded -->
+    <div id="delivo-splash" aria-hidden="true">
+        <div class="splash__inner">
+            <picture class="splash__logo-wrap">
+                <source srcset="assets/logo.webp" type="image/webp">
+                <img class="splash__logo"
+                     src="assets/logo.png"
+                     alt="Delivo"
+                     width="220" height="220"
+                     fetchpriority="high"
+                     decoding="sync">
+            </picture>
+            <div class="splash__spinner" aria-label="جاري التحميل"></div>
+        </div>
+    </div>
 
     <!-- ═══════════════════════════════════════════════════════
          NAVBAR — inlined, no fetch dependency

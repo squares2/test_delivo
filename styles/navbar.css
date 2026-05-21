@@ -43,13 +43,21 @@ body {
     direction: ltr;
 }
 
-/* ── Generic tab button ───────────────────────────────────── */
-.bb-tab {
+/* ══════════════════════════════════════════════════════════
+   ALL TAB BUTTONS — unified orange style
+   Cart · اطلب · طلباتي · Account
+   Same size, same color, proportional & consistent
+══════════════════════════════════════════════════════════ */
+
+/* ── Shared base for all four tab buttons ─────────────────── */
+.bb-tab,
+.bb-order-btn,
+.bb-account-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 5px;
     flex: 1;
     min-width: 44px;
     min-height: 44px;
@@ -58,40 +66,63 @@ body {
     cursor: pointer;
     padding: 6px 2px 4px;
     border-radius: 12px;
-    transition: background 0.15s;
-    color: #666;
+    color: var(--clr-orange, #FF5C00);
     text-decoration: none;
     -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
 }
-.bb-tab:hover  { background: rgba(255,255,255,0.05); }
-.bb-tab:active { background: rgba(255,255,255,0.09); }
+.bb-tab:hover,
+.bb-order-btn:hover,
+.bb-account-btn:hover  { background: rgba(255,92,0,0.08); }
 
-.bb-tab__icon {
-    width: 22px;
-    height: 22px;
+.bb-tab:active,
+.bb-order-btn:active,
+.bb-account-btn:active { background: rgba(255,92,0,0.15); }
+
+/* ── Shared icon wrapper ──────────────────────────────────── */
+.bb-tab__icon,
+.bb-order-btn__icon,
+.bb-account-btn__icon {
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
-}
-.bb-tab__icon svg {
-    width: 22px;
-    height: 22px;
-    stroke: currentColor;
-    fill: none;
-    transition: stroke 0.15s;
-}
-.bb-tab__label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    white-space: nowrap;
-    transition: color 0.15s;
-    letter-spacing: 0.01em;
+    flex-shrink: 0;
 }
 
-/* Active state */
-.bb-tab.active       { color: var(--clr-orange); }
-.bb-tab.active svg   { stroke: var(--clr-orange); }
+/* ── Shared SVG style — all icons orange, same stroke width ── */
+.bb-tab__icon svg,
+.bb-order-btn__icon svg,
+.bb-account-btn__icon svg {
+    width: 26px;
+    height: 26px;
+    stroke: var(--clr-orange, #FF5C00);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ── Account icon: bolder, slightly bigger ────────────────── */
+.bb-account-btn__icon svg {
+    width: 28px;
+    height: 28px;
+    stroke-width: 2.2;   /* bolder than the rest */
+}
+
+/* ── Shared label style ───────────────────────────────────── */
+.bb-tab__label,
+.bb-order-btn__label,
+.bb-account-btn__label {
+    font-size: 0.63rem;
+    font-weight: 800;
+    white-space: nowrap;
+    color: var(--clr-orange, #FF5C00);
+    letter-spacing: 0.01em;
+    line-height: 1;
+}
 
 /* ── Cart badge ───────────────────────────────────────────── */
 #bb-cart-badge {
@@ -132,26 +163,37 @@ body {
 }
 
 .bb-logo-btn__circle {
-    width: 56px;
-    height: 56px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: #0d0d0d;
-    border: 3px solid rgba(255,255,255,0.12);
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.4);
+    background: #FF5C00;
+    /* No border cadre — clean circle only */
+    border: none;
+    box-shadow: 0 -4px 20px rgba(255,92,0,0.45), 0 2px 12px rgba(0,0,0,0.35);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: border-color 0.18s, transform 0.15s;
+    transition: transform 0.15s, box-shadow 0.15s;
     overflow: hidden;
+    position: relative;
 }
-.bb-logo-btn:hover  .bb-logo-btn__circle { border-color: var(--clr-orange); }
+.bb-logo-btn:hover  .bb-logo-btn__circle {
+    box-shadow: 0 -4px 24px rgba(255,92,0,0.65), 0 2px 14px rgba(0,0,0,0.4);
+}
 .bb-logo-btn:active .bb-logo-btn__circle { transform: scale(0.93); }
 
 .bb-logo-btn__circle img {
-    width: 38px;
-    height: 38px;
-    object-fit: contain;
-    border-radius: 50%;
+    /* Zoom just enough to fill the circle and hide white padding/cadre,
+       but show the full bike illustration */
+    width: 126%;
+    height: 126%;
+    object-fit: cover;
+    object-position: center center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
 }
 
 .bb-logo-btn__label {
@@ -167,107 +209,21 @@ body {
     white-space: nowrap;
 }
 
-/* ══════════════════════════════════════════════════════════
-   ORDER BUTTON  (اطلب) — orange pill
-══════════════════════════════════════════════════════════ */
-.bb-order-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    flex: 1;
-    min-width: 44px;
-    min-height: 44px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 2px 4px;
-    border-radius: 12px;
-    -webkit-tap-highlight-color: transparent;
-    color: var(--clr-orange);
-    transition: background 0.15s;
-    text-decoration: none;
-}
-.bb-order-btn:hover  { background: rgba(255,92,0,0.08); }
-.bb-order-btn:active { background: rgba(255,92,0,0.15); }
 
-.bb-order-btn__icon {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.bb-order-btn__icon svg {
-    width: 22px;
-    height: 22px;
-    stroke: var(--clr-orange);
-    fill: none;
-}
-.bb-order-btn__label {
-    font-size: 0.62rem;
-    font-weight: 800;
-    color: var(--clr-orange);
-    white-space: nowrap;
-}
 
-/* ══════════════════════════════════════════════════════════
-   ACCOUNT circle (matching old style, smaller for bar)
-══════════════════════════════════════════════════════════ */
-.bb-account-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    flex: 1;
-    min-width: 44px;
-    min-height: 44px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 6px 2px 4px;
-    border-radius: 12px;
-    -webkit-tap-highlight-color: transparent;
-    color: #666;
-    transition: background 0.15s, color 0.15s;
+/* ── Account: logged-in dot indicator ────────────────────── */
+.bb-account-btn__icon {
+    position: relative;
 }
-.bb-account-btn:hover  { background: rgba(255,255,255,0.05); }
-.bb-account-btn:active { background: rgba(255,255,255,0.09); }
-
-.bb-account-btn__circle {
-    width: 28px;
-    height: 28px;
+.bb-account-btn.logged-in .bb-account-btn__icon::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    /* Default (logged OUT): white circle, dark icon */
-    background: rgba(255,255,255,0.15);
-    border: 1.5px solid rgba(255,255,255,0.35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.22s, border-color 0.22s, box-shadow 0.22s;
-    flex-shrink: 0;
-}
-.bb-account-btn__circle svg {
-    width: 15px;
-    height: 15px;
-    stroke: rgba(255,255,255,0.6);
-    fill: none;
-    transition: stroke 0.22s;
-}
-/* Logged IN: orange fill, white icon, orange glow */
-.bb-account-btn.logged-in .bb-account-btn__circle {
-    background: var(--clr-orange);
-    border-color: var(--clr-orange);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 2px 8px rgba(255,92,0,0.45);
-}
-.bb-account-btn.logged-in .bb-account-btn__circle svg {
-    stroke: #fff;
-}
-.bb-account-btn__label {
-    font-size: 0.62rem;
-    font-weight: 700;
-    white-space: nowrap;
-    transition: color 0.15s;
+    background: var(--clr-orange, #FF5C00);
+    box-shadow: 0 0 0 2px #0d0d0d;
 }
