@@ -45,7 +45,7 @@
 }
 
 .footer__brand-desc {
-    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
+    font-size: clamp(0.72rem, 1.4vw, 0.82rem);
     line-height: 1.7;
     color: #5a5a6a;
 }
@@ -54,7 +54,7 @@
 .footer__col-title {
     color: rgba(255,255,255,0.82);
     font-weight: 800;
-    font-size: clamp(0.58rem, 1.4vw, 0.74rem);
+    font-size: clamp(0.82rem, 1.8vw, 1rem);
     margin-bottom: clamp(7px, 1.5vw, 12px);
     display: block;
 }
@@ -66,7 +66,7 @@
     gap: clamp(3px, 0.8vw, 7px);
 }
 .footer__links a {
-    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
+    font-size: clamp(0.78rem, 1.5vw, 0.9rem);
     color: #5a5a6a;
     text-decoration: none;
     transition: color 0.18s;
@@ -85,17 +85,11 @@
     display: flex;
     align-items: center;
     gap: clamp(4px, 1vw, 7px);
-    font-size: clamp(0.48rem, 1.2vw, 0.62rem);
-    color: #5a5a6a;
-    text-decoration: none;
-    transition: color 0.18s;
-    line-height: 1.9;
-    direction: ltr;
-    justify-content: flex-end;
+    font-size: clamp(0.78rem, 1.5vw, 0.9rem);
 }
 .footer__contact-item:hover { color: rgba(255,255,255,0.75); }
 .footer__contact-icon {
-    font-size: clamp(0.62rem, 1.4vw, 0.76rem);
+    font-size: clamp(0.85rem, 1.6vw, 1rem);
     flex-shrink: 0;
 }
 
@@ -136,7 +130,7 @@
     border-top: 1px solid rgba(255,255,255,0.05);
     padding-top: clamp(7px, 1.5vw, 12px);
     text-align: center;
-    font-size: clamp(0.46rem, 1.1vw, 0.60rem);
+    font-size: clamp(0.72rem, 1.3vw, 0.82rem);
     color: #404050;
     font-weight: 700;
 }

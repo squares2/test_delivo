@@ -253,10 +253,18 @@ function onFirebaseReady() {
             window.DelivoUser = null;
         }
 
+        // Sync old navbar button (hidden but kept for compatibility)
         const acctBtn = document.getElementById('account-btn');
         if (acctBtn) {
             if (window.DelivoUser) acctBtn.classList.add('logged-in');
             else                   acctBtn.classList.remove('logged-in');
+        }
+
+        // Sync bottom bar account button
+        const bbBtn = document.getElementById('bb-account-btn');
+        if (bbBtn) {
+            if (window.DelivoUser) bbBtn.classList.add('logged-in');
+            else                   bbBtn.classList.remove('logged-in');
         }
 
         if (typeof window.__renderAccountModal === 'function') {

@@ -102,6 +102,11 @@
     overflow-y: auto;
     padding: clamp(10px, 2.5vw, 14px) clamp(16px, 4vw, 22px);
     -webkit-overflow-scrolling: touch;
+    cursor: grab;
+    user-select: none;
+}
+.cart-items.is-mouse-dragging {
+    cursor: grabbing;
 }
 .cart-items::-webkit-scrollbar { width: 4px; }
 .cart-items::-webkit-scrollbar-track { background: transparent; }
@@ -418,4 +423,37 @@
 .cart-store-group__subtotal strong {
     color: var(--clr-orange);
     font-weight: 800;
+}
+/* ── Swipe drag handle (mobile hint) ─────────────────────── */
+.cart-drag-handle {
+    display: none;
+    width: 40px;
+    height: 4px;
+    background: var(--clr-gray-200);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+}
+@media (max-width: 600px) {
+    .cart-drag-handle { display: block; }
+    /* On mobile cart takes full width minus a peek */
+    .cart-sidebar {
+        width: 100%;
+        left: 0;
+        border-radius: 0 20px 20px 0;
+    }
+}
+
+/* Disable transition while user is actively dragging */
+.cart-sidebar.is-dragging {
+    transition: none !important;
+}
+
+/* ── Mouse drag scroll on dynamic cart body ──────────────── */
+#cart-body {
+    cursor: grab;
+    user-select: none;
+}
+#cart-body.is-mouse-dragging {
+    cursor: grabbing;
 }

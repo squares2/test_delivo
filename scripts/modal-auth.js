@@ -472,11 +472,10 @@ function initModalAuth() {
     // ── Account modal delegated clicks ───────────────────────
     document.addEventListener('click', async (e) => {
         if (e.target.closest('#acct-signout-btn')) {
-            const btn = e.target.closest('#acct-signout-btn');
-            btn.textContent = 'جاري الخروج...';
-            btn.disabled    = true;
-            await window.DelivoAuth.logout();
+            // Close modal immediately, then sign out
+            // onAuthStateChanged will re-render everything cleanly
             closeModal('modal-account');
+            try { await window.DelivoAuth.logout(); } catch(_) {}
             return;
         }
         if (e.target.closest('.acct-btn-signin')) {
@@ -520,10 +519,16 @@ function renderAccountModal() {
         if (nameEl)   nameEl.textContent   = user.displayName || user.username || 'User';
         if (emailEl)  emailEl.textContent  = user.username ? '@' + user.username : '';
         if (acctBtn)  acctBtn.classList.add('logged-in');
+        // sync bottom bar
+        const bbBtn = document.getElementById('bb-account-btn');
+        if (bbBtn) bbBtn.classList.add('logged-in');
     } else {
         guestEl.style.display = '';
         userEl.style.display  = 'none';
         if (acctBtn) acctBtn.classList.remove('logged-in');
+        // sync bottom bar
+        const bbBtn = document.getElementById('bb-account-btn');
+        if (bbBtn) bbBtn.classList.remove('logged-in');
     }
 }
 

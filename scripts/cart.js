@@ -84,11 +84,16 @@ function initCart() {
         },
 
         updateBadge() {
-            const badge = document.getElementById('cart-badge');
-            if (!badge) return;
             const count = this.getCount();
-            badge.textContent = count;
-            badge.style.display = count > 0 ? 'flex' : 'none';
+            // old top navbar badge (hidden — bottom bar used instead)
+            const badge = document.getElementById('cart-badge');
+            if (badge) badge.style.display = 'none';
+            // bottom bar badge
+            const bbBadge = document.getElementById('bb-cart-badge');
+            if (bbBadge) {
+                bbBadge.textContent = count;
+                bbBadge.style.display = count > 0 ? 'flex' : 'none';
+            }
         }
     };
 
@@ -157,6 +162,9 @@ function initCart() {
             document.getElementById('cart-delivery').textContent   = 'مجاناً';
             document.getElementById('cart-grandtotal').textContent = '$' + totalUSD.toFixed(2);
         }
+    
+        // re-init mouse drag each render (body is rebuilt)
+        setTimeout(_initMouseDragScroll, 0);
     };
 
     /* ── Store group section HTML ───────────────────────────── */
@@ -418,6 +426,126 @@ function initCart() {
 
     const checkoutBtn = document.getElementById('cart-checkout-btn');
     if (checkoutBtn)  checkoutBtn.addEventListener('click', cartCheckout);
+
+    /* ── Mouse drag scroll ──────────────────────────────────── */
+    _initMouseDragScroll();
+
+    /* ── Swipe-to-close (mobile touch) ─────────────────────── */
+    _initCartSwipe();
+}
+
+function _initMouseDragScroll() {
+    const el = document.getElementById('cart-body');
+    if (!el) return;
+
+    let isDown   = false;
+    let startY   = 0;
+    let scrollTop = 0;
+
+    el.addEventListener('mousedown', (e) => {
+        /* Ignore clicks on buttons/inputs inside the cart */
+        if (e.target.closest('button, input, textarea, a')) return;
+        isDown    = true;
+        startY    = e.pageY - el.offsetTop;
+        scrollTop = el.scrollTop;
+        el.classList.add('is-mouse-dragging');
+    });
+
+    el.addEventListener('mouseleave', () => {
+        isDown = false;
+        el.classList.remove('is-mouse-dragging');
+    });
+
+    el.addEventListener('mouseup', () => {
+        isDown = false;
+        el.classList.remove('is-mouse-dragging');
+    });
+
+    el.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const y    = e.pageY - el.offsetTop;
+        const walk = (y - startY) * 1.4;
+        el.scrollTop = scrollTop - walk;
+    });
+}
+
+function _initCartSwipe() {
+    const sidebar = document.getElementById('cart-sidebar');
+    if (!sidebar) return;
+
+    /* Sidebar slides from LEFT (translateX -100% → 0).
+       Dismiss by swiping LEFT past threshold or fast flick. */
+
+    let touchStartX  = 0;
+    let touchStartY  = 0;
+    let touchStartT  = 0;
+    let currentDeltaX = 0;
+    let isSwiping    = false;
+    let isScrolling  = null;
+
+    const THRESHOLD   = 72;   // px to commit close
+    const VELOCITY_TH = 0.35; // px/ms fast flick
+
+    sidebar.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        const rect  = sidebar.getBoundingClientRect();
+        const relX  = touch.clientX - rect.left;
+
+        // Only start swipe in the left 35% of the sidebar (near the edge)
+        if (relX > sidebar.offsetWidth * 0.35) return;
+
+        touchStartX   = touch.clientX;
+        touchStartY   = touch.clientY;
+        touchStartT   = e.timeStamp;
+        currentDeltaX = 0;
+        isSwiping     = true;
+        isScrolling   = null;
+    }, { passive: true });
+
+    sidebar.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        const touch  = e.touches[0];
+        const dX = touch.clientX - touchStartX;
+        const dY = touch.clientY - touchStartY;
+
+        if (isScrolling === null) {
+            isScrolling = Math.abs(dY) > Math.abs(dX);
+        }
+        if (isScrolling) { isSwiping = false; return; }
+
+        // Only allow leftward swipe (negative)
+        currentDeltaX = Math.min(0, dX);
+
+        sidebar.classList.add('is-dragging');
+        sidebar.style.transform = 'translateX(' + currentDeltaX + 'px)';
+
+        // Fade the overlay proportionally
+        const progress  = Math.abs(currentDeltaX) / sidebar.offsetWidth;
+        const overlayEl = document.getElementById('cart-overlay');
+        if (overlayEl) overlayEl.style.opacity = String(0.55 * (1 - progress));
+
+    }, { passive: true });
+
+    sidebar.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        sidebar.classList.remove('is-dragging');
+        sidebar.style.transform = '';
+
+        const touch    = e.changedTouches[0];
+        const dX       = touch.clientX - touchStartX;
+        const dt       = Math.max(1, e.timeStamp - touchStartT);
+        const velocity = Math.abs(dX) / dt;
+
+        const overlayEl = document.getElementById('cart-overlay');
+        if (overlayEl) overlayEl.style.opacity = '';
+
+        if (dX < -THRESHOLD || velocity > VELOCITY_TH) {
+            window.closeCartSidebar();
+        }
+        // else snap back — transform reset above handles it
+    }, { passive: true });
 }
 
 /* ── Utilities ──────────────────────────────────────────────── */

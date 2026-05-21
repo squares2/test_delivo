@@ -182,7 +182,8 @@ function renderItem(item, storeName) {
 
     return `
     <div class="sp-item" id="sp-item-${_slugify(uniqueId)}">
-        <div class="sp-item__img-wrap">
+        <div class="sp-item__img-wrap" style="cursor:pointer"
+             onclick="openItemPopup(${JSON.stringify(item).replace(/"/g,'&quot;')},'${storeName.replace(/'/g,"\\'")}')">
             ${pngExist
                 ? `<img class="sp-item__img" src="${imgUrl}" alt="${name}"
                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
@@ -191,6 +192,9 @@ function renderItem(item, storeName) {
                 : `<div class="sp-item__img-fallback">${_typeEmoji(item.companytype)}</div>`
             }
             ${hasSale ? `<span class="sp-item__sale-badge">خصم</span>` : ''}
+            <div style="position:absolute;bottom:5px;right:5px;width:22px;height:22px;background:rgba(0,0,0,0.45);border-radius:50%;display:flex;align-items:center;justify-content:center;pointer-events:none">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+            </div>
         </div>
         <div class="sp-item__info">
             <div class="sp-item__name">${name}</div>
@@ -437,3 +441,273 @@ function _toFirebaseName(id) {
     // Convert kebab-case store IDs to Firebase name format
     return id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('-');
 }
+
+/* ════════════════════════════════════════════════════════════
+   ITEM DETAIL POPUP
+════════════════════════════════════════════════════════════ */
+
+/* ── Inject popup shell once ──────────────────────────────── */
+function _ensureItemPopup() {
+    if (document.getElementById('item-popup')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'item-popup-overlay';
+    overlay.id = 'item-popup-overlay';
+    overlay.addEventListener('click', closeItemPopup);
+
+    const popup = document.createElement('div');
+    popup.className = 'item-popup';
+    popup.id = 'item-popup';
+    popup.innerHTML = `
+        <!-- Orange hero -->
+        <div class="item-popup__hero" id="ip-hero">
+            <button class="item-popup__close" id="ip-close" aria-label="رجوع">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+            </button>
+            <span class="item-popup__sale-hero" id="ip-sale-hero" style="display:none"></span>
+            <!-- Image sits here, absolute positioned to overflow onto white card -->
+            <div class="item-popup__img-wrap" id="ip-img-wrap">
+                <img id="ip-img" src="" alt=""
+                     onerror="this.style.display='none';document.getElementById('ip-img-fallback').style.display='flex'">
+                <div class="item-popup__img-fallback" id="ip-img-fallback" style="display:none"></div>
+            </div>
+        </div>
+
+        <!-- White rounded card -->
+        <div class="item-popup__body" id="ip-body">
+
+            <!-- Qty stepper -->
+            <div class="item-popup__qty-row">
+                <div class="item-popup__qty-pill">
+                    <button class="item-popup__qty-btn" id="ip-minus">&#8722;</button>
+                    <span   class="item-popup__qty-num"  id="ip-qty">1</span>
+                    <button class="item-popup__qty-btn" id="ip-plus">+</button>
+                </div>
+            </div>
+
+            <!-- Name -->
+            <div class="item-popup__name" id="ip-name"></div>
+
+            <!-- Description -->
+            <div class="item-popup__desc" id="ip-desc-wrap" style="display:none">
+                <span id="ip-desc-text"></span>
+                <button class="item-popup__desc-toggle" id="ip-desc-toggle" style="display:none">... اقرأ المزيد</button>
+            </div>
+
+            <!-- Price -->
+            <div class="item-popup__price-block" id="ip-price-block">
+                <span class="item-popup__price-main" id="ip-price"></span>
+                <span class="item-popup__price-old"  id="ip-price-old"  style="display:none"></span>
+                <span class="item-popup__sale-pct"   id="ip-sale-pct"   style="display:none"></span>
+            </div>
+
+            <!-- Add to cart -->
+            <button class="item-popup__add-btn" id="ip-add-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                أضف إلى السلة
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(popup);
+
+    document.getElementById('ip-close').addEventListener('click', closeItemPopup);
+    document.getElementById('ip-minus').addEventListener('click', _ipDecrement);
+    document.getElementById('ip-plus').addEventListener('click',  _ipIncrement);
+    document.getElementById('ip-add-btn').addEventListener('click', _ipAddToCart);
+}
+
+/* ── Popup state ──────────────────────────────────────────── */
+let _ipItem = null;   // current item data
+let _ipQty  = 1;
+const DESC_LIMIT = 90; // chars before "read more"
+
+/* ── Open ─────────────────────────────────────────────────── */
+function openItemPopup(item, storeName) {
+    _ensureItemPopup();
+
+    const price   = parseFloat(item.price) || 0;
+    const sale    = parseFloat(item.sale)  || 0;
+    const hasSale = sale > 0 && sale < price;
+    const disp    = hasSale ? sale : price;
+    const id      = item.ID || item.id || '';
+    const pngExist = item.pngExist === '1' || item.pngExist === 1;
+    const imgUrl  = pngExist ? `${GH_IMAGES}/${String(id).toLowerCase()}.png` : '';
+    const desc    = (item.unitdesc || '').trim();
+
+    _ipItem = { item, storeName, price: disp, uniqueId: `${storeName}__${id}` };
+    _ipQty  = Math.max(1, _getItemQty(_ipItem.uniqueId)) || 1;
+
+    /* image */
+    const imgEl      = document.getElementById('ip-img');
+    const fallbackEl = document.getElementById('ip-img-fallback');
+    if (pngExist && imgUrl) {
+        imgEl.src = imgUrl;
+        imgEl.alt = item.name || '';
+        imgEl.style.display = 'block';
+        fallbackEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        fallbackEl.textContent = _typeEmoji(item.companytype);
+        fallbackEl.style.display = 'flex';
+    }
+
+    /* sale badge on hero */
+    const saleBadge = document.getElementById('ip-sale-hero');
+    if (hasSale) {
+        const pct = Math.round((1 - sale / price) * 100);
+        saleBadge.textContent = `خصم ${pct}%`;
+        saleBadge.style.display = 'inline-block';
+    } else {
+        saleBadge.style.display = 'none';
+    }
+
+    /* name */
+    document.getElementById('ip-name').textContent = item.name || '';
+
+    /* description */
+    const descWrap   = document.getElementById('ip-desc-wrap');
+    const descText   = document.getElementById('ip-desc-text');
+    const descToggle = document.getElementById('ip-desc-toggle');
+    if (desc) {
+        descWrap.style.display = 'block';
+        if (desc.length > DESC_LIMIT) {
+            descText.textContent = desc.slice(0, DESC_LIMIT);
+            descToggle.style.display = 'inline';
+            descToggle.onclick = () => {
+                descText.textContent = desc;
+                descToggle.style.display = 'none';
+            };
+        } else {
+            descText.textContent = desc;
+            descToggle.style.display = 'none';
+        }
+    } else {
+        descWrap.style.display = 'none';
+    }
+
+    /* price */
+    document.getElementById('ip-price').textContent = formatPrice(disp);
+    const oldEl = document.getElementById('ip-price-old');
+    const pctEl = document.getElementById('ip-sale-pct');
+    if (hasSale) {
+        oldEl.textContent = formatPrice(price);
+        oldEl.style.display = 'inline';
+        const pct = Math.round((1 - sale / price) * 100);
+        pctEl.textContent = `-${pct}%`;
+        pctEl.style.display = 'inline-block';
+    } else {
+        oldEl.style.display = 'none';
+        pctEl.style.display = 'none';
+    }
+
+    /* qty */
+    document.getElementById('ip-qty').textContent = _ipQty;
+
+    /* reset add button */
+    _ipResetAddBtn();
+
+    /* show */
+    document.getElementById('item-popup-overlay').classList.add('active');
+    document.getElementById('item-popup').classList.add('active');
+    document.body.classList.add('modal-open');
+}
+
+/* ── Close ────────────────────────────────────────────────── */
+function closeItemPopup() {
+    const overlay = document.getElementById('item-popup-overlay');
+    const popup   = document.getElementById('item-popup');
+    if (overlay) overlay.classList.remove('active');
+    if (popup)   popup.classList.remove('active');
+    // don't remove modal-open if store panel is still open
+    if (!document.getElementById('store-panel')?.classList.contains('active')) {
+        document.body.classList.remove('modal-open');
+    }
+    _ipItem = null;
+}
+
+/* ── Qty controls ─────────────────────────────────────────── */
+function _ipDecrement() {
+    if (_ipQty > 1) {
+        _ipQty--;
+        document.getElementById('ip-qty').textContent = _ipQty;
+    }
+}
+function _ipIncrement() {
+    _ipQty++;
+    document.getElementById('ip-qty').textContent = _ipQty;
+}
+
+/* ── Add to cart ──────────────────────────────────────────── */
+function _ipAddToCart() {
+    if (!_ipItem || !window.DelivoCart) return;
+    const { uniqueId, item, storeName, price } = _ipItem;
+    const sType = _currentStore ? _currentStore.type : '';
+
+    // Add _ipQty times (or set qty directly if possible)
+    const current = _getItemQty(uniqueId);
+    const diff = _ipQty - current;
+    if (diff > 0) {
+        for (let i = 0; i < diff; i++) {
+            window.DelivoCart.addItem(uniqueId, item.name, price, storeName, sType);
+        }
+    } else if (diff < 0) {
+        for (let i = 0; i < Math.abs(diff); i++) {
+            window.DelivoCart.decrementItem(uniqueId, storeName);
+        }
+    } else {
+        // qty unchanged — still confirm add of at least 1
+        window.DelivoCart.addItem(uniqueId, item.name, price, storeName, sType);
+    }
+
+    // Update store panel qty control if visible
+    const slug = _slugify(uniqueId);
+    const itemEl = document.getElementById(`sp-item-${slug}`);
+    if (itemEl) {
+        const actionsEl = itemEl.querySelector('.sp-item__actions');
+        const newQty    = _getItemQty(uniqueId);
+        if (actionsEl) {
+            actionsEl.innerHTML = `
+                <div class="sp-item__qty-control" id="sp-qty-ctrl-${slug}">
+                    <button class="sp-item__qty-btn"
+                            onclick="spChangeQty('${uniqueId}','${item.name}',${price},-1,'${storeName}','${sType}')">−</button>
+                    <span class="sp-item__qty-num" id="sp-qty-${slug}">${newQty}</span>
+                    <button class="sp-item__qty-btn"
+                            onclick="spChangeQty('${uniqueId}','${item.name}',${price},1,'${storeName}','${sType}')">+</button>
+                </div>`;
+        }
+    }
+
+    _updateSpCartBar();
+    if (window.renderCartSidebar) window.renderCartSidebar();
+
+    /* flash green */
+    const btn = document.getElementById('ip-add-btn');
+    btn.classList.add('added');
+    btn.textContent = '✓ تمت الإضافة';
+    setTimeout(() => {
+        _ipResetAddBtn();
+        btn.classList.remove('added');
+        closeItemPopup();
+    }, 900);
+}
+
+function _ipResetAddBtn() {
+    const btn = document.getElementById('ip-add-btn');
+    if (!btn) return;
+    btn.classList.remove('added');
+    btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        أضف إلى السلة`;
+}
+
+/* expose */
+window.openItemPopup  = openItemPopup;
+window.closeItemPopup = closeItemPopup;
