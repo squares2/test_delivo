@@ -28,7 +28,7 @@ function hideSplash() {
 async function loadAll() {
     /* ── Safety net: if loading takes > 6s on slow connections,
        hide splash anyway so the user isn't stuck on a blank screen */
-    const slowNetTimer = setTimeout(hideSplash, 6000);
+    const slowNetTimer = setTimeout(hideSplash, 6750);
 
     await Promise.all([
         loadComponent('categories',   'categories.html'),
@@ -52,7 +52,7 @@ async function loadAll() {
     // Clear slow-net timer and hide splash
     clearTimeout(slowNetTimer);
     // Small delay so the page renders at least one frame before fading
-    requestAnimationFrame(() => setTimeout(hideSplash, 180));
+    requestAnimationFrame(() => setTimeout(hideSplash, 930));
 }
 
 document.addEventListener('DOMContentLoaded', loadAll);
