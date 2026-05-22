@@ -189,6 +189,7 @@
     overflow-y: auto;
     padding: clamp(12px, 3vw, 20px) var(--container-pad);
     -webkit-overflow-scrolling: touch;
+    position: relative;   /* makes it a valid offsetParent */
 }
 
 /* ── Category section ─────────────────────────────────────── */
@@ -967,4 +968,68 @@
 @keyframes si-fade-up {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
+}
+/* ════════════════════════════════════════════════════════════
+   SUB-CATEGORY CHIPS BAR
+   Sticky below the main tabs, scrollable horizontally
+════════════════════════════════════════════════════════════ */
+
+/* ── Sub-cat wrap — fixed panel row between tabs and body ── */
+.sp-subcat-wrap {
+    flex-shrink: 0;
+    background: var(--clr-white, #fff);
+    border-bottom: 1px solid var(--clr-gray-100, #f0f0f0);
+    overflow: hidden;
+}
+
+.sp-subcat-bar {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 8px 16px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    direction: rtl;
+}
+.sp-subcat-bar::-webkit-scrollbar { display: none; }
+
+/* ── Each chip ────────────────────────────────────────────── */
+.sp-subchip {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--clr-gray-200, #e0e0e0);
+    background: transparent;
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.sp-subchip:hover {
+    border-color: var(--clr-orange, #FF5C00);
+    color: var(--clr-orange, #FF5C00);
+}
+.sp-subchip.active {
+    background: var(--clr-orange, #FF5C00);
+    border-color: var(--clr-orange, #FF5C00);
+    color: #fff;
+    font-weight: 700;
+}
+
+/* ── Sub-section title — smaller than main ────────────────── */
+.sp-section__title--sub {
+    font-size: 0.9rem !important;
+    font-weight: 700 !important;
+    color: var(--clr-orange, #FF5C00) !important;
+    padding-top: 4px !important;
+    margin-bottom: 2px !important;
+    border-bottom: none !important;
 }

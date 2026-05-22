@@ -269,6 +269,9 @@ function closeStorePanel() {
     if (overlay) overlay.classList.remove('active');
     if (panel)   panel.classList.remove('active');
     document.body.classList.remove('modal-open');
+    // Hide sub-cat wrap
+    const wrap = document.getElementById('sp-subcat-wrap');
+    if (wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
     _currentStore = null;
     _activeTab    = null;
 }
@@ -319,36 +322,37 @@ async function _loadStorePanel(storeName, storeType) {
             return;
         }
 
-        // 4. Group by catmain
-        const groups = {};
+        // 4. Build two-level structure: catmain → { cat → [items] }
+        const tree = {};   // { catmain: { cat: [items] } }
         Object.values(items).forEach(item => {
             if (!item || !item.name) return;
-            const cat = item.catmain || 'عام';
-            if (!groups[cat]) groups[cat] = [];
-            groups[cat].push(item);
+            const main = (item.catmain || 'عام').trim();
+            const sub  = (item.cat    || 'عام').trim();
+            if (!tree[main])       tree[main] = {};
+            if (!tree[main][sub])  tree[main][sub] = [];
+            tree[main][sub].push(item);
         });
 
-        const cats = Object.keys(groups).sort();
+        const mains = Object.keys(tree).sort();
 
-        // 5. Build tabs
+        // 5. Build main-category tabs
         const tabsEl = document.getElementById('sp-tabs-inner');
-        tabsEl.innerHTML = cats.map((cat, i) => `
+        tabsEl.innerHTML = mains.map((main, i) => `
             <button class="sp-tab ${i === 0 ? 'active' : ''}"
-                    data-cat="${cat}" onclick="spScrollToSection('${cat}')">
-                ${cat}
+                    data-cat="${main}"
+                    onclick="spSelectMain('${main}')">
+                ${main}
             </button>`).join('');
 
-        // 6. Build body sections
-        body.innerHTML = cats.map(cat => `
-            <div class="sp-section" id="sp-sec-${_slugify(cat)}" data-cat="${cat}">
-                <div class="sp-section__title">${cat}</div>
-                <div class="sp-items">
-                    ${groups[cat].map(item => renderItem(item, storeName)).join('')}
-                </div>
-            </div>`).join('');
+        // 6. Store tree globally for sub-tab switching
+        window._spTree      = tree;
+        window._spStoreName = storeName;
 
-        // 7. Observe sections for tab highlighting
-        _initSectionObserver(cats);
+        // 7. Render first main category
+        _renderMainSection(mains[0], tree, storeName, body);
+
+        // 8. Observe sections for tab highlighting
+        _initSectionObserver(mains);
 
         // 8. Update cart bar
         _updateSpCartBar();
@@ -494,36 +498,127 @@ function _updateSpCartBar() {
     if (totalEl) totalEl.textContent = '$' + totalUSD.toFixed(2);
 }
 
-/* ── Tab scroll sync ──────────────────────────────────────── */
-function spScrollToSection(cat) {
-    const sec = document.getElementById(`sp-sec-${_slugify(cat)}`);
-    if (!sec) return;
-    const body = document.getElementById('sp-body');
-    body.scrollTo({ top: sec.offsetTop - 8, behavior: 'smooth' });
-    _setActiveTab(cat);
+/* ══════════════════════════════════════════════════════════
+   TWO-LEVEL NAVIGATION  catmain → cat → items
+══════════════════════════════════════════════════════════ */
+
+/* Called when user taps a main-category tab */
+function spSelectMain(main) {
+    const tree     = window._spTree;
+    const storeName = window._spStoreName;
+    const body     = document.getElementById('sp-body');
+    if (!tree || !tree[main] || !body) return;
+
+    // Highlight main tab
+    _setActiveTab(main);
+
+    // Re-render body for this main category
+    _renderMainSection(main, tree, storeName, body);
+
+    // Scroll body to top
+    body.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function _initSectionObserver(cats) {
+/* Called when user taps a sub-category chip */
+function spSelectSub(slug) {
+    _setActiveSub(slug);
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        const sec  = document.getElementById(`sp-subsec-${slug}`);
+        if (!sec) return;
+        const body = document.getElementById('sp-body');
+        // Bar is now outside sp-body so no offset adjustment needed
+        const target = sec.offsetTop - 2;
+
+        // Clamp to valid scroll range
+        const maxScroll = body.scrollHeight - body.clientHeight;
+        const clamped = Math.max(0, Math.min(target, maxScroll));
+        body.scrollTo({ top: clamped, behavior: 'smooth' });
+    }));
+}
+
+/* Render all sub-sections for a given catmain */
+function _renderMainSection(main, tree, storeName, body) {
+    const subs = Object.keys(tree[main]).sort();
+    const multiSub = subs.length > 1;
+
+    // ── Render chips into the fixed wrap outside sp-body ──────
+    const wrap = document.getElementById('sp-subcat-wrap');
+    if (wrap) {
+        if (multiSub) {
+            wrap.style.display = 'block';
+            wrap.innerHTML = `
+                <div class="sp-subcat-bar" id="sp-subcat-bar">
+                    ${subs.map((sub, i) => `
+                        <button class="sp-subchip ${i === 0 ? 'active' : ''}"
+                                data-slug="${_slugify(sub)}"
+                                onclick="spSelectSub('${_slugify(sub)}')">
+                            ${sub}
+                        </button>`).join('')}
+                </div>`;
+        } else {
+            wrap.style.display = 'none';
+            wrap.innerHTML = '';
+        }
+    }
+
+    // ── Render item sections into sp-body (no chips bar here) ─
+    body.innerHTML = subs.map(sub => `
+        <div class="sp-section" id="sp-subsec-${_slugify(sub)}" data-slug="${_slugify(sub)}" data-sub="${sub}">
+            ${multiSub ? `<div class="sp-section__title sp-section__title--sub">${sub}</div>` : ''}
+            <div class="sp-items">
+                ${tree[main][sub].map(item => renderItem(item, storeName)).join('')}
+            </div>
+        </div>`).join('');
+
+    // Observe sub-sections for chip auto-highlight on scroll
+    if (multiSub) _initSubObserver(subs);
+
+    _updateSpCartBar();
+}
+
+/* Observe sub-sections to auto-highlight chips on scroll */
+function _initSubObserver(subs) {
     const body = document.getElementById('sp-body');
     if (!body || !('IntersectionObserver' in window)) return;
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(e => {
-            if (e.isIntersecting) _setActiveTab(e.target.dataset.cat);
-        });
-    }, { root: body, threshold: 0.3 });
+    // Disconnect previous observer if any
+    if (window._spSubObserver) window._spSubObserver.disconnect();
 
-    cats.forEach(cat => {
-        const el = document.getElementById(`sp-sec-${_slugify(cat)}`);
-        if (el) observer.observe(el);
+    window._spSubObserver = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) _setActiveSub(e.target.dataset.slug);
+        });
+    }, { root: body, rootMargin: '-10% 0px -60% 0px', threshold: 0 });
+
+    subs.forEach(sub => {
+        const el = document.getElementById(`sp-subsec-${_slugify(sub)}`);
+        if (el) window._spSubObserver.observe(el);
     });
+}
+
+function _setActiveSub(slug) {
+    document.querySelectorAll('.sp-subchip').forEach(c => {
+        c.classList.toggle('active', c.dataset.slug === slug);
+    });
+    const activeChip = document.querySelector(`.sp-subchip[data-slug="${slug}"]`);
+    if (activeChip) activeChip.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+}
+
+/* ── Main-tab scroll sync (unchanged, uses catmain) ───────── */
+function spScrollToSection(cat) {
+    spSelectMain(cat);
+}
+
+function _initSectionObserver(mains) {
+    // Main tabs are switched via click (spSelectMain), not scroll
+    // so no IntersectionObserver needed at this level
 }
 
 function _setActiveTab(cat) {
     document.querySelectorAll('.sp-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.cat === cat);
     });
-    // Scroll tab into view
     const activeTab = document.querySelector(`.sp-tab[data-cat="${cat}"]`);
     if (activeTab) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
     _activeTab = cat;
@@ -627,6 +722,8 @@ function initStorePanel() {
 
     // Expose for cart sidebar to call
     window.openStorePanel   = openStorePanel;
+    window.spSelectMain     = spSelectMain;
+    window.spSelectSub      = spSelectSub;
     window.closeStorePanel  = closeStorePanel;
     window.spAddItem        = spAddItem;
     window.spChangeQty      = spChangeQty;
