@@ -7,8 +7,30 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('[PWA] Service worker registered ✓', reg.scope))
+            .then(reg => {
+                console.log('[PWA] Service worker registered ✓', reg.scope);
+
+                // Check for updates every time the page loads
+                reg.update();
+            })
             .catch(err => console.warn('[PWA] SW registration failed:', err));
+
+        // Listen for SW_UPDATED message → reload page silently to get fresh files
+        navigator.serviceWorker.addEventListener('message', event => {
+            if (event.data && event.data.type === 'SW_UPDATED') {
+                console.log('[PWA] New version detected — reloading for fresh files');
+                // Small delay so the SW fully activates before reload
+                setTimeout(() => window.location.reload(), 500);
+            }
+        });
+
+        // Also handle controller change (new SW took control)
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
     });
 }
 
