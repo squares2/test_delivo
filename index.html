@@ -37,11 +37,16 @@
     <div id="delivo-splash" aria-hidden="true">
         <div class="splash__inner">
             <picture class="splash__logo-wrap">
-                <source srcset="assets/splash-logo.webp" type="image/webp">
+                <!-- WebP: served to all modern browsers (Chrome, Firefox, Safari 14+) -->
+                <source
+                    type="image/webp"
+                    srcset="assets/splash-logo.webp"
+                    sizes="(max-width: 400px) 78vw, 300px">
+                <!-- PNG fallback for older browsers -->
                 <img class="splash__logo"
                      src="assets/splash-logo.png"
                      alt="Delivo"
-                     width="280" height="326"
+                     width="900" height="1046"
                      fetchpriority="high"
                      decoding="sync">
             </picture>
@@ -121,7 +126,7 @@
                         كل شي بيوصلك<br>
                         <span class="hero__title-orange">لباب البيت</span>
                     </h1>
-                    <p class="hero__subtitle">مطاعم،ملاحم،سوبرماركت،كافيه،حلويات وأكثر</p>
+                    <p class="hero__subtitle">مطاعم، سوبرماركت، قهوة، حلويات، صيدليات وأكثر</p>
                     <div class="hero__badges">
                         <div class="hero__badge">
                             <span class="hero__badge-icon">
