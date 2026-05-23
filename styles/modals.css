@@ -658,6 +658,11 @@
     margin-top: 4px;
     font-weight: 500;
 }
+.field-required {
+    color: var(--clr-orange, #FF5C00);
+    font-weight: 700;
+    margin-inline-start: 2px;
+}
 
 /* ── Location options (GPS + Map) ─────────────────────────── */
 .location-options {

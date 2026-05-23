@@ -33,15 +33,29 @@ function initModalAuth() {
             const username    = document.getElementById('reg-username')?.value    || '';
             const displayName = document.getElementById('reg-displayname')?.value || '';
             const password    = document.getElementById('reg-password')?.value    || '';
+            const phoneRaw    = document.getElementById('reg-phone')?.value       || '';
             const lat         = document.getElementById('reg-lat')?.value         || null;
             const lng         = document.getElementById('reg-lng')?.value         || null;
             const errorEl     = document.getElementById('reg-error');
+
+            // Client-side Lebanese phone validation
+            const phoneDigits = phoneRaw.replace(/[\s\-]/g, '');
+            if (!phoneDigits) {
+                showError(errorEl, 'رقم الهاتف مطلوب. أدخل رقمك اللبناني.');
+                document.getElementById('reg-phone')?.focus();
+                return;
+            }
+            if (!/^(03|70|71|76|78|79|81|82|83|86)\d{6}$/.test(phoneDigits)) {
+                showError(errorEl, 'رقم الهاتف غير صحيح. مثال: 03 123 456 أو 71 123 456');
+                document.getElementById('reg-phone')?.focus();
+                return;
+            }
 
             setLoading(regBtn, true, 'جاري الإنشاء...');
             hideError(errorEl);
 
             const result = await window.DelivoAuth.register({
-                username, displayName, password, lat, lng
+                username, displayName, password, phone: phoneDigits, lat, lng
             });
 
             setLoading(regBtn, false, 'إنشاء الحساب');
@@ -49,7 +63,7 @@ function initModalAuth() {
                 showError(errorEl, result.message);
             } else {
                 closeModal('modal-subscribe');
-                clearFields(['reg-username','reg-displayname','reg-password']);
+                clearFields(['reg-username','reg-displayname','reg-password','reg-phone']);
                 resetLocationBtn();
             }
         });

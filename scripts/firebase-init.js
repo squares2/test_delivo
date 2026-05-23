@@ -102,6 +102,13 @@ function onFirebaseReady() {
 
     const MAX_ACCOUNTS_PER_DEVICE = 3;
 
+    // ── Dev bypass — run in console to skip device limit ──────
+    // To disable limit:  localStorage.setItem('delivo_dev_bypass', '1')
+    // To re-enable:      localStorage.removeItem('delivo_dev_bypass')
+    function isDevBypass() {
+        return localStorage.getItem('delivo_dev_bypass') === '1';
+    }
+
     // Build a stable fingerprint from device characteristics
     async function getDeviceFingerprint() {
         const components = [
@@ -185,6 +192,7 @@ function onFirebaseReady() {
     }
 
     async function checkDeviceLimit() {
+        if (isDevBypass()) return { allowed: true, count: 0, uuid: 'dev-bypass' };
         try {
             const uuid = await getOrCreateDeviceUUID();
             const snap = await db.collection('devices').doc(uuid).get();
@@ -280,7 +288,7 @@ function onFirebaseReady() {
     window.DelivoAuth = {
 
         // ── Register with username + password ──────────────────
-        async register({ username, displayName, password, lat, lng }) {
+        async register({ username, displayName, password, phone, lat, lng }) {
 
             // Validate username
             username = (username || '').toLowerCase().trim();
@@ -294,6 +302,14 @@ function onFirebaseReady() {
             // Validate password
             if (!password || password.length < 8)
                 return { error: true, message: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل.' };
+
+            // Validate Lebanese phone (required)
+            const phoneDigits = (phone || '').replace(/[\s\-]/g, '');
+            if (!phoneDigits)
+                return { error: true, message: 'رقم الهاتف مطلوب.' };
+            if (!/^(03|70|71|76|78|79|81|82|83|86)\d{6}$/.test(phoneDigits))
+                return { error: true, message: 'رقم الهاتف غير صحيح. أدخل رقماً لبنانياً صحيحاً.' };
+            const safePhone = '+961' + phoneDigits;
 
             // Rate limit
             if (!rateLimit('register', 3, 60_000))
@@ -323,6 +339,7 @@ function onFirebaseReady() {
                 const userData = {
                     username:    username,
                     displayName: sanitize(displayName.trim()),
+                    phone:       safePhone,
                     deviceUUID:  deviceCheck.uuid,
                     createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
                 };
@@ -339,6 +356,9 @@ function onFirebaseReady() {
 
                 // Increment device account count
                 await incrementDeviceCount(deviceCheck.uuid);
+
+                // Update local user state with phone immediately
+                if (window.DelivoUser) window.DelivoUser.phone = safePhone;
 
                 return { success: true };
             } catch (e) {

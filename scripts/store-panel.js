@@ -238,18 +238,33 @@ function _openStorePanelNow(storeId, storeName, storeType) {
     document.getElementById('sp-body').innerHTML        = renderSkeleton();
     document.getElementById('sp-cart-bar').classList.remove('visible');
 
-    // ── Store logo in hero ─────────────────────────────────────
-    const logoImg    = document.getElementById('sp-hero-logo');
-    const fallbackEl = document.getElementById('sp-hero-fallback');
-    const logoPath   = `assets/${storeName.toLowerCase()}.png`;
+    // ── Store logo — circle badge + blurred background ─────────
+    const logoImg      = document.getElementById('sp-hero-logo');
+    const logoEmoji    = document.getElementById('sp-hero-logo-emoji');
+    const bgImg        = document.getElementById('sp-hero-bg');
+    const fallbackEl   = document.getElementById('sp-hero-fallback');
+    const logoPath     = `assets/${storeName.toLowerCase()}.png`;
+    const emojiDefault = _typeEmoji(storeType) || '🏪';
+
+    // Reset
+    if (logoImg)   { logoImg.style.display = 'none'; logoImg.src = ''; }
+    if (logoEmoji) { logoEmoji.style.display = 'none'; logoEmoji.textContent = emojiDefault; }
+    if (bgImg)     { bgImg.style.display = 'none'; bgImg.src = ''; }
+    if (fallbackEl){ fallbackEl.style.display = 'none'; }
 
     if (logoImg) {
-        logoImg.style.display    = 'none';
-        fallbackEl.style.display = 'flex';
-        fallbackEl.textContent   = _typeEmoji(storeType) || '🏪';
-
-        logoImg.onload  = () => { logoImg.style.display = 'block'; fallbackEl.style.display = 'none'; };
-        logoImg.onerror = () => { logoImg.style.display = 'none';  fallbackEl.style.display = 'flex'; };
+        logoImg.onload = () => {
+            logoImg.style.display = 'block';
+            if (logoEmoji) logoEmoji.style.display = 'none';
+            // Use same image as blurred background
+            if (bgImg) { bgImg.src = logoPath; bgImg.style.display = 'block'; }
+            if (fallbackEl) fallbackEl.style.display = 'none';
+        };
+        logoImg.onerror = () => {
+            logoImg.style.display = 'none';
+            if (logoEmoji) { logoEmoji.textContent = emojiDefault; logoEmoji.style.display = 'flex'; }
+            if (fallbackEl){ fallbackEl.textContent = emojiDefault; fallbackEl.style.display = 'flex'; }
+        };
         logoImg.src = logoPath;
         logoImg.alt = storeName;
     }

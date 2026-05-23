@@ -146,6 +146,14 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── /whitelisted_devices — owner devices with no account limit ─
+    // read: public — checked during registration before auth exists
+    // write: admin only — only you can add/remove whitelisted devices
+    match /whitelisted_devices/{uuid} {
+      allow read:   if true;
+      allow write:  if isAdmin();
+    }
+
     // ── Catch-all deny ────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

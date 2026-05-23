@@ -108,6 +108,7 @@ function initCart() {
         overlay.classList.add('active');
         sidebar.classList.add('active');
         document.body.classList.add('modal-open');
+        if (typeof window._cartLocationRefresh === 'function') window._cartLocationRefresh();
     };
 
     window.closeCartSidebar = function() {
@@ -315,6 +316,17 @@ function initCart() {
             return;
         }
 
+        // Block checkout if no phone number on file
+        const userPhone = (window.DelivoUser && window.DelivoUser.phone) || '';
+        if (!userPhone) {
+            closeCartSidebar();
+            setTimeout(() => {
+                _showToast('⚠️ يجب إضافة رقم هاتفك أولاً لإتمام الطلب', 'error');
+                if (typeof openModal === 'function') openModal('modal-account');
+            }, 200);
+            return;
+        }
+
         const btn = document.getElementById('cart-checkout-btn');
         if (btn) { btn.disabled = true; btn.innerHTML = '<span>جاري الإرسال…</span>'; }
 
@@ -327,9 +339,18 @@ function initCart() {
             else if (typeof counterData === 'number')  nextId = counterData + 1;
 
             const note        = (document.getElementById('cart-note')?.value || '').trim();
-            const userProfile = window.DelivoUserProfile || {};
+            const userProfile = window.DelivoUser || {};
             const now         = new Date();
             const dateStr     = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
+
+            // Normalize phone — always store as +961XXXXXXXX
+            const phone = userPhone.startsWith('+961') ? userPhone : '+961' + userPhone;
+
+            // Delivery location — cart picker overrides profile location
+            const cartLat = document.getElementById('cart-loc-lat')?.value || '';
+            const cartLng = document.getElementById('cart-loc-lng')?.value || '';
+            const orderLat = cartLat || String(userProfile.location?.lat || userProfile.lat || '');
+            const orderLng = cartLng || String(userProfile.location?.lng || userProfile.lng || '');
 
             // Write one request per store
             for (const storeName of stores) {
@@ -345,15 +366,15 @@ function initCart() {
                     delivryplusid: user.uid || '',
                     driver       : '0',
                     fullname     : userProfile.displayName || user.displayName || user.email || '',
-                    lat          : String(userProfile.lat  || ''),
-                    lng          : String(userProfile.lng  || ''),
-                    phone        : userProfile.phone || '',
+                    lat          : String(orderLat),
+                    lng          : String(orderLng),
+                    phone        : phone,
                     read         : '0',
                     state        : '0',
                     street       : userProfile.street || '',
                     total        : storeTotal,
                     trackorder   : '0',
-                    username     : user.email || '',
+                    username     : userProfile.username || user.email || '',
                     vault        : '0',
                     xnote        : note,
                 };
@@ -427,11 +448,187 @@ function initCart() {
     const checkoutBtn = document.getElementById('cart-checkout-btn');
     if (checkoutBtn)  checkoutBtn.addEventListener('click', cartCheckout);
 
+    /* ── Cart location picker ───────────────────────────────── */
+    _initCartLocation();
+
     /* ── Mouse drag scroll ──────────────────────────────────── */
     _initMouseDragScroll();
 
     /* ── Swipe-to-close (mobile touch) ─────────────────────── */
     _initCartSwipe();
+}
+
+function _initCartLocation() {
+    const gpsBtn    = document.getElementById('cart-loc-gps');
+    const mapBtn    = document.getElementById('cart-loc-map');
+    const clearBtn  = document.getElementById('cart-loc-clear');
+    const mapWrap   = document.getElementById('cart-loc-map-wrap');
+    const statusTxt = document.getElementById('cart-loc-status-text');
+    const latInput  = document.getElementById('cart-loc-lat');
+    const lngInput  = document.getElementById('cart-loc-lng');
+    if (!gpsBtn || !mapBtn) return;
+
+    let _cartMap    = null;
+    let _cartMarker = null;
+
+    function setLocation(lat, lng, label) {
+        latInput.value  = lat;
+        lngInput.value  = lng;
+        statusTxt.textContent = label || `${parseFloat(lat).toFixed(5)}, ${parseFloat(lng).toFixed(5)}`;
+        statusTxt.classList.add('set');
+        clearBtn.style.display = 'inline-flex';
+        gpsBtn.classList.remove('active');
+        mapBtn.classList.remove('active');
+    }
+
+    function clearLocation() {
+        latInput.value  = '';
+        lngInput.value  = '';
+        statusTxt.textContent = 'لم يتم تحديد الموقع';
+        statusTxt.classList.remove('set');
+        clearBtn.style.display = 'none';
+        gpsBtn.classList.remove('active');
+        mapBtn.classList.remove('active');
+        if (mapWrap) mapWrap.style.display = 'none';
+    }
+
+    // Pre-fill from saved profile location if available
+    const prof = window.DelivoUser || {};
+    const savedLat = prof.location?.lat || prof.lat || '';
+    const savedLng = prof.location?.lng || prof.lng || '';
+    if (savedLat && savedLng) {
+        setLocation(savedLat, savedLng, '📍 موقعك المحفوظ');
+    }
+
+    // GPS button
+    gpsBtn.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            statusTxt.textContent = 'جهازك لا يدعم تحديد الموقع.';
+            return;
+        }
+        gpsBtn.classList.add('active');
+        gpsBtn.textContent = '⏳ جاري التحديد...';
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                setLocation(lat, lng, '📍 موقعك الحالي');
+                gpsBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg> موقعي الحالي`;
+                if (mapWrap) mapWrap.style.display = 'none';
+            },
+            () => {
+                gpsBtn.classList.remove('active');
+                gpsBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg> موقعي الحالي`;
+                statusTxt.textContent = 'تعذّر تحديد الموقع.';
+            },
+            { timeout: 10000, enableHighAccuracy: true }
+        );
+    });
+
+    // Map button
+    mapBtn.addEventListener('click', () => {
+        if (!mapWrap) return;
+        const isOpen = mapWrap.style.display !== 'none';
+        mapWrap.style.display = isOpen ? 'none' : 'block';
+        mapBtn.classList.toggle('active', !isOpen);
+
+        if (!isOpen && !_cartMap) {
+            const initLat = parseFloat(latInput.value) || 34.004;
+            const initLng = parseFloat(lngInput.value) || 36.210;
+            const GOOGLE_KEY = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
+
+            // Same tile layers as register map
+            const tileSatellite = L.tileLayer(
+                `https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=${GOOGLE_KEY}`,
+                { attribution: '© Google Maps', maxZoom: 20, subdomains: '0123' }
+            );
+            const tileStandard = L.tileLayer(
+                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                { attribution: '© OpenStreetMap', maxZoom: 19 }
+            );
+            let _currentLayer = 'satellite';
+
+            _cartMap = L.map('cart-loc-map', {
+                zoomControl: true,
+                tap: false,
+                attributionControl: true,
+            }).setView([initLat, initLng], 16);
+
+            tileSatellite.addTo(_cartMap);
+
+            // Toggle satellite ↔ standard
+            const toggleCtrl = L.control({ position: 'topright' });
+            toggleCtrl.onAdd = function() {
+                const btn = L.DomUtil.create('button', '');
+                btn.innerHTML = '🗺 خريطة';
+                btn.style.cssText = `background:#fff;border:2px solid #FF5C00;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;color:#FF5C00;box-shadow:0 1px 5px rgba(0,0,0,0.3);white-space:nowrap;`;
+                L.DomEvent.on(btn, 'click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    if (_currentLayer === 'satellite') {
+                        _cartMap.removeLayer(tileSatellite);
+                        tileStandard.addTo(_cartMap);
+                        _currentLayer = 'standard';
+                        btn.innerHTML = '🛰 صورة جوية';
+                    } else {
+                        _cartMap.removeLayer(tileStandard);
+                        tileSatellite.addTo(_cartMap);
+                        _currentLayer = 'satellite';
+                        btn.innerHTML = '🗺 خريطة';
+                    }
+                });
+                return btn;
+            };
+            toggleCtrl.addTo(_cartMap);
+
+            // Orange marker — same style as register map
+            const orangeIcon = L.divIcon({
+                className: '',
+                html: `<div style="width:30px;height:30px;background:#FF5C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 30],
+            });
+
+            _cartMarker = L.marker([initLat, initLng], {
+                icon: orangeIcon,
+                draggable: true,
+            }).addTo(_cartMap);
+
+            function onMapPick(lat, lng) {
+                setLocation(lat.toFixed(6), lng.toFixed(6));
+                mapBtn.classList.add('active');
+            }
+
+            _cartMarker.on('dragend', () => {
+                const pos = _cartMarker.getLatLng();
+                onMapPick(pos.lat, pos.lng);
+            });
+            _cartMap.on('click', (e) => {
+                _cartMarker.setLatLng(e.latlng);
+                onMapPick(e.latlng.lat, e.latlng.lng);
+            });
+
+            // invalidateSize after paint — critical inside transformed sidebar
+            setTimeout(() => { _cartMap.invalidateSize(); }, 50);
+            setTimeout(() => { _cartMap.invalidateSize(); }, 250);
+            setTimeout(() => { _cartMap.invalidateSize(); }, 600);
+
+        } else if (!isOpen && _cartMap) {
+            setTimeout(() => { _cartMap.invalidateSize(); }, 50);
+            setTimeout(() => { _cartMap.invalidateSize(); }, 250);
+        }
+    });
+
+    // Clear button
+    clearBtn.addEventListener('click', clearLocation);
+
+    // Re-fill from profile when sidebar opens (user may have just logged in)
+    window._cartLocationRefresh = function() {
+        if (latInput.value) return; // already set manually
+        const p = window.DelivoUser || {};
+        const lat = p.location?.lat || p.lat || '';
+        const lng = p.location?.lng || p.lng || '';
+        if (lat && lng) setLocation(lat, lng, '📍 موقعك المحفوظ');
+    };
 }
 
 function _initMouseDragScroll() {
