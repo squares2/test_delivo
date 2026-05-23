@@ -773,12 +773,6 @@
                     </button>
                 </div>
 
-                <!-- Map container -->
-                <div class="cart-location__map-wrap" id="cart-loc-map-wrap" style="display:none">
-                    <div id="cart-loc-map" class="cart-location__map"></div>
-                    <p class="cart-location__map-hint">📍 اسحب الدبوس أو انقر لتحديد الموقع</p>
-                </div>
-
                 <!-- Hidden lat/lng -->
                 <input type="hidden" id="cart-loc-lat">
                 <input type="hidden" id="cart-loc-lng">
@@ -825,9 +819,24 @@
     <script src="scripts/modals.js?v=7"></script>
     <script src="scripts/stores.js?v=7"></script>
     <script src="scripts/categories.js?v=2"></script>
-    <script src="scripts/cart.js?v=3"></script>
+    <script src="scripts/cart.js?v=8"></script>
     <script src="scripts/store-panel.js?v=3"></script>
     <script src="scripts/pwa.js?v=7"></script>
+
+<!-- ── Cart Map Modal — outside sidebar so Leaflet can measure it ── -->
+<div id="cart-map-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:none;align-items:flex-end;justify-content:center;">
+    <div style="width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #f0f0f0;">
+            <span style="font-size:1rem;font-weight:800;color:#111;">📍 اختر موقع التوصيل</span>
+            <button id="cart-map-modal-close" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#888;padding:4px 8px;">✕</button>
+        </div>
+        <div id="cart-map-modal-map" style="width:100%;height:60vh;min-height:280px;"></div>
+        <p style="text-align:center;font-size:0.75rem;color:#aaa;margin:6px 0;font-weight:600;">اسحب الدبوس أو انقر لتحديد الموقع</p>
+        <div style="padding:10px 16px 20px;">
+            <button id="cart-map-modal-confirm" style="width:100%;background:#FF5C00;color:#fff;border:none;border-radius:12px;padding:13px;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;">✔ تأكيد الموقع</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

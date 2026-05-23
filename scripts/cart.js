@@ -468,8 +468,6 @@ function _initCartLocation() {
     const lngInput  = document.getElementById('cart-loc-lng');
     if (!gpsBtn || !mapBtn) return;
 
-    let _cartMap    = null;
-    let _cartMarker = null;
 
     function setLocation(lat, lng, label) {
         latInput.value  = lat;
@@ -525,19 +523,27 @@ function _initCartLocation() {
         );
     });
 
-    // Map button
+    // Map button — opens fullscreen modal OUTSIDE the transformed sidebar
+    let _cartMap = null, _cartMarker = null;
+
     mapBtn.addEventListener('click', () => {
-        if (!mapWrap) return;
-        const isOpen = mapWrap.style.display !== 'none';
-        mapWrap.style.display = isOpen ? 'none' : 'block';
-        mapBtn.classList.toggle('active', !isOpen);
+        const modal  = document.getElementById('cart-map-modal');
+        const mapDiv = document.getElementById('cart-map-modal-map');
+        if (!modal || !mapDiv) return;
 
-        if (!isOpen && !_cartMap) {
-            const initLat = parseFloat(latInput.value) || 34.004;
-            const initLng = parseFloat(lngInput.value) || 36.210;
-            const GOOGLE_KEY = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
+        // Show modal
+        modal.style.display = 'flex';
 
-            // Same tile layers as register map
+        const initLat    = parseFloat(latInput.value) || 34.004;
+        const initLng    = parseFloat(lngInput.value) || 36.210;
+        const GOOGLE_KEY = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
+
+        // Destroy stale instance
+        if (_cartMap) { _cartMap.remove(); _cartMap = null; _cartMarker = null; }
+        mapDiv.innerHTML = '';
+
+        // Modal is position:fixed — no transform parent — safe to init immediately
+        requestAnimationFrame(() => {
             const tileSatellite = L.tileLayer(
                 `https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=${GOOGLE_KEY}`,
                 { attribution: '© Google Maps', maxZoom: 20, subdomains: '0123' }
@@ -546,9 +552,9 @@ function _initCartLocation() {
                 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                 { attribution: '© OpenStreetMap', maxZoom: 19 }
             );
-            let _currentLayer = 'satellite';
+            let currentLayer = 'satellite';
 
-            _cartMap = L.map('cart-loc-map', {
+            _cartMap = L.map(mapDiv, {
                 zoomControl: true,
                 tap: false,
                 attributionControl: true,
@@ -561,18 +567,18 @@ function _initCartLocation() {
             toggleCtrl.onAdd = function() {
                 const btn = L.DomUtil.create('button', '');
                 btn.innerHTML = '🗺 خريطة';
-                btn.style.cssText = `background:#fff;border:2px solid #FF5C00;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;color:#FF5C00;box-shadow:0 1px 5px rgba(0,0,0,0.3);white-space:nowrap;`;
+                btn.style.cssText = 'background:#fff;border:2px solid #FF5C00;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer;color:#FF5C00;box-shadow:0 1px 5px rgba(0,0,0,0.3);white-space:nowrap;';
                 L.DomEvent.on(btn, 'click', function(e) {
                     L.DomEvent.stopPropagation(e);
-                    if (_currentLayer === 'satellite') {
+                    if (currentLayer === 'satellite') {
                         _cartMap.removeLayer(tileSatellite);
                         tileStandard.addTo(_cartMap);
-                        _currentLayer = 'standard';
+                        currentLayer = 'standard';
                         btn.innerHTML = '🛰 صورة جوية';
                     } else {
                         _cartMap.removeLayer(tileStandard);
                         tileSatellite.addTo(_cartMap);
-                        _currentLayer = 'satellite';
+                        currentLayer = 'satellite';
                         btn.innerHTML = '🗺 خريطة';
                     }
                 });
@@ -580,10 +586,10 @@ function _initCartLocation() {
             };
             toggleCtrl.addTo(_cartMap);
 
-            // Orange marker — same style as register map
+            // Orange teardrop marker
             const orangeIcon = L.divIcon({
                 className: '',
-                html: `<div style="width:30px;height:30px;background:#FF5C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>`,
+                html: '<div style="width:30px;height:30px;background:#FF5C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',
                 iconSize: [30, 30],
                 iconAnchor: [15, 30],
             });
@@ -593,32 +599,35 @@ function _initCartLocation() {
                 draggable: true,
             }).addTo(_cartMap);
 
-            function onMapPick(lat, lng) {
-                setLocation(lat.toFixed(6), lng.toFixed(6));
-                mapBtn.classList.add('active');
-            }
-
-            _cartMarker.on('dragend', () => {
-                const pos = _cartMarker.getLatLng();
-                onMapPick(pos.lat, pos.lng);
-            });
-            _cartMap.on('click', (e) => {
-                _cartMarker.setLatLng(e.latlng);
-                onMapPick(e.latlng.lat, e.latlng.lng);
-            });
-
-            // invalidateSize after paint — critical inside transformed sidebar
-            setTimeout(() => { _cartMap.invalidateSize(); }, 50);
-            setTimeout(() => { _cartMap.invalidateSize(); }, 250);
-            setTimeout(() => { _cartMap.invalidateSize(); }, 600);
-
-        } else if (!isOpen && _cartMap) {
-            setTimeout(() => { _cartMap.invalidateSize(); }, 50);
-            setTimeout(() => { _cartMap.invalidateSize(); }, 250);
-        }
+            _cartMap.on('click', (e) => { _cartMarker.setLatLng(e.latlng); });
+            _cartMap.invalidateSize();
+        });
     });
 
-    // Clear button
+    // Confirm button — read marker position, close modal, update status
+    const confirmBtn = document.getElementById('cart-map-modal-confirm');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            if (_cartMarker) {
+                const pos = _cartMarker.getLatLng();
+                setLocation(pos.lat.toFixed(6), pos.lng.toFixed(6));
+                mapBtn.classList.add('active');
+            }
+            document.getElementById('cart-map-modal').style.display = 'none';
+            if (_cartMap) { _cartMap.remove(); _cartMap = null; _cartMarker = null; }
+        });
+    }
+
+    // Close button
+    const modalClose = document.getElementById('cart-map-modal-close');
+    if (modalClose) {
+        modalClose.addEventListener('click', () => {
+            document.getElementById('cart-map-modal').style.display = 'none';
+            if (_cartMap) { _cartMap.remove(); _cartMap = null; _cartMarker = null; }
+        });
+    }
+
+        // Clear button
     clearBtn.addEventListener('click', clearLocation);
 
     // Re-fill from profile when sidebar opens (user may have just logged in)
