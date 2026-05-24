@@ -424,6 +424,22 @@
     color: var(--clr-orange);
     font-weight: 800;
 }
+.cart-store-group__delivery-hint {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px clamp(12px, 3vw, 16px);
+    background: #fff8f4;
+    border-top: 1px dashed #ffd4b8;
+    font-size: clamp(0.70rem, 1.7vw, 0.78rem);
+    color: #a04000;
+    font-weight: 600;
+    direction: rtl;
+}
+.cart-store-group__delivery-hint strong {
+    color: var(--clr-orange, #FF5C00);
+    font-weight: 800;
+}
 /* ── Swipe drag handle (mobile hint) ─────────────────────── */
 .cart-drag-handle {
     display: none;
@@ -568,4 +584,68 @@
     margin: 0;
     background: var(--clr-white, #fff);
     border-top: 1px solid var(--clr-gray-100, #f0f0f0);
+}
+/* ══════════════════════════════════════════════════════════
+   Cart — Extras toggle (note + location collapsible)
+══════════════════════════════════════════════════════════ */
+.cart-extras-toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    background: var(--clr-gray-50, #f9f9f9);
+    border: 1.5px solid var(--clr-gray-200, #e8e8e8);
+    border-radius: var(--radius-md, 10px);
+    padding: 9px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: clamp(0.76rem, 2vw, 0.83rem);
+    font-weight: 700;
+    color: var(--clr-gray-600, #555);
+    text-align: right;
+    transition: border-color 0.18s, background 0.18s;
+}
+.cart-extras-toggle:hover {
+    border-color: var(--clr-orange, #FF5C00);
+    background: #fff4ef;
+    color: var(--clr-orange, #FF5C00);
+}
+.cart-extras-toggle.open {
+    border-color: var(--clr-orange, #FF5C00);
+    background: #fff4ef;
+    color: var(--clr-orange, #FF5C00);
+}
+.cart-extras-toggle__icons { display: flex; gap: 3px; flex-shrink: 0; }
+.cart-extras-dot { font-size: 0.85rem; }
+.cart-extras-toggle__label { flex: 1; }
+.cart-extras-toggle__arrow {
+    flex-shrink: 0;
+    transition: transform 0.22s;
+}
+.cart-extras-toggle.open .cart-extras-toggle__arrow {
+    transform: rotate(180deg);
+}
+
+/* Panel — hidden by default, slides open */
+.cart-extras-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.28s ease;
+    overflow: hidden;
+}
+.cart-extras-panel.open {
+    grid-template-rows: 1fr;
+}
+.cart-extras-panel > * {
+    /* needed for grid row animation */
+    min-height: 0;
+    overflow: hidden;
+}
+/* Give the inner children proper spacing when open */
+.cart-extras-panel.open > * { overflow: visible; }
+.cart-extras-panel .cart-note-field {
+    margin-top: 8px;
+}
+.cart-extras-panel .cart-location {
+    margin-top: 6px;
 }

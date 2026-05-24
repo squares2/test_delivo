@@ -6,6 +6,7 @@
    ============================================================ */
 
 const RTDB_CART_URL = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+const DELIVERY_FEE_PER_STORE = 2; // $2 per store
 
 function initCart() {
 
@@ -158,10 +159,12 @@ function initCart() {
         /* Footer */
         if (footerEl) {
             footerEl.style.display = 'flex';
-            const totalUSD = _cartTotalUSD();
-            document.getElementById('cart-subtotal').textContent   = '$' + totalUSD.toFixed(2);
-            document.getElementById('cart-delivery').textContent   = 'مجاناً';
-            document.getElementById('cart-grandtotal').textContent = '$' + totalUSD.toFixed(2);
+            const subtotalUSD  = _cartTotalUSD();
+            const deliveryFee  = stores.length * DELIVERY_FEE_PER_STORE;
+            const grandTotal   = subtotalUSD + deliveryFee;
+            document.getElementById('cart-subtotal').textContent   = '$' + subtotalUSD.toFixed(2);
+            document.getElementById('cart-delivery').textContent   = deliveryFee > 0 ? '$' + deliveryFee.toFixed(2) : 'مجاناً';
+            document.getElementById('cart-grandtotal').textContent = '$' + grandTotal.toFixed(2);
         }
     
         // re-init mouse drag each render (body is rebuilt)
@@ -181,6 +184,9 @@ function initCart() {
             ${items.map(item => _renderCartItem(item)).join('')}
             <div class="cart-store-group__subtotal">
                 المجموع: <strong>${'$' + _storeUSD(items).toFixed(2)}</strong>
+            </div>
+            <div class="cart-store-group__delivery-hint">
+                🛵 رسوم توصيل هذا المتجر: <strong>$${DELIVERY_FEE_PER_STORE.toFixed(2)}</strong>
             </div>
         </div>`;
     }
@@ -284,11 +290,17 @@ function initCart() {
     }
 
     function _refreshTotals() {
+        const cart         = window.DelivoCart;
         const subtotalEl   = document.getElementById('cart-subtotal');
+        const deliveryEl   = document.getElementById('cart-delivery');
         const grandtotalEl = document.getElementById('cart-grandtotal');
-        const total = '$' + _cartTotalUSD().toFixed(2);
-        if (subtotalEl)   subtotalEl.textContent   = total;
-        if (grandtotalEl) grandtotalEl.textContent = total;
+        const subtotalUSD  = _cartTotalUSD();
+        const storeCount   = cart.getStores().length;
+        const deliveryFee  = storeCount * DELIVERY_FEE_PER_STORE;
+        const grandTotal   = subtotalUSD + deliveryFee;
+        if (subtotalEl)   subtotalEl.textContent   = '$' + subtotalUSD.toFixed(2);
+        if (deliveryEl)   deliveryEl.textContent   = deliveryFee > 0 ? '$' + deliveryFee.toFixed(2) : 'مجاناً';
+        if (grandtotalEl) grandtotalEl.textContent = '$' + grandTotal.toFixed(2);
     }
 
     function _syncStorePanelQty(id, qty) {
@@ -356,7 +368,7 @@ function initCart() {
             for (const storeName of stores) {
                 const storeItems = cart.getStoreItems(storeName);
                 const cartStr    = storeItems.map(i => `${i.qty}:${i.name}:${i.price}:${storeName}`).join(',');
-                const storeTotal = _storeUSD(storeItems).toFixed(2);
+                const storeTotal = (parseFloat(_storeUSD(storeItems)) + DELIVERY_FEE_PER_STORE).toFixed(2);
                 const requestKey = `id_${nextId}`;
 
                 const requestObj = {
@@ -448,6 +460,16 @@ function initCart() {
     const checkoutBtn = document.getElementById('cart-checkout-btn');
     if (checkoutBtn)  checkoutBtn.addEventListener('click', cartCheckout);
 
+    /* ── Extras toggle (note + location) ───────────────────── */
+    const extrasToggle = document.getElementById('cart-extras-toggle');
+    const extrasPanel  = document.getElementById('cart-extras-panel');
+    if (extrasToggle && extrasPanel) {
+        extrasToggle.addEventListener('click', () => {
+            const open = extrasPanel.classList.toggle('open');
+            extrasToggle.classList.toggle('open', open);
+        });
+    }
+
     /* ── Cart location picker ───────────────────────────────── */
     _initCartLocation();
 
@@ -477,6 +499,8 @@ function _initCartLocation() {
         clearBtn.style.display = 'inline-flex';
         gpsBtn.classList.remove('active');
         mapBtn.classList.remove('active');
+        const locDot = document.getElementById('cart-extras-loc-dot');
+        if (locDot) locDot.style.display = 'inline';
     }
 
     function clearLocation() {
@@ -487,6 +511,8 @@ function _initCartLocation() {
         clearBtn.style.display = 'none';
         gpsBtn.classList.remove('active');
         mapBtn.classList.remove('active');
+        const locDot = document.getElementById('cart-extras-loc-dot');
+        if (locDot) locDot.style.display = 'none';
         if (mapWrap) mapWrap.style.display = 'none';
     }
 
