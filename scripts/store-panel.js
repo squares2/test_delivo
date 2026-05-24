@@ -715,10 +715,19 @@ function initStorePanel() {
             const storeType = card.dataset.storeType || 'Restaurants';
             // Map HTML data-store-id to Firebase companyname
             const nameMap = {
-                'classic-food'   : 'Classic-Food',
-                'king-pizza'     : 'King-Pizza',
-                'zahret-lobnan'  : 'Zahret-Lobnan',
-                'store-burger'   : 'AL-Beik',
+                'classic-food'    : 'Classic-Food',
+                'king-pizza'      : 'King-Pizza',
+                'zahret-lobnan'   : 'Zahret-Lobnan',
+                'burger-house'    : 'AL-Beik',
+                'store-burger'    : 'AL-Beik',
+                'al-beik'         : 'AL-Beik',
+                'al-fajr'         : 'AL-Fajr',
+                'al-amana'        : 'Al-Amana',
+                'assaf-grocery'   : 'Assaf-Grocery',
+                'bhalib'          : 'Bhalib',
+                'foodigo'         : 'Foodigo',
+                'hellani-kitchen' : 'Hellani-Kitchen',
+                'minini'          : 'Minini',
             };
             const fireName = nameMap[storeId] || _toFirebaseName(storeId);
             const typeMap  = {

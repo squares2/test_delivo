@@ -382,20 +382,38 @@ function initCart() {
                     lng          : String(orderLng),
                     phone        : phone,
                     read         : '0',
-                    state        : '0',
+                    state        : '0',       // 0=new, 1=accepted, 2=on-way, 3=delivered
+                    store        : storeName,
                     street       : userProfile.street || '',
                     total        : storeTotal,
-                    trackorder   : '0',
+                    trackorder   : '0',       // 0=not trackable yet, 1=driver tracking enabled
                     username     : userProfile.username || user.email || '',
                     vault        : '0',
                     xnote        : note,
                 };
 
-                await fetch(`${RTDB_CART_URL}/requests/${requestKey}.json`, {
+                // ── 1. Write to /requests (active orders — seen by admin/driver/store) ──
+                const writeRequest = fetch(`${RTDB_CART_URL}/requests/${requestKey}.json`, {
                     method  : 'PUT',
                     headers : { 'Content-Type': 'application/json' },
                     body    : JSON.stringify(requestObj),
                 });
+
+                // ── 2. Write to /historyRequests/{uid}/{id_XXX} (customer history) ──
+                // trackorder here means: has the driver enabled live tracking for this order
+                // driver app sets trackorder to '1' → customer can then track live
+                const historyObj = {
+                    ...requestObj,
+                    trackorder: '0',   // will be updated to '1' by driver when they start delivery
+                };
+                const writeHistory = fetch(`${RTDB_CART_URL}/historyRequests/${user.uid}/${requestKey}.json`, {
+                    method  : 'PUT',
+                    headers : { 'Content-Type': 'application/json' },
+                    body    : JSON.stringify(historyObj),
+                });
+
+                // Fire both writes in parallel
+                await Promise.all([writeRequest, writeHistory]);
 
                 nextId++;
             }

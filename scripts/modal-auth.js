@@ -690,3 +690,262 @@ function closeModal(id) {
     m.classList.remove('active');
     document.body.classList.remove('modal-open');
 }
+/* ════════════════════════════════════════════════════════════
+   Orders History — Customer order list from historyRequests
+════════════════════════════════════════════════════════════ */
+
+const OH_RTDB_URL = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+
+const OH_STATE = {
+    "0": { label: "جديد",       badge: "oh-badge--0" },
+    "1": { label: "تم التوصيل", badge: "oh-badge--1" },
+    "2": { label: "ملغي",       badge: "oh-badge--2" },
+    "3": { label: "متأخر",      badge: "oh-badge--3" },
+    "5": { label: "ملغي/مدفوع", badge: "oh-badge--5" },
+};
+
+let _ohFilter   = 'all';
+let _ohOrders   = {};
+let _ohListener = null;
+
+// ── Open orders modal ─────────────────────────────────────────
+function openOrdersModal() {
+    const modal = document.getElementById('modal-orders');
+    if (!modal) return;
+    modal.classList.add('active');
+    document.body.classList.add('modal-open');
+    _loadOrders();
+}
+
+// ── Close orders modal ────────────────────────────────────────
+function closeOrdersModal() {
+    const modal = document.getElementById('modal-orders');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.classList.remove('modal-open');
+}
+
+// ── Load orders from historyRequests/{uid} ────────────────────
+async function _loadOrders() {
+    const user = window.DelivoUser;
+    if (!user) return;
+
+    const listEl    = document.getElementById('orders-list');
+    const loadingEl = document.getElementById('orders-loading');
+    const emptyEl   = document.getElementById('orders-empty');
+
+    // Show spinner, clear old cards
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (emptyEl)   emptyEl.style.display   = 'none';
+    listEl.querySelectorAll('.oh-card').forEach(c => c.remove());
+
+    try {
+        const resp = await fetch(`${OH_RTDB_URL}/historyRequests/${user.uid}.json`);
+        const data = await resp.json();
+
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        if (!data || typeof data !== 'object') {
+            if (emptyEl) emptyEl.style.display = 'block';
+            return;
+        }
+
+        // Sort newest first by id number
+        _ohOrders = data;
+        _renderOrders();
+
+    } catch(e) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (emptyEl) {
+            emptyEl.style.display = 'block';
+            emptyEl.querySelector('p').textContent = 'خطأ في تحميل الطلبات';
+        }
+    }
+}
+
+// ── Render with current filter ────────────────────────────────
+function _renderOrders() {
+    const listEl  = document.getElementById('orders-list');
+    const emptyEl = document.getElementById('orders-empty');
+    if (!listEl) return;
+
+    listEl.querySelectorAll('.oh-card').forEach(c => c.remove());
+
+    const sorted = Object.entries(_ohOrders)
+        .sort(([a], [b]) => {
+            const na = parseInt(a.replace('id_','')) || 0;
+            const nb = parseInt(b.replace('id_','')) || 0;
+            return nb - na;
+        })
+        .filter(([, o]) => _ohFilter === 'all' || (o.state || '0') === _ohFilter);
+
+    if (sorted.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+    }
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    sorted.forEach(([key, order]) => {
+        const card = _buildOrderCard(key, order);
+        listEl.appendChild(card);
+    });
+}
+
+// ── Build single order card ───────────────────────────────────
+function _buildOrderCard(key, order) {
+    const state     = order.state || '0';
+    const stateInfo = OH_STATE[state] || OH_STATE["0"];
+    const trackable = order.trackorder === '1' || order.trackorder === 1;
+    const idNum     = key.replace('id_','');
+
+    // Parse cart: "qty:name:price:store,..."
+    const items = [];
+    (order.cart || '').split(',').filter(Boolean).forEach(seg => {
+        const p = seg.split(':');
+        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: p[2], store: p[3] || '' });
+    });
+
+    const storeName = order.store || items[0]?.store || '—';
+
+    const card = document.createElement('div');
+    card.className = 'oh-card';
+    card.dataset.id = key;
+
+    card.innerHTML = `
+        <div class="oh-card__summary">
+            <div class="oh-card__toggle">+</div>
+            <span class="oh-card__id">#${idNum}</span>
+            <span class="oh-card__store">${storeName}</span>
+            <span class="oh-card__total">${order.total || '0'}$</span>
+            <span class="oh-badge ${stateInfo.badge}">${stateInfo.label}</span>
+        </div>
+        <div class="oh-card__detail">
+            <span class="oh-card__date">📅 ${order.date || '—'}</span>
+
+            ${items.length > 0 ? `
+            <div class="oh-items">
+                <div class="oh-items__title">🛍 المنتجات</div>
+                ${items.map(i => `
+                    <div class="oh-item-row">
+                        <span class="oh-item-row__name">${i.name}</span>
+                        <span class="oh-item-row__qty">×${i.qty}</span>
+                        <span class="oh-item-row__price">${i.price}$</span>
+                    </div>
+                `).join('')}
+                <div style="display:flex;justify-content:space-between;padding-top:6px;font-size:0.75rem;font-weight:800;color:var(--clr-black);">
+                    <span>الإجمالي</span>
+                    <span style="color:var(--clr-orange)">${order.total || '0'}$</span>
+                </div>
+            </div>` : ''}
+
+            ${order.xnote ? `
+            <div style="background:var(--clr-gray-50);border-radius:8px;padding:8px 10px;font-size:0.74rem;color:var(--clr-gray-500);">
+                <span style="font-weight:800;color:var(--clr-gray-400);">ملاحظة: </span>${order.xnote}
+            </div>` : ''}
+
+            ${trackable ? `
+            <button class="oh-track-btn" onclick="_openTrackModal('${key}','${order.delivryplusid || ''}')">
+                🛵 تتبع طلبك الآن
+            </button>` : `
+            <div style="text-align:center;font-size:0.72rem;color:var(--clr-gray-400);padding:4px 0;">
+                ⏳ التتبع المباشر غير متاح بعد
+            </div>`}
+
+            <button class="oh-reorder-btn" data-reorder="${key}">
+                🔄 إعادة الطلب
+            </button>
+        </div>
+    `;
+
+    // Toggle expand
+    card.querySelector('.oh-card__summary').addEventListener('click', () => {
+        const wasOpen = card.classList.contains('expanded');
+        document.querySelectorAll('.oh-card.expanded').forEach(c => c.classList.remove('expanded'));
+        if (!wasOpen) card.classList.add('expanded');
+    });
+
+    // Re-order button
+    card.querySelector('[data-reorder]').addEventListener('click', (e) => {
+        e.stopPropagation();
+        _reorder(items);
+        closeOrdersModal();
+        closeModal('modal-account');
+        setTimeout(() => openCartSidebar && openCartSidebar(), 300);
+    });
+
+    return card;
+}
+
+// ── Re-order: add items back to cart ─────────────────────────
+function _reorder(items) {
+    if (!window.DelivoCart || items.length === 0) return;
+    items.forEach(i => {
+        window.DelivoCart.add({
+            id    : i.name.replace(/\s/g,'_'),
+            name  : i.name,
+            price : parseFloat(i.price) || 0,
+            store : i.store,
+            qty   : parseInt(i.qty) || 1,
+        });
+    });
+    if (window.DelivoCart.updateBadge) window.DelivoCart.updateBadge();
+}
+
+// ── Open live track modal (shows driver location on map) ──────
+window._openTrackModal = function(orderId, uid) {
+    // For now open Google Maps centred on store area
+    // Full tracking page can be built separately
+    window.open(`https://www.google.com/maps?q=34.004,36.210`, '_blank');
+};
+
+// ── Wire up filters ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Orders button in account modal
+    const ordersBtn = document.getElementById('acct-orders-btn');
+    if (ordersBtn) {
+        ordersBtn.addEventListener('click', () => {
+            closeModal('modal-account');
+            setTimeout(openOrdersModal, 180);
+        });
+    }
+
+    // Close & back buttons
+    const closeBtn = document.getElementById('orders-close-btn');
+    const backBtn  = document.getElementById('orders-back-btn');
+    if (closeBtn) closeBtn.addEventListener('click', closeOrdersModal);
+    if (backBtn)  backBtn.addEventListener('click', () => {
+        closeOrdersModal();
+        setTimeout(() => openModal('modal-account'), 180);
+    });
+
+    // Filter pills
+    document.querySelectorAll('.oh-filter').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.oh-filter').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _ohFilter = btn.dataset.filter;
+            _renderOrders();
+        });
+    });
+
+    // Update orders badge count when account modal opens
+    document.addEventListener('modalOpen', (e) => {
+        if (e.detail === 'modal-account') _updateOrdersBadge();
+    });
+});
+
+async function _updateOrdersBadge() {
+    const user = window.DelivoUser;
+    if (!user) return;
+    try {
+        const resp = await fetch(`${OH_RTDB_URL}/historyRequests/${user.uid}.json?shallow=true`);
+        const data = await resp.json();
+        const count = data ? Object.keys(data).length : 0;
+        const badge = document.getElementById('acct-orders-badge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+    } catch(e) {}
+}
