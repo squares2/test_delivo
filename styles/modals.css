@@ -745,6 +745,9 @@
 /* ══════════════════════════════════════════════════════════
    Orders History Modal
 ══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════
+   Orders History
+══════════════════════════════════════════════════════════ */
 .oh-spinner {
     width: 32px; height: 32px;
     border: 3px solid var(--clr-gray-200);
@@ -758,12 +761,12 @@
 /* Filter pills */
 .oh-filter {
     display: inline-flex; align-items: center;
-    padding: 5px 13px;
+    padding: 4px 10px;
     border: 1.5px solid var(--clr-gray-200);
     border-radius: 50px;
     background: var(--clr-white);
     font-family: inherit;
-    font-size: clamp(0.68rem, 1.8vw, 0.75rem);
+    font-size: 0.70rem;
     font-weight: 700;
     color: var(--clr-gray-500);
     cursor: pointer; white-space: nowrap;
@@ -780,9 +783,9 @@
 .oh-card {
     border: 1.5px solid var(--clr-gray-100);
     border-radius: var(--radius-md);
-    overflow: hidden;
     background: var(--clr-white);
     transition: border-color 0.18s;
+    /* No overflow:hidden — it clips the expanded detail content */
 }
 .oh-card.expanded { border-color: var(--clr-orange); }
 
@@ -792,6 +795,7 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 .oh-card__toggle {
     width: 24px; height: 24px; border-radius: 50%;
@@ -804,69 +808,36 @@
     transform: rotate(45deg);
     background: var(--clr-orange); color: #fff; border-color: var(--clr-orange);
 }
-.oh-card__id {
-    font-size: 0.68rem; font-weight: 800; color: var(--clr-gray-400); flex-shrink: 0;
-}
-.oh-card__store {
-    flex: 1; font-size: 0.80rem; font-weight: 700; color: var(--clr-black);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.oh-card__total {
-    font-size: 0.82rem; font-weight: 800; color: var(--clr-orange); flex-shrink: 0;
-}
+.oh-card__id { font-size: 0.68rem; font-weight: 800; color: var(--clr-gray-400); flex-shrink: 0; }
+.oh-card__store { flex: 1; font-size: 0.80rem; font-weight: 700; color: var(--clr-black); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oh-card__total { font-size: 0.82rem; font-weight: 800; color: var(--clr-orange); flex-shrink: 0; }
 
 /* State badge */
-.oh-badge {
-    padding: 3px 8px; border-radius: 50px;
-    font-size: 0.60rem; font-weight: 800; flex-shrink: 0;
-}
-.oh-badge--0 { background: #f0f0f0;                    color: #555; }
-.oh-badge--1 { background: rgba(22,163,74,0.10);       color: #16a34a; }
-.oh-badge--2 { background: rgba(220,38,38,0.10);       color: #dc2626; }
-.oh-badge--3 { background: rgba(217,119,6,0.12);       color: #d97706; }
-.oh-badge--5 { background: rgba(147,51,234,0.10);      color: #9333ea; }
+.oh-badge { padding: 3px 8px; border-radius: 50px; font-size: 0.60rem; font-weight: 800; flex-shrink: 0; }
+.oh-badge--0 { background: #f0f0f0; color: #555; }
+.oh-badge--1 { background: rgba(22,163,74,0.10); color: #16a34a; }
+.oh-badge--2 { background: rgba(220,38,38,0.10); color: #dc2626; }
+.oh-badge--3 { background: rgba(217,119,6,0.12); color: #d97706; }
+.oh-badge--5 { background: rgba(147,51,234,0.10); color: #9333ea; }
 
-/* Expanded detail */
+/* Expanded detail — no max-height, no inner scroll */
 .oh-card__detail {
     display: none; padding: 0 13px 13px;
     border-top: 1px solid var(--clr-gray-100);
     flex-direction: column; gap: 10px;
-    max-height: 55vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 .oh-card.expanded .oh-card__detail { display: flex; }
+.oh-card__date { font-size: 0.68rem; color: var(--clr-gray-400); font-weight: 600; padding-top: 8px; }
 
-.oh-card__date {
-    font-size: 0.68rem; color: var(--clr-gray-400); font-weight: 600;
-    padding-top: 8px;
-}
-
-/* Items list */
-.oh-items {
-    background: var(--clr-gray-50);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
-    max-height: 220px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    flex-shrink: 0;
-}
-.oh-items__title {
-    font-size: 0.65rem; font-weight: 800;
-    color: var(--clr-gray-400); margin-bottom: 5px;
-}
-.oh-item-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 0; border-bottom: 1px solid var(--clr-gray-100);
-    font-size: 0.74rem;
-}
+/* Items list — see below with filter bar */
+.oh-items__title { font-size: 0.65rem; font-weight: 800; color: var(--clr-gray-400); margin-bottom: 5px; }
+.oh-item-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--clr-gray-100); font-size: 0.74rem; }
 .oh-item-row:last-child { border-bottom: none; }
 .oh-item-row__name  { flex: 1; color: var(--clr-black); font-weight: 600; }
 .oh-item-row__qty   { color: var(--clr-gray-400); margin: 0 8px; }
 .oh-item-row__price { color: var(--clr-orange); font-weight: 700; }
 
-/* Track button */
+/* Track & reorder buttons */
 .oh-track-btn {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     width: 100%; padding: 10px;
@@ -876,10 +847,8 @@
     color: var(--clr-green);
     font-family: inherit; font-size: 0.78rem; font-weight: 800;
     cursor: pointer; transition: background 0.18s;
-    text-decoration: none;
 }
 .oh-track-btn:hover { background: rgba(22,163,74,0.12); }
-
 .oh-reorder-btn {
     display: flex; align-items: center; justify-content: center; gap: 6px;
     width: 100%; padding: 10px;
@@ -892,29 +861,78 @@
 }
 .oh-reorder-btn:hover { background: rgba(255,92,0,0.12); }
 
-/* ── Orders modal dedicated container (avoids modal-box scroll conflict) ── */
-.oh-modal-box {
+/* ── Bottom sheet container ── */
+.oh-sheet-overlay {
+    position: fixed; inset: 0; z-index: 800;
+    background: rgba(0,0,0,0.45);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+.oh-sheet-overlay.active { opacity: 1; pointer-events: all; }
+
+.oh-sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0; z-index: 801;
     background: var(--clr-white);
-    border-radius: var(--radius-xl);
-    width: 100%;
-    max-width: 420px;
-    position: relative;
-    transform: scale(0.95) translateY(12px);
-    transition: transform 0.26s cubic-bezier(0.34, 1.2, 0.64, 1);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.28);
-
-    /* Fixed height — critical for inner scroll to work */
-    height: 90vh;
-    max-height: 90vh;
-
-    /* Flex column — header + filters fixed, list scrolls */
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.18);
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    padding: 0;
-
-    /* Never let the box itself scroll */
     overflow: hidden;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.32, 1.1, 0.6, 1);
 }
-.modal-overlay.active .oh-modal-box {
-    transform: scale(1) translateY(0);
+.oh-sheet.active { transform: translateY(0); }
+
+.oh-sheet__handle {
+    width: 40px; height: 4px;
+    background: var(--clr-gray-200); border-radius: 2px;
+    margin: 8px auto 0; flex-shrink: 0;
 }
+.oh-sheet__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px 8px;
+    border-bottom: 1px solid var(--clr-gray-100);
+    flex-shrink: 0;
+}
+.oh-sheet__back  { background: none; border: none; cursor: pointer; color: var(--clr-gray-400); font-size: 1.5rem; padding: 0 8px 0 0; line-height: 1; min-width: 32px; }
+.oh-sheet__title { font-size: 1rem; font-weight: 800; color: var(--clr-black); flex: 1; text-align: center; }
+.oh-sheet__close { background: none; border: none; cursor: pointer; color: var(--clr-gray-400); font-size: 1rem; min-width: 32px; text-align: right; }
+
+/* Filter bar — wraps so all states always visible, compact padding */
+.oh-filter-bar {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    padding: 6px 12px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--clr-gray-100);
+}
+
+/* THE scroll container */
+.oh-sheet__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Items list — taller scroll area */
+.oh-items {
+    background: var(--clr-gray-50);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.oh-sheet__loading { text-align: center; padding: 40px; color: var(--clr-gray-400); }
+.oh-sheet__loading p { margin-top: 12px; font-size: 0.82rem; font-weight: 700; }
+.oh-sheet__empty { text-align: center; padding: 50px 20px; color: var(--clr-gray-400); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.oh-sheet__empty-icon { font-size: 2.5rem; }
+.oh-sheet__empty p { font-size: 0.88rem; font-weight: 700; }
+.oh-sheet__empty small { font-size: 0.75rem; }

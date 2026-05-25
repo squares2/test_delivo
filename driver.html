@@ -975,8 +975,11 @@ function buildOrderCard(key, order) {
 
         const updates = {};
         updates[`/requests/${id}/trackorder`] = newTrack;
+        // When enabling tracking, store the driver's ID so the customer map can look up the live location
+        updates[`/requests/${id}/driverid`] = newTrack === '1' ? driverData.id : null;
         if (uid && uid !== 'undefined' && uid !== '') {
             updates[`/historyRequests/${uid}/${id}/trackorder`] = newTrack;
+            updates[`/historyRequests/${uid}/${id}/driverid`]   = newTrack === '1' ? driverData.id : null;
         }
         try {
             await db.ref().update(updates);

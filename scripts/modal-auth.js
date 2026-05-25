@@ -710,19 +710,31 @@ let _ohListener = null;
 
 // ── Open orders modal ─────────────────────────────────────────
 function openOrdersModal() {
-    const modal = document.getElementById('modal-orders');
-    if (!modal) return;
-    modal.classList.add('active');
+    const sheet   = document.getElementById('orders-sheet');
+    const overlay = document.getElementById('orders-sheet-overlay');
+    if (!sheet || !overlay) return;
+    sheet.classList.add('active');
+    overlay.classList.add('active');
     document.body.classList.add('modal-open');
     _loadOrders();
+    // Auto-refresh active orders every 15 s while sheet is open
+    if (!window._ordersRefreshTimer) {
+        window._ordersRefreshTimer = setInterval(() => {
+            const s = document.getElementById('orders-sheet');
+            if (s && s.classList.contains('active')) _loadOrders();
+        }, 15000);
+    }
 }
 
-// ── Close orders modal ────────────────────────────────────────
 function closeOrdersModal() {
-    const modal = document.getElementById('modal-orders');
-    if (!modal) return;
-    modal.classList.remove('active');
+    const sheet   = document.getElementById('orders-sheet');
+    const overlay = document.getElementById('orders-sheet-overlay');
+    if (!sheet || !overlay) return;
+    sheet.classList.remove('active');
+    overlay.classList.remove('active');
     document.body.classList.remove('modal-open');
+    clearInterval(window._ordersRefreshTimer);
+    window._ordersRefreshTimer = null;
 }
 
 // ── Load orders from historyRequests/{uid} ────────────────────
@@ -734,10 +746,12 @@ async function _loadOrders() {
     const loadingEl = document.getElementById('orders-loading');
     const emptyEl   = document.getElementById('orders-empty');
 
-    // Show spinner, clear old cards
-    if (loadingEl) loadingEl.style.display = 'block';
-    if (emptyEl)   emptyEl.style.display   = 'none';
-    listEl.querySelectorAll('.oh-card').forEach(c => c.remove());
+    // Only show spinner on first load — background refreshes are silent
+    const isFirstLoad = listEl.querySelectorAll('.oh-card').length === 0;
+    if (isFirstLoad) {
+        if (loadingEl) loadingEl.style.display = 'block';
+        if (emptyEl)   emptyEl.style.display   = 'none';
+    }
 
     try {
         const resp = await fetch(`${OH_RTDB_URL}/historyRequests/${user.uid}.json`);
@@ -746,17 +760,16 @@ async function _loadOrders() {
         if (loadingEl) loadingEl.style.display = 'none';
 
         if (!data || typeof data !== 'object') {
-            if (emptyEl) emptyEl.style.display = 'block';
+            if (isFirstLoad && emptyEl) emptyEl.style.display = 'block';
             return;
         }
 
-        // Sort newest first by id number
         _ohOrders = data;
         _renderOrders();
 
     } catch(e) {
         if (loadingEl) loadingEl.style.display = 'none';
-        if (emptyEl) {
+        if (isFirstLoad && emptyEl) {
             emptyEl.style.display = 'block';
             emptyEl.querySelector('p').textContent = 'خطأ في تحميل الطلبات';
         }
@@ -768,6 +781,10 @@ function _renderOrders() {
     const listEl  = document.getElementById('orders-list');
     const emptyEl = document.getElementById('orders-empty');
     if (!listEl) return;
+
+    // Remember which card is currently expanded so we can restore it after re-render
+    const expandedCard = listEl.querySelector('.oh-card.expanded');
+    const expandedId   = expandedCard ? expandedCard.dataset.id : null;
 
     listEl.querySelectorAll('.oh-card').forEach(c => c.remove());
 
@@ -787,9 +804,12 @@ function _renderOrders() {
 
     sorted.forEach(([key, order]) => {
         const card = _buildOrderCard(key, order);
+        // Restore expanded state without animation to avoid visual jump
+        if (key === expandedId) card.classList.add('expanded');
         listEl.appendChild(card);
     });
 }
+
 
 // ── Build single order card ───────────────────────────────────
 function _buildOrderCard(key, order) {
@@ -797,6 +817,14 @@ function _buildOrderCard(key, order) {
     const stateInfo = OH_STATE[state] || OH_STATE["0"];
     const trackable = order.trackorder === '1' || order.trackorder === 1;
     const idNum     = key.replace('id_','');
+
+    // Format price with commas (handles both USD like 12.00 and LBP like 650000)
+    function fmt(val) {
+        const n = parseFloat(val) || 0;
+        return n % 1 === 0
+            ? n.toLocaleString('en-US')           // integer → 650,000
+            : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // decimal → 12.00
+    }
 
     // Parse cart: "qty:name:price:store,..."
     const items = [];
@@ -816,7 +844,7 @@ function _buildOrderCard(key, order) {
             <div class="oh-card__toggle">+</div>
             <span class="oh-card__id">#${idNum}</span>
             <span class="oh-card__store">${storeName}</span>
-            <span class="oh-card__total">${order.total || '0'}$</span>
+            <span class="oh-card__total">${fmt(order.total)}$</span>
             <span class="oh-badge ${stateInfo.badge}">${stateInfo.label}</span>
         </div>
         <div class="oh-card__detail">
@@ -829,12 +857,12 @@ function _buildOrderCard(key, order) {
                     <div class="oh-item-row">
                         <span class="oh-item-row__name">${i.name}</span>
                         <span class="oh-item-row__qty">×${i.qty}</span>
-                        <span class="oh-item-row__price">${i.price}$</span>
+                        <span class="oh-item-row__price">${fmt(i.price)}$</span>
                     </div>
                 `).join('')}
                 <div style="display:flex;justify-content:space-between;padding-top:6px;font-size:0.75rem;font-weight:800;color:var(--clr-black);">
                     <span>الإجمالي</span>
-                    <span style="color:var(--clr-orange)">${order.total || '0'}$</span>
+                    <span style="color:var(--clr-orange)">${fmt(order.total)}$</span>
                 </div>
             </div>` : ''}
 
@@ -880,23 +908,668 @@ function _buildOrderCard(key, order) {
 function _reorder(items) {
     if (!window.DelivoCart || items.length === 0) return;
     items.forEach(i => {
-        window.DelivoCart.add({
-            id    : i.name.replace(/\s/g,'_'),
-            name  : i.name,
-            price : parseFloat(i.price) || 0,
-            store : i.store,
-            qty   : parseInt(i.qty) || 1,
-        });
+        for (let q = 0; q < (parseInt(i.qty) || 1); q++) {
+            window.DelivoCart.addItem(
+                i.name.replace(/\s/g,'_'),
+                i.name,
+                parseFloat(i.price) || 0,
+                i.store || '',
+                ''
+            );
+        }
     });
     if (window.DelivoCart.updateBadge) window.DelivoCart.updateBadge();
 }
 
-// ── Open live track modal (shows driver location on map) ──────
+// ── Live Tracking Modal ───────────────────────────────────────
+// • SVG motorcycle marker with real-time bearing/rotation
+// • Smooth animation between GPS updates (lerp over 5 s)
+// • Professional SVG destination pin with pulse ring
+// • OSRM route polyline + ETA
+// • No auto-pan after first fit
+
+let _trackMap         = null;
+let _trackDriverMark  = null;
+let _trackDestMark    = null;
+let _trackRouteLine   = null;
+let _trackInterval    = null;
+let _trackOrderId     = null;
+let _trackFitted      = false;
+
+// Animation state
+let _animFrom         = null;   // { lat, lng } start of current lerp
+let _animTo           = null;   // { lat, lng } target of current lerp
+let _animBearing      = 0;      // degrees, 0 = north
+let _animPrevBearing  = 0;
+let _animStart        = null;   // timestamp when lerp began
+let _animRAF          = null;   // requestAnimationFrame handle
+const ANIM_DURATION   = 4800;   // ms — slightly under poll interval so it settles cleanly
+
+// ── Bearing helper (degrees, 0 = north, clockwise) ────────────
+function _calcBearing(lat1, lng1, lat2, lng2) {
+    const toRad = d => d * Math.PI / 180;
+    const dLng  = toRad(lng2 - lng1);
+    const rlat1 = toRad(lat1);
+    const rlat2 = toRad(lat2);
+    const x = Math.sin(dLng) * Math.cos(rlat2);
+    const y = Math.cos(rlat1) * Math.sin(rlat2) - Math.sin(rlat1) * Math.cos(rlat2) * Math.cos(dLng);
+    return ((Math.atan2(x, y) * 180 / Math.PI) + 360) % 360;
+}
+
+// ── Lerp between two numbers ──────────────────────────────────
+function _lerp(a, b, t) { return a + (b - a) * t; }
+
+// ── Short-angle lerp for bearing (avoids spinning 350→10 the long way) ──
+function _lerpAngle(a, b, t) {
+    let diff = ((b - a + 540) % 360) - 180;
+    return a + diff * t;
+}
+
+// ── Build motorcycle SVG icon (rotation applied via CSS transform) ─
+function _motoIcon(bearing) {
+    // SVG motorcycle viewed from above, pointing north (up).
+    // We rotate the whole element by `bearing` degrees.
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+      <defs>
+        <filter id="moto-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="rgba(0,0,0,0.45)"/>
+        </filter>
+      </defs>
+      <!-- Glow ring -->
+      <circle cx="24" cy="24" r="20" fill="rgba(255,92,0,0.18)" />
+      <!-- Body circle -->
+      <circle cx="24" cy="24" r="16" fill="#FF5C00" filter="url(#moto-shadow)"/>
+      <!-- Motorcycle silhouette (top-down arrow shape pointing up = north) -->
+      <!-- Arrow head (front of moto) -->
+      <polygon points="24,8 19,20 24,17 29,20" fill="#fff" opacity="0.95"/>
+      <!-- Body -->
+      <rect x="21" y="17" width="6" height="12" rx="2" fill="#fff" opacity="0.95"/>
+      <!-- Rear -->
+      <rect x="20" y="29" width="8" height="5" rx="2" fill="#fff" opacity="0.8"/>
+      <!-- Left wheel -->
+      <ellipse cx="19" cy="24" rx="2.5" ry="4" fill="#fff" opacity="0.5"/>
+      <!-- Right wheel -->
+      <ellipse cx="29" cy="24" rx="2.5" ry="4" fill="#fff" opacity="0.5"/>
+    </svg>`;
+
+    return L.divIcon({
+        html: `<div style="
+            width:48px;height:48px;
+            transform:rotate(${bearing}deg);
+            transform-origin:center center;
+            transition:transform 0.4s ease-out;
+            will-change:transform;
+        ">${svg}</div>`,
+        iconSize:   [48, 48],
+        iconAnchor: [24, 24],
+        className:  '',
+    });
+}
+
+// ── Build destination pin SVG ─────────────────────────────────
+function _destIcon() {
+    const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 52" width="40" height="52">
+      <defs>
+        <filter id="pin-shadow" x="-40%" y="-20%" width="180%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.35)"/>
+        </filter>
+        <radialGradient id="pin-grad" cx="40%" cy="35%" r="60%">
+          <stop offset="0%" stop-color="#ff8c42"/>
+          <stop offset="100%" stop-color="#e63000"/>
+        </radialGradient>
+      </defs>
+      <!-- Pin drop shape -->
+      <path d="M20 2 C10.6 2 3 9.6 3 19 C3 31 20 50 20 50 C20 50 37 31 37 19 C37 9.6 29.4 2 20 2 Z"
+            fill="url(#pin-grad)" filter="url(#pin-shadow)"/>
+      <!-- Inner white circle -->
+      <circle cx="20" cy="19" r="8" fill="#fff" opacity="0.95"/>
+      <!-- House icon inside pin -->
+      <g transform="translate(20,19)" fill="#e63000">
+        <polygon points="0,-5.5 -5.5,0 -4,0 -4,5 4,5 4,0 5.5,0" />
+        <rect x="-1.5" y="1.5" width="3" height="3.5" fill="#fff"/>
+      </g>
+    </svg>`;
+
+    return L.divIcon({
+        html: `<div style="width:40px;height:52px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.2));">${svg}</div>`,
+        iconSize:   [40, 52],
+        iconAnchor: [20, 52],   // tip of pin at marker position
+        className:  '',
+    });
+}
+
+// ── Destination pulse ring (separate layer for animation) ─────
+let _trackPulseCircle = null;
+function _ensurePulse(lat, lng) {
+    if (_trackPulseCircle) return;
+    _trackPulseCircle = L.circle([lat, lng], {
+        radius:      40,
+        color:       '#e63000',
+        weight:      2,
+        opacity:     0.6,
+        fillColor:   '#e63000',
+        fillOpacity: 0.08,
+        className:   'track-pulse-ring',
+    }).addTo(_trackMap);
+    // CSS pulse animation injected once
+    if (!document.getElementById('track-pulse-style')) {
+        const s = document.createElement('style');
+        s.id = 'track-pulse-style';
+        s.textContent = `
+            @keyframes trackPulse {
+                0%   { opacity: 0.6; transform: scale(1);   }
+                70%  { opacity: 0;   transform: scale(2.2); }
+                100% { opacity: 0;   transform: scale(2.2); }
+            }
+            .track-pulse-ring {
+                animation: trackPulse 2.2s ease-out infinite;
+                transform-origin: center center;
+            }
+        `;
+        document.head.appendChild(s);
+    }
+}
+
+// ── Smooth animation loop ─────────────────────────────────────
+function _animateDriver() {
+    if (!_trackDriverMark || !_animFrom || !_animTo) return;
+
+    const now      = performance.now();
+    const elapsed  = now - _animStart;
+    const t        = Math.min(elapsed / ANIM_DURATION, 1);
+    const ease     = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;   // ease-in-out quad
+
+    const lat = _lerp(_animFrom.lat, _animTo.lat, ease);
+    const lng = _lerp(_animFrom.lng, _animTo.lng, ease);
+    const bearing = _lerpAngle(_animPrevBearing, _animBearing, ease);
+
+    _trackDriverMark.setLatLng([lat, lng]);
+
+    // Update icon rotation by replacing the inner div's transform
+    const el = _trackDriverMark.getElement();
+    if (el) {
+        const rotDiv = el.querySelector('div');
+        if (rotDiv) rotDiv.style.transform = `rotate(${bearing}deg)`;
+    }
+
+    if (t < 1) {
+        _animRAF = requestAnimationFrame(_animateDriver);
+    } else {
+        _animRAF = null;
+    }
+}
+
+// ── Start a new lerp to a new GPS position ────────────────────
+function _moveTo(lat, lng, bearing) {
+    if (_animRAF) cancelAnimationFrame(_animRAF);
+
+    // Current visual position as start (from marker if exists, else target)
+    if (_trackDriverMark) {
+        const cur = _trackDriverMark.getLatLng();
+        _animFrom = { lat: cur.lat, lng: cur.lng };
+    } else {
+        _animFrom = { lat, lng };
+    }
+
+    _animTo          = { lat, lng };
+    _animPrevBearing = _animBearing;
+    _animBearing     = bearing;
+    _animStart       = performance.now();
+    _animRAF         = requestAnimationFrame(_animateDriver);
+}
+
+// ── Open tracking modal ───────────────────────────────────────
 window._openTrackModal = function(orderId, uid) {
-    // For now open Google Maps centred on store area
-    // Full tracking page can be built separately
-    window.open(`https://www.google.com/maps?q=34.004,36.210`, '_blank');
+    _trackOrderId = orderId;
+    _trackFitted  = false;
+    _animBearing  = 0;
+    _animPrevBearing = 0;
+    _ensureTrackModal();
+
+    const modal = document.getElementById('track-modal');
+    modal.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    _setTrackStatus('جاري تحميل بيانات التتبع…', 'loading');
+
+    setTimeout(() => {
+        if (!_trackMap) {
+            _trackMap = L.map('track-map', { zoomControl: true })
+                .setView([34.004, 36.210], 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 19,
+            }).addTo(_trackMap);
+        } else {
+            // Clean up previous session layers
+            if (_trackDriverMark) { _trackMap.removeLayer(_trackDriverMark); _trackDriverMark = null; }
+            if (_trackDestMark)   { _trackMap.removeLayer(_trackDestMark);   _trackDestMark   = null; }
+            if (_trackRouteLine)  { _trackMap.removeLayer(_trackRouteLine);  _trackRouteLine  = null; }
+            if (_trackPulseCircle){ _trackMap.removeLayer(_trackPulseCircle);_trackPulseCircle= null; }
+            _animFrom = null; _animTo = null;
+            _trackMap.invalidateSize();
+        }
+        _startTrackPolling(orderId, uid);
+    }, 200);
 };
+
+function _ensureTrackModal() {
+    if (document.getElementById('track-modal')) return;
+
+    // ── Inject styles once ────────────────────────────────────
+    if (!document.getElementById('track-modal-style')) {
+        const s = document.createElement('style');
+        s.id = 'track-modal-style';
+        s.textContent = `
+        /* ── Track modal sheet ── */
+        #track-modal-sheet {
+            width:100%;max-width:520px;
+            background:#fff;
+            border-radius:20px 20px 0 0;
+            overflow:hidden;
+            display:flex;flex-direction:column;
+            max-height:92vh;
+        }
+        /* ── Drag handle ── */
+        #track-drag-handle {
+            width:36px;height:4px;background:#e0e0e0;
+            border-radius:2px;margin:10px auto 0;flex-shrink:0;
+        }
+        /* ── Header row ── */
+        #track-header {
+            display:flex;align-items:center;justify-content:space-between;
+            padding:10px 16px 10px;border-bottom:1px solid #f2f2f2;flex-shrink:0;
+        }
+        #track-header-title {
+            font-size:1rem;font-weight:800;color:#111;display:flex;align-items:center;gap:6px;
+        }
+        #track-close-btn {
+            background:none;border:none;width:30px;height:30px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            cursor:pointer;color:#888;font-size:1.1rem;
+            transition:background 0.15s;
+        }
+        #track-close-btn:hover { background:#f5f5f5; }
+
+        /* ── Driver card ── */
+        #track-driver-card {
+            display:flex;align-items:center;gap:12px;
+            padding:10px 16px 10px;
+            background:linear-gradient(135deg,#fff8f4 0%,#fff3ed 100%);
+            border-bottom:1px solid #fde8d8;
+            flex-shrink:0;
+        }
+        #track-driver-avatar {
+            width:46px;height:46px;border-radius:50%;flex-shrink:0;
+            background:linear-gradient(135deg,#FF5C00,#e64a00);
+            display:flex;align-items:center;justify-content:center;
+            font-size:1.2rem;font-weight:800;color:#fff;
+            box-shadow:0 3px 10px rgba(255,92,0,0.35);
+            position:relative;
+        }
+        #track-driver-online-dot {
+            position:absolute;bottom:1px;right:1px;
+            width:11px;height:11px;border-radius:50%;
+            background:#22c55e;border:2px solid #fff;
+            box-shadow:0 0 0 2px rgba(34,197,94,0.3);
+            animation:trackOnlinePulse 2s infinite;
+        }
+        @keyframes trackOnlinePulse {
+            0%,100%{box-shadow:0 0 0 2px rgba(34,197,94,0.3);}
+            50%    {box-shadow:0 0 0 5px rgba(34,197,94,0.1);}
+        }
+        #track-driver-info { flex:1;min-width:0; }
+        #track-driver-name {
+            font-size:0.9rem;font-weight:800;color:#1a1a1a;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        #track-driver-role {
+            font-size:0.72rem;color:#888;font-weight:600;margin-top:1px;
+        }
+        #track-delivo-badge {
+            display:flex;align-items:center;gap:5px;
+            background:#fff;
+            border:1.5px solid #FF5C00;
+            border-radius:50px;
+            padding:4px 10px 4px 8px;
+            flex-shrink:0;
+        }
+        #track-delivo-badge svg { flex-shrink:0; }
+        #track-delivo-badge span {
+            font-size:0.72rem;font-weight:800;
+            color:#FF5C00;letter-spacing:0.3px;
+        }
+
+        /* ── ETA bar ── */
+        #track-status-bar {
+            display:flex;align-items:center;justify-content:center;gap:8px;
+            padding:7px 16px;font-size:0.82rem;font-weight:700;
+            color:#FF5C00;flex-shrink:0;min-height:34px;
+            border-bottom:1px solid #f5f5f5;
+        }
+
+        /* ── Footer ── */
+        #track-footer {
+            padding:10px 16px 16px;flex-shrink:0;display:flex;gap:8px;
+        }
+        #track-fit-btn {
+            flex:1;background:#f5f5f5;color:#333;border:none;border-radius:12px;
+            padding:11px;font-size:0.82rem;font-weight:800;cursor:pointer;
+            font-family:inherit;transition:background 0.15s;
+        }
+        #track-fit-btn:hover { background:#ebebeb; }
+        #track-open-gmaps {
+            flex:2;background:#4285f4;color:#fff;border:none;border-radius:12px;
+            padding:11px;font-size:0.82rem;font-weight:800;cursor:pointer;
+            font-family:inherit;transition:opacity 0.15s;
+        }
+        #track-open-gmaps:hover { opacity:0.88; }
+        `;
+        document.head.appendChild(s);
+    }
+
+    const el = document.createElement('div');
+    el.id = 'track-modal';
+    el.style.cssText = `
+        display:none;position:fixed;inset:0;z-index:10000;
+        background:rgba(0,0,0,0.65);align-items:flex-end;justify-content:center;
+        font-family:'Almarai',sans-serif;
+    `;
+    el.innerHTML = `
+        <div id="track-modal-sheet">
+
+            <!-- Drag handle -->
+            <div id="track-drag-handle"></div>
+
+            <!-- Header -->
+            <div id="track-header">
+                <div id="track-header-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                         stroke="#FF5C00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    تتبع طلبك
+                </div>
+                <button id="track-close-btn" aria-label="إغلاق">✕</button>
+            </div>
+
+            <!-- Driver card -->
+            <div id="track-driver-card">
+                <!-- Avatar with initial -->
+                <div id="track-driver-avatar">
+                    <span id="track-driver-initial">؟</span>
+                    <div id="track-driver-online-dot"></div>
+                </div>
+                <!-- Name + role -->
+                <div id="track-driver-info">
+                    <div id="track-driver-name">جاري التحميل…</div>
+                    <div id="track-driver-role">سائق توصيل</div>
+                </div>
+                <!-- Delivo verified badge -->
+                <div id="track-delivo-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"
+                              fill="#FF5C00" opacity="0.15" stroke="#FF5C00" stroke-width="1.8"
+                              stroke-linejoin="round"/>
+                        <polyline points="9 12 11 14 15 10" stroke="#FF5C00" stroke-width="2"
+                                  stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Delivo</span>
+                </div>
+            </div>
+
+            <!-- ETA / status bar -->
+            <div id="track-status-bar">جاري التحميل…</div>
+
+            <!-- Map -->
+            <div id="track-map" style="width:100%;flex:1;min-height:300px;"></div>
+
+            <!-- Footer -->
+            <div id="track-footer">
+                <button id="track-fit-btn">🗺 عرض المسار</button>
+                <button id="track-open-gmaps">📌 فتح في خرائط غوغل</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(el);
+
+    document.getElementById('track-close-btn').addEventListener('click', _closeTrackModal);
+    el.addEventListener('click', (e) => { if (e.target === el) _closeTrackModal(); });
+
+    document.getElementById('track-fit-btn').addEventListener('click', _fitTrackBounds);
+
+    document.getElementById('track-open-gmaps').addEventListener('click', () => {
+        let url = 'https://www.google.com/maps?q=34.004,36.210';
+        if (_trackDriverMark && _trackDestMark) {
+            const d = _trackDriverMark.getLatLng();
+            const t = _trackDestMark.getLatLng();
+            url = `https://www.google.com/maps/dir/${d.lat},${d.lng}/${t.lat},${t.lng}`;
+        } else if (_trackDriverMark) {
+            const d = _trackDriverMark.getLatLng();
+            url = `https://www.google.com/maps?q=${d.lat},${d.lng}`;
+        }
+        window.open(url, '_blank');
+    });
+}
+
+function _closeTrackModal() {
+    clearInterval(_trackInterval);
+    _trackInterval = null;
+    if (_animRAF) { cancelAnimationFrame(_animRAF); _animRAF = null; }
+    const modal = document.getElementById('track-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+}
+
+function _setTrackStatus(msg, type) {
+    const bar = document.getElementById('track-status-bar');
+    if (!bar) return;
+    const colors = { loading: '#FF5C00', ok: '#22c55e', warn: '#f59e0b', error: '#ef4444' };
+    bar.textContent = msg;
+    bar.style.color = colors[type] || '#FF5C00';
+}
+
+function _fitTrackBounds() {
+    if (!_trackMap) return;
+    const points = [];
+    if (_trackDriverMark) points.push(_trackDriverMark.getLatLng());
+    if (_trackDestMark)   points.push(_trackDestMark.getLatLng());
+    if (points.length === 2) {
+        _trackMap.fitBounds(L.latLngBounds(points), { padding: [56, 56] });
+    } else if (points.length === 1) {
+        _trackMap.setView(points[0], 15);
+    }
+}
+
+// ── OSRM route polyline + ETA ─────────────────────────────────
+async function _updateRoute(driverLat, driverLng, destLat, destLng) {
+    try {
+        const url = `https://router.project-osrm.org/route/v1/driving/` +
+                    `${driverLng},${driverLat};${destLng},${destLat}` +
+                    `?overview=full&geometries=geojson`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (!data || data.code !== 'Ok' || !data.routes?.[0]) return null;
+
+        const route  = data.routes[0];
+        const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+        if (_trackRouteLine) {
+            _trackRouteLine.setLatLngs(coords);
+        } else {
+            _trackRouteLine = L.polyline(coords, {
+                color:    '#FF5C00',
+                weight:   5,
+                opacity:  0.80,
+                lineJoin: 'round',
+                lineCap:  'round',
+            }).addTo(_trackMap);
+            _trackRouteLine.bringToBack();
+        }
+
+        return { duration: route.duration, distance: route.distance };
+    } catch(e) {
+        console.warn('[Track] OSRM failed', e);
+        return null;
+    }
+}
+
+// ── Polling ───────────────────────────────────────────────────
+async function _startTrackPolling(orderId, uid) {
+    clearInterval(_trackInterval);
+    await _fetchAndUpdateTrack(orderId, uid);
+    _trackInterval = setInterval(() => _fetchAndUpdateTrack(orderId, uid), 5000);
+}
+
+async function _fetchAndUpdateTrack(orderId, uid) {
+    try {
+        let order = null;
+        const orderResp = await fetch(`${OH_RTDB_URL}/requests/${orderId}.json`);
+        order = await orderResp.json();
+        if (!order && uid) {
+            const histResp = await fetch(`${OH_RTDB_URL}/historyRequests/${uid}/${orderId}.json`);
+            order = await histResp.json();
+        }
+        if (!order) { _setTrackStatus('⚠️ لم يتم العثور على الطلب', 'warn'); return; }
+
+        // ── Populate driver card from order data ──────────────
+        const driverOwner = (order.driver && order.driver !== '0') ? order.driver : null;
+        const nameEl    = document.getElementById('track-driver-name');
+        const initialEl = document.getElementById('track-driver-initial');
+        if (nameEl && driverOwner) {
+            nameEl.textContent    = driverOwner;
+            if (initialEl) initialEl.textContent = driverOwner.charAt(0).toUpperCase();
+        } else if (nameEl) {
+            nameEl.textContent    = 'سائق Delivo';
+            if (initialEl) initialEl.textContent = 'D';
+        }
+
+        const state = order.state || '0';
+        if (state === '1') { _setTrackStatus('✅ تم توصيل طلبك!', 'ok'); clearInterval(_trackInterval); return; }
+        if (state === '2' || state === '5') { _setTrackStatus('❌ الطلب ملغي', 'error'); clearInterval(_trackInterval); return; }
+
+        const trackable = order.trackorder === '1' || order.trackorder === 1;
+        if (!trackable) { _setTrackStatus('⏳ في انتظار تفعيل التتبع من السائق…', 'warn'); return; }
+
+        // Resolve driver ID
+        let driverId = order.driverid || null;
+        if (!driverId && order.driver && order.driver !== '0') {
+            try {
+                const driversResp = await fetch(`${OH_RTDB_URL}/drivers.json`);
+                const driversData = await driversResp.json();
+                if (Array.isArray(driversData)) {
+                    const idx = driversData.findIndex(d => d && d.owner === order.driver);
+                    if (idx !== -1) driverId = String(idx);
+                } else if (driversData && typeof driversData === 'object') {
+                    for (const [key, d] of Object.entries(driversData)) {
+                        if (d && d.owner === order.driver) { driverId = key; break; }
+                    }
+                }
+            } catch(e) { console.warn('[Track] driver resolve failed', e); }
+        }
+        if (!driverId) { _setTrackStatus('⏳ في انتظار تحديد السائق…', 'warn'); return; }
+
+        // Fetch driver location
+        const locResp = await fetch(`${OH_RTDB_URL}/drivers/${driverId}/location.json`);
+        const loc = await locResp.json();
+        if (!loc?.lat || !loc?.lng) { _setTrackStatus('⏳ في انتظار موقع السائق…', 'warn'); return; }
+
+        const dLat = parseFloat(loc.lat);
+        const dLng = parseFloat(loc.lng);
+        if (isNaN(dLat) || isNaN(dLng)) { _setTrackStatus('⚠️ بيانات موقع غير صالحة', 'warn'); return; }
+
+        const destLat = parseFloat(order.lat);
+        const destLng = parseFloat(order.lng);
+        const hasDestination = !isNaN(destLat) && !isNaN(destLng) && destLat !== 0 && destLng !== 0;
+
+        if (_trackMap) {
+            // ── Compute bearing from previous position ────────
+            let newBearing = _animBearing;
+            if (_animTo) {
+                const moved = Math.abs(dLat - _animTo.lat) + Math.abs(dLng - _animTo.lng);
+                if (moved > 0.000005) {   // only rotate if moved meaningfully (~0.5m)
+                    newBearing = _calcBearing(_animTo.lat, _animTo.lng, dLat, dLng);
+                }
+            }
+
+            // ── Driver marker (create or animate) ────────────
+            if (!_trackDriverMark) {
+                _trackDriverMark = L.marker([dLat, dLng], {
+                    icon: _motoIcon(newBearing),
+                    zIndexOffset: 1000,
+                }).addTo(_trackMap);
+                _animFrom    = { lat: dLat, lng: dLng };
+                _animTo      = { lat: dLat, lng: dLng };
+                _animBearing = newBearing;
+            } else {
+                _moveTo(dLat, dLng, newBearing);
+            }
+
+            // ── Destination marker + pulse ────────────────────
+            if (hasDestination) {
+                if (!_trackDestMark) {
+                    _trackDestMark = L.marker([destLat, destLng], {
+                        icon: _destIcon(),
+                        zIndexOffset: 900,
+                    }).bindTooltip('موقع التوصيل', {
+                        permanent:  false,
+                        direction:  'top',
+                        className:  'track-dest-tip',
+                    }).addTo(_trackMap);
+                    _ensurePulse(destLat, destLng);
+                    // Inject tooltip style once
+                    if (!document.getElementById('track-tip-style')) {
+                        const s = document.createElement('style');
+                        s.id = 'track-tip-style';
+                        s.textContent = `.track-dest-tip{background:#e63000;color:#fff;border:none;
+                            border-radius:8px;font-weight:800;font-size:0.75rem;padding:4px 10px;
+                            font-family:'Almarai',sans-serif;}
+                            .track-dest-tip::before{border-top-color:#e63000;}`;
+                        document.head.appendChild(s);
+                    }
+                }
+            }
+
+            // ── First load: fit bounds ────────────────────────
+            if (!_trackFitted) {
+                _trackFitted = true;
+                if (hasDestination) {
+                    _trackMap.fitBounds(
+                        L.latLngBounds([[dLat, dLng], [destLat, destLng]]),
+                        { padding: [60, 60] }
+                    );
+                } else {
+                    _trackMap.setView([dLat, dLng], 15);
+                }
+            }
+
+            // ── Route + ETA ───────────────────────────────────
+            const age    = loc.timestamp ? Math.round((Date.now() - loc.timestamp) / 1000) : null;
+            const ageStr = age !== null
+                ? (age < 60 ? ` · ${age}ث` : ` · ${Math.round(age/60)}د`)
+                : '';
+
+            if (hasDestination) {
+                const routeInfo = await _updateRoute(dLat, dLng, destLat, destLng);
+                if (routeInfo) {
+                    const mins = Math.ceil(routeInfo.duration / 60);
+                    const km   = (routeInfo.distance / 1000).toFixed(1);
+                    _setTrackStatus(`وقت الوصول المتوقع: ${mins} دقيقة  •  ${km} كم${ageStr}`, 'ok');
+                } else {
+                    _setTrackStatus(`🛵 السائق في الطريق إليك${ageStr}`, 'ok');
+                }
+            } else {
+                _setTrackStatus(`🛵 السائق في الطريق إليك${ageStr}`, 'ok');
+            }
+        }
+
+    } catch(e) {
+        _setTrackStatus('⚠️ تعذّر تحميل بيانات التتبع', 'warn');
+        console.error('[Track]', e);
+    }
+}
 
 // ── Wire up filters ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -913,11 +1586,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close & back buttons
     const closeBtn = document.getElementById('orders-close-btn');
     const backBtn  = document.getElementById('orders-back-btn');
+    const overlay  = document.getElementById('orders-sheet-overlay');
+
     if (closeBtn) closeBtn.addEventListener('click', closeOrdersModal);
+    if (overlay)  overlay.addEventListener('click', closeOrdersModal);
     if (backBtn)  backBtn.addEventListener('click', () => {
         closeOrdersModal();
-        setTimeout(() => openModal('modal-account'), 180);
+        setTimeout(() => openModal('modal-account'), 300);
     });
+
+    // Swipe down on handle/header to dismiss
+    const sheet = document.getElementById('orders-sheet');
+    if (sheet) {
+        let _startY = 0;
+        sheet.addEventListener('touchstart', e => {
+            _startY = e.touches[0].clientY;
+        }, { passive: true });
+        sheet.addEventListener('touchend', e => {
+            const dy = e.changedTouches[0].clientY - _startY;
+            if (dy > 80) closeOrdersModal(); // swipe down >80px closes
+        }, { passive: true });
+    }
 
     // Filter pills
     document.querySelectorAll('.oh-filter').forEach(btn => {

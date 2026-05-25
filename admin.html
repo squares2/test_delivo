@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivo — لوحة الإدارة</title>
+<link rel="icon" href="assets/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DELIVO ADMIN — Dark Command Center
+═══════════════════════════════════════════════════════════════ */
+:root {
+    /* ── Colors ──────────────────────────────────── */
+    --orange:        #FF5C00;
+    --orange-dim:    #cc4800;
+    --orange-glow:   rgba(255,92,0,0.18);
+    --orange-faint:  rgba(255,92,0,0.07);
+    --bg:            #0a0a0f;
+    --surface:       #111118;
+    --surface2:      #18181f;
+    --surface3:      #1e1e28;
+    --border:        rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.13);
+    --white:         #f0f0f8;
+    --gray:          #6b6b82;
+    --gray-light:    #a0a0b8;
+    --green:         #22c55e;
+    --green-glow:    rgba(34,197,94,0.15);
+    --red:           #ef4444;
+    --red-glow:      rgba(239,68,68,0.15);
+    --yellow:        #f59e0b;
+    --blue:          #3b82f6;
+    --purple:        #a855f7;
+    /* ── Typography ──────────────────────────────── */
+    --font:          'Almarai', sans-serif;
+    --mono:          'JetBrains Mono', monospace;
+    /* ── Scale tokens (mobile-first, overridden per breakpoint) ── */
+    --scale:         1;       /* multiplier for JS if needed */
+    --fs-xs:         0.68rem;
+    --fs-sm:         0.78rem;
+    --fs-md:         0.88rem;
+    --fs-lg:         1rem;
+    --fs-xl:         1.15rem;
+    --pad-xs:        6px;
+    --pad-sm:        10px;
+    --pad-md:        14px;
+    --pad-lg:        20px;
+    --pad-xl:        28px;
+    --gap-sm:        8px;
+    --gap-md:        12px;
+    --gap-lg:        18px;
+    --radius-sm:     6px;
+    --radius-md:     10px;
+    --radius-lg:     14px;
+    --radius-xl:     18px;
+    --sidebar-w:     220px;
+    --topbar-h:      52px;
+    --card-min:      260px;
+    --avatar-sm:     30px;
+}
+/* ── Wide desktop (≥1280px) — everything bigger ── */
+@media (min-width: 1280px) {
+    :root {
+        --fs-xs:     0.76rem;
+        --fs-sm:     0.88rem;
+        --fs-md:     0.98rem;
+        --fs-lg:     1.1rem;
+        --fs-xl:     1.3rem;
+        --pad-xs:    8px;
+        --pad-sm:    13px;
+        --pad-md:    18px;
+        --pad-lg:    26px;
+        --pad-xl:    36px;
+        --gap-sm:    10px;
+        --gap-md:    16px;
+        --gap-lg:    24px;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 22px;
+        --sidebar-w: 270px;
+        --topbar-h:  64px;
+        --card-min:  300px;
+        --avatar-sm: 36px;
+    }
+}
+/* ── Ultra-wide (≥1600px) ── */
+@media (min-width: 1600px) {
+    :root {
+        --fs-xs:     0.82rem;
+        --fs-sm:     0.94rem;
+        --fs-md:     1.05rem;
+        --fs-lg:     1.18rem;
+        --fs-xl:     1.4rem;
+        --pad-xs:    10px;
+        --pad-sm:    15px;
+        --pad-md:    22px;
+        --pad-lg:    32px;
+        --pad-xl:    44px;
+        --gap-sm:    12px;
+        --gap-md:    20px;
+        --gap-lg:    30px;
+        --sidebar-w: 300px;
+        --topbar-h:  70px;
+        --card-min:  340px;
+        --avatar-sm: 40px;
+    }
+}
+/* ── Mobile (≤640px) — compact ── */
+@media (max-width: 640px) {
+    :root {
+        --fs-xs:     0.62rem;
+        --fs-sm:     0.72rem;
+        --fs-md:     0.82rem;
+        --fs-lg:     0.92rem;
+        --fs-xl:     1.05rem;
+        --pad-xs:    4px;
+        --pad-sm:    8px;
+        --pad-md:    11px;
+        --pad-lg:    14px;
+        --pad-xl:    20px;
+        --gap-sm:    6px;
+        --gap-md:    9px;
+        --gap-lg:    12px;
+        --sidebar-w: 56px;
+        --topbar-h:  48px;
+        --card-min:  180px;
+        --avatar-sm: 26px;
+    }
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--white); font-family: var(--font); font-size: 15px; -webkit-font-smoothing: antialiased; }
+button { font-family: var(--font); cursor: pointer; }
+input, select, textarea { font-family: var(--font); }
+
+/* ── Login screen ───────────────────────────────────────────── */
+#login-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+}
+.login-card {
+    width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-xl);
+    padding: 36px 32px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,92,0,0.06);
+}
+.login-logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 28px;
+}
+.login-logo img { width: 36px; height: 36px; border-radius: 8px; }
+.login-logo-text { font-size: 1.4rem; font-weight: 800; color: var(--white); }
+.login-logo-text span { color: var(--orange); }
+.login-subtitle { font-size: 0.72rem; color: var(--gray); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 26px; }
+.login-field { margin-bottom: 14px; }
+.login-field label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--gray-light); margin-bottom: 6px; letter-spacing: 0.5px; }
+.login-field input {
+    width: 100%; padding: 11px 14px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--white); font-size: 0.88rem; font-family: var(--mono);
+    outline: none; transition: border-color 0.2s;
+}
+.login-field input:focus { border-color: var(--orange); }
+.login-btn {
+    width: 100%; margin-top: 20px;
+    padding: 12px; border: none; border-radius: var(--radius-md);
+    background: var(--orange); color: #fff;
+    font-size: 0.95rem; font-weight: 800;
+    transition: background 0.2s, transform 0.1s;
+}
+.login-btn:hover { background: var(--orange-dim); }
+.login-btn:active { transform: scale(0.98); }
+.login-error { margin-top: 10px; font-size: 0.78rem; color: var(--red); text-align: center; min-height: 18px; }
+.login-role-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--orange-faint); border: 1px solid rgba(255,92,0,0.2);
+    border-radius: 50px; padding: 3px 10px; font-size: 0.68rem;
+    font-weight: 800; color: var(--orange); margin-bottom: 6px;
+}
+
+/* ── App shell ──────────────────────────────────────────────── */
+#app { display: none; height: 100vh; flex-direction: column; }
+#app.visible { display: flex; }
+
+/* ── Topbar ─────────────────────────────────────────────────── */
+.topbar {
+    height: var(--topbar-h); background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 var(--pad-lg);
+    gap: var(--gap-md); flex-shrink: 0; z-index: 100;
+}
+.topbar__logo { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: 6px; }
+.topbar__logo img { width: 34px; height: 34px; border-radius: 8px; }
+.topbar__logo-name { font-size: var(--fs-lg); font-weight: 800; color: var(--white); }
+.topbar__logo-name span { color: var(--orange); }
+.topbar__divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+.topbar__title { font-size: var(--fs-sm); font-weight: 700; color: var(--gray); letter-spacing: 0.5px; }
+
+/* live pulse indicator */
+.live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-glow);
+    animation: livePulse 2s infinite;
+    flex-shrink: 0;
+}
+@keyframes livePulse { 0%,100%{box-shadow:0 0 0 3px var(--green-glow);} 50%{box-shadow:0 0 0 6px rgba(34,197,94,0.05);} }
+
+.topbar__spacer { flex: 1; }
+
+/* Stats chips in topbar */
+.topbar-stats { display: flex; gap: 6px; align-items: center; }
+.tstat {
+    display: flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50px; padding: var(--pad-xs) var(--pad-sm);
+    font-size: var(--fs-xs); font-weight: 700;
+}
+.tstat__val { font-family: var(--mono); font-weight: 600; font-size: var(--fs-sm); }
+.tstat--new  .tstat__val { color: var(--orange); }
+.tstat--drv  .tstat__val { color: var(--green);  }
+.tstat--usr  .tstat__val { color: var(--blue);   }
+
+.topbar__user {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50px; padding: var(--pad-xs) var(--pad-sm) var(--pad-xs) var(--pad-xs);
+    cursor: pointer; transition: border-color 0.2s;
+}
+.topbar__user:hover { border-color: var(--orange); }
+.topbar__avatar {
+    width: var(--avatar-sm); height: var(--avatar-sm); border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dim));
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-xs); font-weight: 800; color: #fff;
+}
+.topbar__uname { font-size: var(--fs-sm); font-weight: 700; color: var(--gray-light); }
+.topbar__urole { font-size: var(--fs-xs); color: var(--gray); font-weight: 600; }
+
+/* ── Main layout ────────────────────────────────────────────── */
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Sidebar ────────────────────────────────────────────────── */
+.sidebar {
+    width: var(--sidebar-w); background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden; flex-shrink: 0;
+    transition: width 0.25s ease;
+}
+.sidebar.collapsed { width: 56px; }
+.sidebar-nav { flex: 1; overflow-y: auto; padding: var(--pad-xs) 0; }
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.nav-section-label {
+    font-size: var(--fs-xs); font-weight: 800; color: var(--gray);
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: var(--pad-sm) var(--pad-md) 4px; white-space: nowrap; overflow: hidden;
+}
+.sidebar.collapsed .nav-section-label { opacity: 0; }
+.nav-item {
+    display: flex; align-items: center; gap: var(--gap-sm);
+    padding: var(--pad-sm) var(--pad-md); margin: 2px 6px;
+    border-radius: var(--radius-md); cursor: pointer;
+    color: var(--gray-light); font-size: var(--fs-md); font-weight: 700;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap; overflow: hidden; border: none; background: none;
+    text-align: right; width: calc(100% - 12px);
+    position: relative;
+}
+.nav-item svg { flex-shrink: 0; }
+.nav-item:hover { background: var(--surface3); color: var(--white); }
+.nav-item.active { background: var(--orange-faint); color: var(--orange); }
+.nav-item.active::before {
+    content: ''; position: absolute; right: 0; top: 20%; bottom: 20%;
+    width: 3px; border-radius: 2px 0 0 2px;
+    background: var(--orange);
+}
+.nav-badge {
+    margin-right: auto; background: var(--orange); color: #fff;
+    font-size: 0.6rem; font-weight: 800; min-width: 18px; height: 18px;
+    border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    padding: 0 5px;
+}
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-badge { display: none; }
+.sidebar-collapse-btn {
+    padding: 10px 14px; border-top: 1px solid var(--border);
+    background: none; border-left: none; border-right: none; border-bottom: none;
+    color: var(--gray); width: 100%; text-align: center;
+    display: flex; align-items: center; justify-content: center;
+    transition: color 0.15s;
+}
+.sidebar-collapse-btn:hover { color: var(--white); }
+
+/* ── Content area ───────────────────────────────────────────── */
+.content { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); }
+.panel { display: none; flex: 1; overflow: hidden; }
+.panel.active { display: flex; flex-direction: column; }
+
+/* ── Panel header ───────────────────────────────────────────── */
+.panel-header {
+    padding: var(--pad-md) var(--pad-lg); border-bottom: 1px solid var(--border);
+    background: var(--surface); display: flex; align-items: center; gap: var(--gap-md);
+    flex-shrink: 0;
+}
+.panel-header h2 { font-size: var(--fs-lg); font-weight: 800; color: var(--white); }
+.panel-header-sub { font-size: var(--fs-sm); color: var(--gray); margin-right: auto; }
+.ph-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: var(--pad-xs) var(--pad-sm); border-radius: var(--radius-md); border: 1.5px solid var(--border);
+    background: var(--surface2); color: var(--gray-light);
+    font-size: var(--fs-sm); font-weight: 800; transition: all 0.15s;
+}
+.ph-btn:hover { border-color: var(--orange); color: var(--orange); }
+.ph-btn--primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+.ph-btn--primary:hover { background: var(--orange-dim); }
+
+/* ─── MAP PANEL ─────────────────────────────────────────────── */
+#panel-map { position: relative; }
+#admin-map { width: 100%; flex: 1; }
+.map-legend {
+    position: absolute; bottom: 20px; right: 20px; z-index: 500;
+    background: rgba(17,17,24,0.92); backdrop-filter: blur(8px);
+    border: 1px solid var(--border-bright); border-radius: var(--radius-lg);
+    padding: 10px 14px; min-width: 150px;
+}
+.map-legend-title { font-size: 0.62rem; font-weight: 800; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.72rem; font-weight: 700; color: var(--gray-light); margin: 4px 0; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.map-filter-bar {
+    position: absolute; top: 14px; right: 14px; z-index: 500;
+    display: flex; gap: 6px;
+}
+.map-filter-btn {
+    display: flex; align-items: center; gap: 5px;
+    background: rgba(17,17,24,0.9); backdrop-filter: blur(8px);
+    border: 1.5px solid var(--border-bright); border-radius: 50px;
+    padding: 5px 12px; color: var(--gray-light);
+    font-size: 0.72rem; font-weight: 800; transition: all 0.15s;
+}
+.map-filter-btn.active { border-color: var(--orange); color: var(--orange); background: rgba(255,92,0,0.12); }
+.map-filter-btn:hover { border-color: var(--white); color: var(--white); }
+
+/* ─── ORDERS PANEL ──────────────────────────────────────────── */
+.orders-toolbar {
+    padding: var(--pad-sm) var(--pad-lg); border-bottom: 1px solid var(--border);
+    background: var(--surface); display: flex; align-items: center; gap: var(--gap-sm); flex-shrink: 0; flex-wrap: wrap;
+}
+.filter-pill {
+    padding: var(--pad-xs) var(--pad-sm); border-radius: 50px;
+    border: 1.5px solid var(--border); background: var(--surface2);
+    color: var(--gray-light); font-size: var(--fs-sm); font-weight: 800;
+    transition: all 0.15s; white-space: nowrap;
+}
+.filter-pill.active  { border-color: var(--orange); color: var(--orange); background: var(--orange-faint); }
+.filter-pill:hover   { border-color: var(--border-bright); color: var(--white); }
+.search-box {
+    flex: 1; min-width: 180px; max-width: 320px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-md); padding: var(--pad-xs) var(--pad-sm);
+    color: var(--white); font-size: var(--fs-md);
+    outline: none; transition: border-color 0.2s;
+}
+.search-box:focus { border-color: var(--orange); }
+.search-box::placeholder { color: var(--gray); }
+.orders-list { flex: 1; overflow-y: auto; padding: var(--pad-md) var(--pad-lg); display: flex; flex-direction: column; gap: var(--gap-sm); }
+.orders-list::-webkit-scrollbar { width: 5px; }
+.orders-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Order card */
+.order-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.order-card:hover { border-color: var(--border-bright); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+.order-card.unread { border-right: 3px solid var(--orange); }
+.order-card.state-1 { border-right: 3px solid var(--green); }
+.order-card.state-2, .order-card.state-5 { opacity: 0.6; }
+.oc-header {
+    display: flex; align-items: center; gap: var(--gap-sm);
+    padding: var(--pad-sm) var(--pad-md); cursor: pointer; border-radius: var(--radius-lg);
+}
+.oc-id { font-family: var(--mono); font-size: var(--fs-sm); font-weight: 600; color: var(--orange); flex-shrink: 0; }
+.oc-store { font-size: var(--fs-md); font-weight: 800; color: var(--white); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oc-customer { font-size: var(--fs-sm); color: var(--gray-light); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oc-total { font-family: var(--mono); font-size: var(--fs-md); font-weight: 600; color: var(--green); flex-shrink: 0; }
+.oc-state { flex-shrink: 0; padding: 3px var(--pad-sm); border-radius: 50px; font-size: var(--fs-xs); font-weight: 800; }
+.state-badge-0 { background: rgba(255,92,0,0.15);  color: var(--orange); }
+.state-badge-1 { background: var(--green-glow);     color: var(--green);  }
+.state-badge-2 { background: var(--red-glow);        color: var(--red);    }
+.state-badge-3 { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.state-badge-5 { background: rgba(168,85,247,0.15); color: var(--purple); }
+.oc-toggle { font-size: 0.7rem; color: var(--gray); transition: transform 0.2s; flex-shrink: 0; }
+.order-card.expanded .oc-toggle { transform: rotate(180deg); }
+.oc-body {
+    display: grid; grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s ease;
+    border-top: 0px solid var(--border);
+}
+.oc-body-inner { overflow: hidden; }
+.order-card.expanded .oc-body {
+    grid-template-rows: 1fr;
+    border-top-width: 1px;
+}
+.oc-body-inner-pad { padding: var(--pad-sm) var(--pad-md) var(--pad-md); }
+.oc-items-list { margin: var(--pad-sm) 0 0; display: flex; flex-direction: column; gap: 6px; }
+.oc-item-row { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--gray-light); }
+.oc-item-row .name { flex: 1; }
+.oc-item-row .qty  { color: var(--gray); margin: 0 10px; }
+.oc-item-row .price { font-family: var(--mono); color: var(--white); }
+.oc-meta-row { display: flex; gap: var(--gap-sm); flex-wrap: wrap; margin-top: var(--pad-sm); }
+.oc-meta-chip {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50px; padding: 4px var(--pad-sm);
+    font-size: var(--fs-sm); font-weight: 700; color: var(--gray-light);
+}
+.oc-actions { display: flex; gap: var(--gap-sm); margin-top: var(--pad-md); flex-wrap: wrap; }
+.oc-action-btn {
+    flex: 1; padding: var(--pad-xs) var(--pad-sm); border-radius: var(--radius-md);
+    border: 1.5px solid var(--border); background: var(--surface2);
+    color: var(--gray-light); font-size: var(--fs-sm); font-weight: 800;
+    min-width: 90px; transition: all 0.15s;
+}
+.oc-action-btn:hover { border-color: var(--orange); color: var(--orange); }
+.oc-action-btn.primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+.oc-action-btn.primary:hover { background: var(--orange-dim); }
+.oc-action-btn.danger { border-color: var(--red); color: var(--red); }
+.oc-action-btn.active-state { opacity: 0.45; cursor: default; box-shadow: inset 0 0 0 1px currentColor; }
+
+/* Driver assign select */
+.driver-select {
+    flex: 2; background: var(--surface3); border: 1.5px solid var(--border);
+    border-radius: var(--radius-md); padding: var(--pad-xs) var(--pad-sm);
+    color: var(--white); font-size: var(--fs-md); outline: none;
+    transition: border-color 0.2s; font-family: var(--font);
+}
+.driver-select:focus { border-color: var(--orange); }
+
+/* Empty state */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gray); }
+.empty-state svg { opacity: 0.3; }
+.empty-state p { font-size: 0.88rem; font-weight: 700; }
+
+/* ─── DRIVERS PANEL ─────────────────────────────────────────── */
+.drivers-grid { padding: var(--pad-md) var(--pad-lg); display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr)); gap: var(--gap-md); overflow-y: auto; }
+.driver-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: var(--pad-md);
+    transition: border-color 0.2s;
+}
+.driver-card:hover { border-color: var(--border-bright); }
+.driver-card.online { border-color: rgba(34,197,94,0.3); }
+.dc-top { display: flex; align-items: center; gap: var(--gap-sm); margin-bottom: var(--pad-sm); }
+.dc-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--orange), var(--orange-dim));
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-lg); font-weight: 800; color: #fff; flex-shrink: 0; position: relative;
+}
+.dc-online-dot {
+    position: absolute; bottom: 1px; right: 1px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--surface); background: var(--gray);
+}
+.dc-online-dot.on { background: var(--green); animation: livePulse 2s infinite; }
+.dc-name { font-size: var(--fs-md); font-weight: 800; color: var(--white); }
+.dc-sub  { font-size: var(--fs-sm); color: var(--gray); margin-top: 1px; }
+.dc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dc-stat { background: var(--surface2); border-radius: var(--radius-sm); padding: 7px 10px; }
+.dc-stat-val { font-family: var(--mono); font-size: 0.9rem; font-weight: 600; color: var(--white); }
+.dc-stat-label { font-size: 0.6rem; color: var(--gray); font-weight: 700; margin-top: 1px; }
+.dc-locate-btn {
+    width: 100%; margin-top: 8px; padding: 7px; border-radius: var(--radius-md);
+    background: none; border: 1.5px solid var(--border); color: var(--gray-light);
+    font-size: 0.72rem; font-weight: 800; transition: all 0.15s;
+}
+.dc-locate-btn:hover { border-color: var(--orange); color: var(--orange); }
+
+/* ─── USERS PANEL ───────────────────────────────────────────── */
+.users-table-wrap { flex: 1; overflow: auto; padding: 16px 20px; }
+.users-table { width: 100%; border-collapse: collapse; }
+.users-table th {
+    text-align: right; padding: 8px 12px; font-size: 0.65rem; font-weight: 800;
+    color: var(--gray); letter-spacing: 1px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+    background: var(--surface);
+}
+.users-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.78rem; color: var(--gray-light); vertical-align: middle; }
+.users-table tr:hover td { background: var(--surface); }
+.ut-name { font-weight: 800; color: var(--white); }
+.ut-phone { font-family: var(--mono); font-size: 0.72rem; }
+.ut-points { font-family: var(--mono); color: var(--orange); font-weight: 600; }
+.ut-status { padding: 2px 8px; border-radius: 50px; font-size: 0.62rem; font-weight: 800; }
+.ut-status.active   { background: var(--green-glow);   color: var(--green); }
+.ut-status.offline  { background: var(--surface2);     color: var(--gray);  }
+.ut-avatar-sm {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface3); display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 0.7rem; font-weight: 800; color: var(--gray-light); border: 1px solid var(--border);
+}
+
+/* ─── STORES PANEL ──────────────────────────────────────────── */
+.stores-grid { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; overflow-y: auto; }
+.store-card-admin {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden; transition: border-color 0.2s;
+}
+.store-card-admin:hover { border-color: var(--orange); }
+.sc-thumb {
+    height: 80px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center; font-size: 2rem;
+    position: relative; overflow: hidden;
+}
+.sc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.sc-type-badge {
+    position: absolute; top: 6px; right: 6px;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    border-radius: 50px; padding: 2px 7px; font-size: 0.6rem; font-weight: 800; color: var(--white);
+}
+.sc-body { padding: 10px 12px; }
+.sc-name { font-size: 0.88rem; font-weight: 800; color: var(--white); margin-bottom: 4px; }
+.sc-meta { display: flex; justify-content: space-between; }
+.sc-items { font-size: 0.7rem; color: var(--gray); }
+.sc-rank  { font-family: var(--mono); font-size: 0.7rem; color: var(--yellow); }
+
+/* ─── ADMIN USERS / EMPLOYEES PANEL ────────────────────────── */
+.emp-grid { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; overflow-y: auto; }
+.emp-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; transition: border-color 0.2s;
+}
+.emp-card:hover { border-color: var(--border-bright); }
+.ec-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ec-avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 800; color: #fff;
+}
+.ec-name { font-size: 0.9rem; font-weight: 800; color: var(--white); }
+.ec-username { font-size: 0.7rem; color: var(--gray); font-family: var(--mono); }
+.ec-role-badge {
+    padding: 2px 9px; border-radius: 50px; font-size: 0.62rem; font-weight: 800;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.role-superadmin { background: rgba(255,92,0,0.15); color: var(--orange); }
+.role-dispatcher  { background: rgba(59,130,246,0.15); color: var(--blue); }
+.role-viewer      { background: rgba(168,85,247,0.15); color: var(--purple); }
+.role-store       { background: rgba(34,197,94,0.15);  color: var(--green); }
+.ec-perms { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.ec-perm { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; font-size: 0.62rem; font-weight: 700; color: var(--gray-light); }
+.ec-perm.has { border-color: rgba(34,197,94,0.3); color: var(--green); background: var(--green-glow); }
+.ec-actions-row { display: flex; gap: 6px; margin-top: 12px; }
+.ec-btn { flex: 1; padding: 6px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: none; color: var(--gray-light); font-size: 0.7rem; font-weight: 800; transition: all 0.15s; }
+.ec-btn:hover { border-color: var(--orange); color: var(--orange); }
+.ec-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+/* ─── SETTINGS PANEL ────────────────────────────────────────── */
+.settings-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 600px; }
+.settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.settings-section-title { padding: 12px 16px; font-size: 0.72rem; font-weight: 800; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-size: 0.82rem; font-weight: 700; color: var(--white); }
+.setting-sub { font-size: 0.7rem; color: var(--gray); margin-top: 2px; }
+/* Toggle switch */
+.toggle { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--surface3); border: 1px solid var(--border);
+    border-radius: 11px; transition: background 0.2s;
+}
+.toggle-slider::before {
+    content: ''; position: absolute; width: 16px; height: 16px;
+    right: 2px; bottom: 2px;
+    background: var(--gray); border-radius: 50%; transition: all 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: var(--orange); border-color: var(--orange); }
+.toggle input:checked + .toggle-slider::before { background: #fff; transform: translateX(-18px); }
+
+/* ─── Modals ────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 8000;
+    background: rgba(0,0,0,0.7); display: none;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: var(--radius-xl); padding: 24px; width: 400px; max-width: 95vw;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+}
+.modal-title { font-size: 1rem; font-weight: 800; color: var(--white); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.modal-field { margin-bottom: 12px; }
+.modal-field label { display: block; font-size: 0.72rem; font-weight: 800; color: var(--gray); margin-bottom: 5px; letter-spacing: 0.4px; }
+.modal-field input, .modal-field select {
+    width: 100%; padding: 9px 12px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-md); color: var(--white); font-size: 0.85rem;
+    outline: none; transition: border-color 0.2s; font-family: var(--font);
+}
+.modal-field input:focus, .modal-field select:focus { border-color: var(--orange); }
+.modal-field select option { background: var(--surface2); }
+.perm-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.perm-check { display: flex; align-items: center; gap: 5px; cursor: pointer; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 5px 9px; transition: all 0.15s; }
+.perm-check:hover { border-color: var(--border-bright); }
+.perm-check input { width: 14px; height: 14px; accent-color: var(--orange); }
+.perm-check span { font-size: 0.7rem; font-weight: 700; color: var(--gray-light); }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.modal-btn { flex: 1; padding: 10px; border-radius: var(--radius-md); border: 1.5px solid var(--border); background: var(--surface2); color: var(--gray-light); font-size: 0.82rem; font-weight: 800; transition: all 0.15s; }
+.modal-btn:hover { border-color: var(--border-bright); color: var(--white); }
+.modal-btn.primary { background: var(--orange); border-color: var(--orange); color: #fff; }
+.modal-btn.primary:hover { background: var(--orange-dim); }
+
+/* ─── Toast ─────────────────────────────────────────────────── */
+#admin-toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 50px; padding: 10px 20px;
+    font-size: 0.82rem; font-weight: 800; color: var(--white);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0; z-index: 9000; white-space: nowrap;
+}
+#admin-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+/* ─── Scrollbars ────────────────────────────────────────────── */
+*::-webkit-scrollbar { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── Responsive ────────────────────────────────────────────── */
+/* Narrow screens: keep sidebar as thin icon rail, never hide */
+@media (max-width: 768px) {
+    :root { --sidebar-w: 56px; }
+    .topbar-stats { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE LAYOUT
+═══════════════════════════════════════════════════════════════ */
+
+/* Tablet/narrow (≤900px): icon-only sidebar rail */
+@media (max-width: 900px) {
+    .sidebar { width: 56px; overflow: visible; }
+    .sidebar .nav-label,
+    .sidebar .nav-section-label,
+    .sidebar-collapse-btn { display: none; }
+    /* Tooltip on hover for icon-only mode */
+    .nav-item { position: relative; justify-content: center; }
+    .nav-item svg { flex-shrink: 0; }
+}
+
+/* Icon-only nav tooltip (shows label on hover when collapsed) */
+@media (max-width: 900px) {
+    .nav-item::after {
+        content: attr(title);
+        position: absolute;
+        left: calc(100% + 8px);
+        top: 50%; transform: translateY(-50%);
+        background: var(--surface3);
+        border: 1px solid var(--border-bright);
+        color: var(--white);
+        font-size: 0.72rem; font-weight: 700;
+        padding: 4px 10px; border-radius: var(--radius-md);
+        white-space: nowrap; pointer-events: none;
+        opacity: 0; transition: opacity 0.15s;
+        z-index: 999;
+    }
+    .nav-item:hover::after { opacity: 1; }
+}
+
+/* Full mobile layout — sidebar stays as icon rail, content fills remaining space */
+@media (max-width: 640px) {
+    .topbar { padding: 0 var(--pad-sm); gap: var(--gap-sm); }
+    .topbar-stats { display: none; }
+    .topbar__divider { display: none; }
+    /* content area accounts for the 56px icon sidebar */
+    .content { min-width: 0; }
+    .orders-list { padding: var(--pad-sm); }
+    .oc-header { flex-wrap: wrap; gap: 6px; }
+    .oc-customer { display: none; }
+    .oc-actions { flex-direction: column; }
+    .oc-action-btn { flex: unset; width: 100%; }
+    .drivers-grid { grid-template-columns: 1fr; padding: var(--pad-sm); gap: var(--gap-sm); }
+    .stores-grid { grid-template-columns: 1fr 1fr !important; padding: var(--pad-sm); gap: var(--gap-sm); }
+    .users-table thead th:nth-child(4),
+    .users-table thead th:nth-child(5),
+    .users-table thead th:nth-child(7),
+    .users-table tbody td:nth-child(4),
+    .users-table tbody td:nth-child(5),
+    .users-table tbody td:nth-child(7) { display: none; }
+    .panel-header { flex-wrap: wrap; }
+    .panel-header input[type="text"] { order: 10; width: 100%; max-width: 100% !important; }
+}
+
+/* Wide: stores grid more columns */
+@media (min-width: 1280px) {
+    .stores-grid { grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr)); }
+    .drivers-grid { grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr)); }
+    .orders-list { padding: var(--pad-lg) var(--pad-xl); gap: var(--gap-sm); }
+    .users-table { font-size: var(--fs-md); }
+    .users-table th, .users-table td { padding: var(--pad-sm) var(--pad-md); }
+}
+
+@media (min-width: 1600px) {
+    .orders-list { max-width: 1400px; margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-logo">
+            <img src="assets/logo.png" alt="Delivo" onerror="this.style.display='none'">
+            <div class="login-logo-text">Deli<span>vo</span></div>
+        </div>
+        <div class="login-role-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V7L12 2z"/></svg>
+            Admin Panel
+        </div>
+        <div class="login-subtitle">تسجيل الدخول للوحة الإدارة</div>
+        <div class="login-field">
+            <label>اسم المستخدم</label>
+            <input type="text" id="adm-user" placeholder="username" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="login-field">
+            <label>كلمة المرور</label>
+            <input type="password" id="adm-pass" placeholder="••••••••">
+        </div>
+        <button class="login-btn" id="adm-login-btn">دخول</button>
+        <div class="login-error" id="adm-login-error"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════ -->
+<div id="app">
+
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="topbar__logo">
+            <img src="assets/logo.png" alt="" onerror="this.style.display='none'">
+            <div class="topbar__logo-name">Deli<span>vo</span></div>
+        </div>
+        <div class="topbar__divider"></div>
+        <span class="topbar__title" id="topbar-panel-name">لوحة التحكم</span>
+        <div class="live-dot" title="متصل مباشر"></div>
+        <div class="topbar__spacer"></div>
+        <div class="topbar-stats">
+            <div class="tstat tstat--new">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="stat-orders" class="tstat__val">0</span>
+                <span style="color:var(--gray);font-size:0.65rem;">طلبات جديدة</span>
+            </div>
+            <div class="tstat tstat--drv">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span id="stat-drivers" class="tstat__val">0</span>
+                <span style="color:var(--gray);font-size:0.65rem;">سائق نشط</span>
+            </div>
+            <div class="tstat tstat--usr">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <span id="stat-users" class="tstat__val">0</span>
+                <span style="color:var(--gray);font-size:0.65rem;">مستخدم</span>
+            </div>
+        </div>
+        <div class="topbar__user" id="topbar-user-btn">
+            <div class="topbar__avatar" id="topbar-avatar">A</div>
+            <div>
+                <div class="topbar__uname" id="topbar-uname">—</div>
+                <div class="topbar__urole" id="topbar-urole">—</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Main area -->
+    <div class="main">
+
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-nav" id="sidebar-nav">
+                <!-- Filled dynamically based on role -->
+            </div>
+            <button class="sidebar-collapse-btn" id="collapse-btn" title="طي القائمة">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+        </nav>
+
+        <!-- Panels -->
+        <div class="content" id="content">
+
+            <!-- MAP panel -->
+            <div class="panel" id="panel-map">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>
+                    <h2>الخريطة المباشرة</h2>
+                    <span class="panel-header-sub" id="map-last-update">—</span>
+                    <button class="ph-btn" id="map-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <div style="position:relative;flex:1;display:flex;flex-direction:column;">
+                    <div class="map-filter-bar">
+                        <button class="map-filter-btn active" data-layer="stores">🏪 متاجر</button>
+                        <button class="map-filter-btn active" data-layer="drivers">🛵 سائقين</button>
+                        <button class="map-filter-btn active" data-layer="customers">👤 عملاء</button>
+                        <button class="map-filter-btn active" data-layer="orders">📦 طلبات</button>
+                    </div>
+                    <div id="admin-map"></div>
+                    <div class="map-legend">
+                        <div class="map-legend-title">دليل الخريطة</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#FF5C00;"></div>متجر</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>سائق نشط</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#9ca3af;"></div>سائق غير نشط</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>عميل مسجل</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>طلب جديد</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORDERS panel -->
+            <div class="panel" id="panel-orders">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M9 3H5a2 2 0 0 0-2 2v14"/><rect x="9" y="3" width="12" height="18" rx="2"/></svg>
+                    <h2>الطلبات</h2>
+                    <span class="panel-header-sub" id="orders-count-label">0 طلب</span>
+                    <button class="ph-btn ph-btn--primary" id="orders-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <div class="orders-toolbar">
+                    <button class="filter-pill active" data-filter="all">الكل</button>
+                    <button class="filter-pill" data-filter="0">🔵 جديد</button>
+                    <button class="filter-pill" data-filter="1">🟢 وُصِّل</button>
+                    <button class="filter-pill" data-filter="3">🟡 متأخر</button>
+                    <button class="filter-pill" data-filter="2">🔴 ملغي</button>
+                    <input type="text" class="search-box" id="orders-search" placeholder="بحث باسم العميل أو المتجر…">
+                </div>
+                <div class="orders-list" id="orders-list">
+                    <div class="empty-state" id="orders-empty" style="display:none;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M9 3H5a2 2 0 0 0-2 2v14"/><rect x="9" y="3" width="12" height="18" rx="2"/></svg>
+                        <p>لا توجد طلبات</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DRIVERS panel -->
+            <div class="panel" id="panel-drivers">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <h2>السائقون</h2>
+                    <span class="panel-header-sub" id="drivers-count-label">—</span>
+                    <input type="text" class="search-box" id="drivers-search" placeholder="بحث باسم السائق…" style="max-width:200px;">
+                    <button class="ph-btn" id="drivers-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <div class="orders-toolbar" style="flex-shrink:0;">
+                    <button class="filter-pill active" data-driver-filter="all">الكل</button>
+                    <button class="filter-pill" data-driver-filter="online">🟢 نشط</button>
+                    <button class="filter-pill" data-driver-filter="offline">⚫ غير نشط</button>
+                </div>
+                <div class="drivers-grid" id="drivers-grid"></div>
+            </div>
+
+            <!-- CUSTOMERS panel -->
+            <div class="panel" id="panel-customers">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <h2>العملاء المسجلون</h2>
+                    <span class="panel-header-sub" id="customers-count-label">—</span>
+                    <input type="text" class="search-box" id="customers-search" placeholder="بحث بالاسم أو الهاتف…" style="max-width:220px;">
+                    <button class="ph-btn" id="customers-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <div class="orders-toolbar" style="flex-shrink:0;">
+                    <button class="filter-pill active" data-cust-filter="all">الكل</button>
+                    <button class="filter-pill" data-cust-filter="active">🟢 نشط</button>
+                    <button class="filter-pill" data-cust-filter="offline">⚫ غير نشط</button>
+                </div>
+                <div class="users-table-wrap">
+                    <table class="users-table">
+                        <thead><tr>
+                            <th>العميل</th><th>اسم المستخدم</th><th>الهاتف</th><th>النقاط</th><th>الطلبات</th><th>الحالة</th><th>آخر نشاط</th>
+                        </tr></thead>
+                        <tbody id="customers-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STORES panel -->
+            <div class="panel" id="panel-stores">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <h2>المتاجر</h2>
+                    <span class="panel-header-sub" id="stores-count-label">—</span>
+                    <input type="text" class="search-box" id="stores-search" placeholder="بحث باسم المتجر…" style="max-width:200px;">
+                    <button class="ph-btn" id="stores-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <div class="orders-toolbar" style="flex-shrink:0;" id="stores-filter-bar">
+                    <button class="filter-pill active" data-store-filter="all">الكل</button>
+                    <button class="filter-pill" data-store-filter="Restaurants">🍔 مطاعم</button>
+                    <button class="filter-pill" data-store-filter="BakeryShops">🥖 مخابز</button>
+                    <button class="filter-pill" data-store-filter="ButcherShops">🥩 ملاحم</button>
+                    <button class="filter-pill" data-store-filter="Markets">🛒 أسواق</button>
+                    <button class="filter-pill" data-store-filter="Groceries">🏪 بقالة</button>
+                </div>
+                <div class="stores-grid" id="stores-grid"></div>
+            </div>
+
+            <!-- EMPLOYEES panel -->
+            <div class="panel" id="panel-employees">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <h2>موظفو الإدارة</h2>
+                    <span class="panel-header-sub">إدارة الصلاحيات والوصول</span>
+                    <button class="ph-btn ph-btn--primary" id="add-emp-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        إضافة موظف
+                    </button>
+                </div>
+                <div class="emp-grid" id="emp-grid"></div>
+            </div>
+
+            <!-- SETTINGS panel -->
+            <div class="panel" id="panel-settings">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <h2>الإعدادات</h2>
+                </div>
+                <div class="settings-scroll" id="settings-content"></div>
+            </div>
+
+        </div><!-- /content -->
+    </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Add employee modal -->
+<div class="modal-overlay" id="modal-emp">
+    <div class="modal-box">
+        <div class="modal-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            إضافة موظف جديد
+        </div>
+        <div class="modal-field"><label>الاسم الكامل</label><input type="text" id="emp-fullname" placeholder="مثال: أحمد محمد"></div>
+        <div class="modal-field"><label>اسم المستخدم</label><input type="text" id="emp-username" placeholder="admin_user"></div>
+        <div class="modal-field"><label>كلمة المرور</label><input type="password" id="emp-password" placeholder="8 أحرف على الأقل"></div>
+        <div class="modal-field">
+            <label>الدور الوظيفي</label>
+            <select id="emp-role">
+                <option value="dispatcher">Dispatcher — توزيع الطلبات</option>
+                <option value="viewer">Viewer — استعراض فقط</option>
+                <option value="store">Store Manager — إدارة متجر</option>
+                <option value="superadmin">Super Admin — صلاحيات كاملة</option>
+            </select>
+        </div>
+        <div class="modal-field">
+            <label>الصلاحيات</label>
+            <div class="perm-checks" id="perm-checks">
+                <label class="perm-check"><input type="checkbox" value="map"> <span>🗺 الخريطة</span></label>
+                <label class="perm-check"><input type="checkbox" value="orders"> <span>📦 الطلبات</span></label>
+                <label class="perm-check"><input type="checkbox" value="drivers"> <span>🛵 السائقون</span></label>
+                <label class="perm-check"><input type="checkbox" value="customers"> <span>👤 العملاء</span></label>
+                <label class="perm-check"><input type="checkbox" value="stores"> <span>🏪 المتاجر</span></label>
+                <label class="perm-check"><input type="checkbox" value="employees"> <span>🔐 الموظفون</span></label>
+                <label class="perm-check"><input type="checkbox" value="settings"> <span>⚙️ الإعدادات</span></label>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn" id="emp-cancel-btn">إلغاء</button>
+            <button class="modal-btn primary" id="emp-save-btn">حفظ الموظف</button>
+        </div>
+    </div>
+</div>
+
+<!-- Assign driver modal -->
+<div class="modal-overlay" id="modal-assign">
+    <div class="modal-box" style="width:360px;">
+        <div class="modal-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            تحديد سائق للطلب
+        </div>
+        <div id="assign-order-info" style="background:var(--surface2);border-radius:var(--radius-md);padding:10px 12px;margin-bottom:14px;font-size:0.78rem;color:var(--gray-light);"></div>
+        <div class="modal-field">
+            <label>اختر السائق</label>
+            <select id="assign-driver-select"></select>
+        </div>
+        <div class="modal-actions">
+            <button class="modal-btn" id="assign-cancel-btn">إلغاء</button>
+            <button class="modal-btn primary" id="assign-confirm-btn">تعيين السائق</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="admin-toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   DELIVO ADMIN — Core
+═══════════════════════════════════════════════════════════════ */
+const RTDB        = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+const FIRESTORE   = 'https://firestore.googleapis.com/v1/projects/deliveryonline-300f7/databases/(default)/documents';
+const FB_API_KEY  = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
+const FB_AUTH_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_API_KEY}`;
+
+// ── Firestore Auth credentials ────────────────────────────────
+// Must match a real Firebase Auth user in your project
+// (Firebase Console → Authentication → Users → Add user)
+const FS_ADMIN_EMAIL = 'admin@delivivo.app';  // ← your Firebase Auth email
+const FS_ADMIN_PASS  = 'delivo2025';           // ← that user's password
+
+// ── Firebase Auth token (for Firestore reads) ─────────────────
+let _fsToken       = null;
+let _fsTokenExpiry = 0;
+
+async function getFsToken() {
+    // Re-use cached token if still valid (refresh 60s before expiry)
+    if (_fsToken && Date.now() < _fsTokenExpiry) return _fsToken;
+    // Sign in with the admin panel's Firebase Auth account
+    console.log('[Auth] Signing into Firebase Auth as:', FS_ADMIN_EMAIL);
+    const r = await fetch(FB_AUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            email:             FS_ADMIN_EMAIL,
+            password:          FS_ADMIN_PASS,
+            returnSecureToken: true,
+        }),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+        console.error('[Auth] Firebase sign-in failed:', d?.error?.message, '| email:', FS_ADMIN_EMAIL);
+        throw new Error('Firebase Auth: ' + (d?.error?.message || r.status));
+    }
+    console.log('[Auth] ✅ Got Firestore token, expires in', d.expiresIn, 's');
+    _fsToken       = d.idToken;
+    _fsTokenExpiry = Date.now() + (parseInt(d.expiresIn) - 60) * 1000;
+    return _fsToken;
+}
+
+// ── Admin accounts stored in Firebase at /adminUsers ──────────
+// Super-admin is seeded here as fallback for first boot
+const SEED_SUPERADMIN = {
+    username:    'admin',
+    password:    'delivo2025',
+    fullname:    'Super Admin',
+    role:        'superadmin',
+    permissions: ['map','orders','drivers','customers','stores','employees','settings'],
+};
+
+
+
+// ── State ─────────────────────────────────────────────────────
+let currentAdmin = null;
+let allOrders    = {};
+let allDrivers   = [];
+let allUsers        = {};
+let allDeviceGroups = {}; // uuid → [user, user, ...]
+let allStores    = {};
+let adminUsers   = {};
+let orderFilter    = 'all';
+let orderSearch    = '';
+let driverFilter   = 'all';
+let driverSearch   = '';
+let customerFilter = 'all';
+let customerSearch = '';
+let storeFilter    = 'all';
+let storeSearch    = '';
+let mapLayers    = { stores: true, drivers: true, customers: true, orders: true };
+let adminMap     = null;
+let mapMarkers   = { stores: [], drivers: [], customers: [], orders: [] };
+let refreshTimer = null;
+let pendingAssignOrderId = null;
+let sidebarCollapsed = false;
+
+// ── Permission-aware nav items ─────────────────────────────────
+const NAV_ITEMS = [
+    { id: 'map',       label: 'الخريطة المباشرة',  icon: mapIcon(),    perm: 'map'       },
+    { id: 'orders',    label: 'الطلبات',            icon: ordersIcon(), perm: 'orders'    },
+    { id: 'drivers',   label: 'السائقون',           icon: driverIcon(), perm: 'drivers'   },
+    { id: 'customers', label: 'العملاء',            icon: usersIcon(),  perm: 'customers' },
+    { id: 'stores',    label: 'المتاجر',            icon: storeIcon(),  perm: 'stores'    },
+    { id: 'employees', label: 'الموظفون',           icon: empIcon(),    perm: 'employees' },
+    { id: 'settings',  label: 'الإعدادات',          icon: settingsIcon(),perm: 'settings' },
+];
+
+function mapIcon()     { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/></svg>`; }
+function ordersIcon()  { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 17H5a2 2 0 0 0-2 2"/><path d="M9 3H5a2 2 0 0 0-2 2v14"/><rect x="9" y="3" width="12" height="18" rx="2"/></svg>`; }
+function driverIcon()  { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`; }
+function usersIcon()   { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`; }
+function storeIcon()   { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`; }
+function empIcon()     { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`; }
+function settingsIcon(){ return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`; }
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, isError = false) {
+    const el = document.getElementById('admin-toast');
+    el.textContent = msg;
+    el.style.borderColor = isError ? 'var(--red)' : 'var(--border-bright)';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Firebase RTDB helpers ─────────────────────────────────────
+async function fbGet(path) {
+    const r = await fetch(`${RTDB}/${path}.json`);
+    if (!r.ok) throw new Error(`RTDB ${r.status}: ${path}`);
+    return r.json();
+}
+async function fbSet(path, data) {
+    const r = await fetch(`${RTDB}/${path}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`RTDB PUT ${r.status}: ${path}`);
+    return r.json();
+}
+async function fbUpdate(path, data) {
+    const r = await fetch(`${RTDB}/${path}.json`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`RTDB PATCH ${r.status}: ${path}`);
+    return r.json();
+}
+async function fbPush(path, data) {
+    const r = await fetch(`${RTDB}/${path}.json`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`RTDB POST ${r.status}: ${path}`);
+    return r.json();
+}
+
+// ── Firestore helpers ─────────────────────────────────────────
+// Converts a Firestore document fields object → plain JS object
+function fsDocToObj(doc, isNested = false) {
+    const obj = isNested ? {} : { _id: doc.name ? doc.name.split('/').pop() : '' };
+    for (const [key, val] of Object.entries(doc.fields || {})) {
+        const type = Object.keys(val)[0];
+        switch (type) {
+            case 'stringValue':    obj[key] = val.stringValue;              break;
+            case 'integerValue':   obj[key] = parseInt(val.integerValue);   break;
+            case 'doubleValue':    obj[key] = val.doubleValue;              break;
+            case 'booleanValue':   obj[key] = val.booleanValue;             break;
+            case 'timestampValue': obj[key] = new Date(val.timestampValue).getTime(); break;
+            case 'nullValue':      obj[key] = null;                         break;
+            case 'mapValue':       obj[key] = fsDocToObj({ name: '', fields: val.mapValue.fields || {} }, true); break;
+            case 'arrayValue':     obj[key] = (val.arrayValue.values || []).map(v => { const t = Object.keys(v)[0]; return t === 'mapValue' ? fsDocToObj({name:'',fields:v.mapValue.fields||{}},true) : Object.values(v)[0]; }); break;
+            case 'geoPointValue':  obj[key] = { lat: val.geoPointValue.latitude, lng: val.geoPointValue.longitude }; break;
+            default:               obj[key] = Object.values(val)[0];
+        }
+    }
+    return obj;
+}
+
+// Fetches all docs from a Firestore collection (handles pagination)
+async function fsGetCollection(collection) {
+    let allDocs = {};
+    let pageToken = null;
+    do {
+        const token = await getFsToken();
+        const url = `${FIRESTORE}/${collection}?pageSize=300${pageToken ? '&pageToken=' + pageToken : ''}`;
+        const r = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!r.ok) throw new Error(`Firestore ${r.status}: ${collection}`);
+        const data = await r.json();
+        (data.documents || []).forEach(doc => {
+            const obj = fsDocToObj(doc);
+            allDocs[obj._id] = obj;
+        });
+        pageToken = data.nextPageToken || null;
+    } while (pageToken);
+    return allDocs;
+}
+
+// ── Login ─────────────────────────────────────────────────────
+async function doLogin() {
+    const username = document.getElementById('adm-user').value.trim().toLowerCase();
+    const password = document.getElementById('adm-pass').value.trim();
+    const errEl    = document.getElementById('adm-login-error');
+    const btn      = document.getElementById('adm-login-btn');
+
+    if (!username || !password) return;
+    btn.disabled = true; btn.textContent = '…';
+    errEl.textContent = '';
+
+    try {
+        // Try seed super-admin first (no DB needed)
+        if (username === SEED_SUPERADMIN.username && password === SEED_SUPERADMIN.password) {
+            currentAdmin = { ...SEED_SUPERADMIN };
+            startApp();
+            return;
+        }
+        // Try /adminUsers in RTDB
+        const admins = await fbGet('adminUsers');
+        if (admins && typeof admins === 'object') {
+            for (const [key, adm] of Object.entries(admins)) {
+                if (adm && adm.username === username && adm.password === password) {
+                    currentAdmin = { ...adm, _key: key };
+                    startApp();
+                    return;
+                }
+            }
+        }
+        errEl.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+    } catch(e) {
+        // Network fail — allow seed admin offline
+        if (username === SEED_SUPERADMIN.username && password === SEED_SUPERADMIN.password) {
+            currentAdmin = { ...SEED_SUPERADMIN };
+            startApp();
+        } else {
+            errEl.textContent = 'خطأ في الاتصال، تحقق من الإنترنت';
+        }
+    } finally {
+        btn.disabled = false; btn.textContent = 'دخول';
+    }
+}
+
+function hasPerm(perm) {
+    if (!currentAdmin) return false;
+    if (currentAdmin.role === 'superadmin') return true;
+    return (currentAdmin.permissions || []).includes(perm);
+}
+
+function roleLabel(role) {
+    const labels = {
+        superadmin:  'Super Admin',
+        admin:       'مدير',
+        supervisor:  'مشرف',
+        support:     'دعم فني',
+        driver:      'سائق',
+        store:       'متجر',
+    };
+    return labels[role] || role || '—';
+}
+
+// ── Start app ─────────────────────────────────────────────────
+function startApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+
+    // Topbar user info
+    document.getElementById('topbar-uname').textContent = currentAdmin.fullname || currentAdmin.username;
+    document.getElementById('topbar-urole').textContent = roleLabel(currentAdmin.role);
+    document.getElementById('topbar-avatar').textContent = (currentAdmin.fullname || currentAdmin.username)[0].toUpperCase();
+
+    // Save session
+    sessionStorage.setItem('delivoAdmin', JSON.stringify(currentAdmin));
+
+    buildSidebar();
+    loadAllData();
+    startAutoRefresh();
+}
+
+function buildSidebar() {
+    const nav = document.getElementById('sidebar-nav');
+    nav.innerHTML = '';
+
+    const sections = {
+        'القائمة الرئيسية': NAV_ITEMS.filter(i => i.id !== 'settings' && i.id !== 'employees'),
+        'الإدارة':           NAV_ITEMS.filter(i => i.id === 'employees' || i.id === 'settings'),
+    };
+
+    let firstPanel = null;
+
+    Object.entries(sections).forEach(([label, items]) => {
+        const visible = items.filter(i => hasPerm(i.perm));
+        if (!visible.length) return;
+
+        const sectionLabel = document.createElement('div');
+        sectionLabel.className = 'nav-section-label';
+        sectionLabel.textContent = label;
+        nav.appendChild(sectionLabel);
+
+        visible.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-item';
+            btn.title = item.label;
+            btn.innerHTML = `${item.icon}<span class="nav-label">${item.label}</span>`;
+            btn.dataset.panel = item.id;
+            btn.addEventListener('click', () => switchPanel(item.id));
+            nav.appendChild(btn);
+            if (!firstPanel) firstPanel = item.id;
+        });
+    });
+
+    // Logout at bottom
+    const sysLabel = document.createElement('div');
+    sysLabel.className = 'nav-section-label';
+    sysLabel.style.marginTop = 'auto';
+    sysLabel.textContent = 'النظام';
+    nav.appendChild(sysLabel);
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.className = 'nav-item';
+    logoutBtn.title = 'تسجيل الخروج';
+    logoutBtn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="nav-label">تسجيل الخروج</span>`;
+    logoutBtn.addEventListener('click', doLogout);
+    nav.appendChild(logoutBtn);
+
+    if (firstPanel) switchPanel(firstPanel);
+}
+
+function switchPanel(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    const panel = document.getElementById(`panel-${id}`);
+    if (panel) panel.classList.add('active');
+    const btn = document.querySelector(`[data-panel="${id}"]`);
+    if (btn) btn.classList.add('active');
+
+    const labels = { map:'الخريطة', orders:'الطلبات', drivers:'السائقون', customers:'العملاء', stores:'المتاجر', employees:'الموظفون', settings:'الإعدادات' };
+    document.getElementById('topbar-panel-name').textContent = labels[id] || '';
+
+    if (id === 'map' && adminMap) setTimeout(() => adminMap.invalidateSize(), 100);
+    if (id === 'map')       renderMap();
+    if (id === 'orders')    renderOrders();
+    if (id === 'drivers')   renderDrivers();
+    if (id === 'customers') renderCustomers();
+    if (id === 'stores')    renderStores();
+    if (id === 'employees') renderEmployees();
+    if (id === 'settings')  renderSettings();
+
+
+}
+
+function doLogout() {
+    sessionStorage.removeItem('delivoAdmin');
+    currentAdmin = null;
+    clearInterval(refreshTimer);
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('adm-user').value = '';
+    document.getElementById('adm-pass').value = '';
+}
+
+// ── Load all data ─────────────────────────────────────────────
+async function loadAllData() {
+    try {
+        const [orders, drivers, users, devices, pattern, admins] = await Promise.all([
+            fbGet('requests'),
+            fbGet('drivers'),
+            fsGetCollection('users'),          // ← Firestore
+            fsGetCollection('devices').catch(() => ({})),  // ← device groups
+            fbGet('pattern'),
+            fbGet('adminUsers').catch(() => null),
+        ]);
+
+        allOrders  = orders  || {};
+        allDrivers = Array.isArray(drivers) ? drivers : (drivers ? Object.values(drivers) : []);
+        allUsers   = users   || {};
+        adminUsers = admins  || {};
+
+        // Group users by deviceUUID
+        allDeviceGroups = {};
+        Object.values(allUsers).forEach(u => {
+            const uuid = u.deviceUUID;
+            if (!uuid) return;
+            if (!allDeviceGroups[uuid]) allDeviceGroups[uuid] = [];
+            allDeviceGroups[uuid].push(u);
+        });
+
+
+        // Build stores from pattern
+        allStores = {};
+        if (pattern) {
+            Object.entries(pattern).forEach(([type, list]) => {
+                const arr = Array.isArray(list) ? list : Object.values(list);
+                arr.filter(s => s && s.companyname).forEach(s => {
+                    allStores[s.companyname] = { ...s, type };
+                });
+            });
+        }
+
+        updateTopbarStats();
+        updateNavBadge();
+    } catch(e) {
+        console.error('[Admin] loadAllData:', e);
+        toast('خطأ في تحميل البيانات', true);
+    }
+}
+
+function updateTopbarStats() {
+    const newOrders    = Object.values(allOrders).filter(o => (o.state || '0') === '0').length;
+    const onlineDrivers= allDrivers.filter(d => d && d.status === 'online').length;
+    const userCount    = Object.keys(allUsers).length;
+    document.getElementById('stat-orders').textContent  = newOrders;
+    document.getElementById('stat-drivers').textContent = onlineDrivers;
+    document.getElementById('stat-users').textContent   = userCount;
+}
+
+function updateNavBadge() {
+    const badge = document.getElementById('nav-orders-badge');
+    if (!badge) return;
+    const newCount = Object.values(allOrders).filter(o => (o.state||'0') === '0' && o.read !== '1').length;
+    badge.textContent = newCount;
+    badge.style.display = newCount > 0 ? 'flex' : 'none';
+}
+
+function startAutoRefresh() {
+    refreshTimer = setInterval(async () => {
+        await loadAllData();
+        const activePanel = document.querySelector('.panel.active');
+        if (activePanel) {
+            const id = activePanel.id.replace('panel-', '');
+            if (id === 'map') renderMap();
+            if (id === 'orders') renderOrders();
+            if (id === 'drivers') renderDrivers();
+            document.getElementById('map-last-update').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+        }
+    }, 12000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAP PANEL
+// ═══════════════════════════════════════════════════════════════
+function initMap() {
+    if (adminMap) return;
+    adminMap = L.map('admin-map', { zoomControl: true }).setView([34.003, 36.212], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19,
+    }).addTo(adminMap);
+}
+
+function renderMap() {
+    if (!document.getElementById('panel-map').classList.contains('active')) return;
+    if (!adminMap) { initMap(); setTimeout(renderMap, 300); return; }
+    adminMap.invalidateSize();
+
+    // Clear all layers
+    Object.values(mapMarkers).flat().forEach(m => adminMap.removeLayer(m));
+    mapMarkers = { stores: [], drivers: [], customers: [], orders: [] };
+
+    const mkDiv = (html, size, anchor) => L.divIcon({ html, iconSize: size, iconAnchor: anchor, className: '' });
+
+    // ── Shared label style ────────────────────────────────────
+    const labelStyle = `
+        font-family:'Almarai',sans-serif;font-size:10px;font-weight:800;
+        white-space:nowrap;pointer-events:none;
+        background:rgba(10,10,15,0.82);color:#f0f0f8;
+        padding:2px 6px;border-radius:4px;
+        box-shadow:0 1px 4px rgba(0,0,0,0.5);
+        position:absolute;left:50%;transform:translateX(-50%);
+        bottom:calc(100% + 4px);
+    `;
+
+    // ── Stores ────────────────────────────────────────────────
+    if (mapLayers.stores) {
+        Object.values(allStores).forEach(s => {
+            if (!s.lat || !s.lng) return;
+            const icon = mkDiv(
+                `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
+                    <div style="${labelStyle}">${s.companyname}</div>
+                    <div style="width:28px;height:28px;border-radius:8px;background:#FF5C00;
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:13px;box-shadow:0 3px 10px rgba(255,92,0,0.5);
+                                border:2px solid rgba(255,255,255,0.3);">🏪</div>
+                </div>`,
+                null, [14, 42]
+            );
+            const m = L.marker([s.lat, s.lng], { icon })
+                .bindPopup(`<b style="font-family:Almarai">${s.companyname}</b><br><small style="color:#888">${TYPE_LABELS[s.type]||s.type}</small>`)
+                .addTo(adminMap);
+            mapMarkers.stores.push(m);
+        });
+    }
+
+    // ── Drivers ───────────────────────────────────────────────
+    if (mapLayers.drivers) {
+        allDrivers.forEach(d => {
+            if (!d || !d.location?.lat) return;
+            const online  = d.status === 'online';
+            const name    = d.owner || d.username || '—';
+            const bgColor = online ? '#22c55e' : '#4b5563';
+            const shadow  = online ? 'rgba(34,197,94,0.5)' : 'rgba(0,0,0,0.4)';
+            const icon = mkDiv(
+                `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
+                    <div style="${labelStyle}color:${online?'#86efac':'#9ca3af'};">@${name}</div>
+                    <div style="width:32px;height:32px;border-radius:50%;
+                                background:${bgColor};
+                                display:flex;align-items:center;justify-content:center;
+                                font-size:14px;box-shadow:0 3px 12px ${shadow};
+                                border:2.5px solid #fff;">🛵</div>
+                </div>`,
+                null, [16, 50]
+            );
+            const m = L.marker([d.location.lat, d.location.lng], { icon })
+                .bindPopup(`<b style="font-family:Almarai">${name}</b><br><small style="color:${online?'#22c55e':'#9ca3af'}">${online?'نشط':'غير نشط'}</small>`)
+                .addTo(adminMap);
+            mapMarkers.drivers.push(m);
+        });
+    }
+
+    // ── Customers (grouped by deviceUUID) ────────────────────
+    if (mapLayers.customers) {
+        // Render solo users (unique device) and grouped users (multi-account device) separately
+        const renderedUUIDs = new Set();
+
+        Object.values(allUsers).forEach(u => {
+            const loc = u.location;
+            const lat = parseFloat(loc?.lat ?? loc?.latitude ?? u.lat ?? u.latitude ?? NaN);
+            const lng = parseFloat(loc?.lng ?? loc?.longitude ?? u.lng ?? u.longitude ?? NaN);
+            if (!lat || !lng || isNaN(lat) || isNaN(lng)) return;
+
+            const uuid    = u.deviceUUID || u._id;
+            const peers   = allDeviceGroups[uuid] || [u];
+            const isMulti = peers.length > 1;
+
+            // Only render the group once (keyed on uuid)
+            if (uuid && renderedUUIDs.has(uuid)) return;
+            if (uuid) renderedUUIDs.add(uuid);
+
+            const label = u.username || u.displayName || '—';
+
+            if (isMulti) {
+                // ── Multi-account marker ──────────────────────────
+                const names  = peers.map(p => '@'+(p.username||p.displayName||'?')).join(', ');
+                const count  = peers.length;
+                const icon = mkDiv(
+                    `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
+                        <div style="${labelStyle}background:rgba(239,68,68,0.92);color:#fff;border:1px solid rgba(255,255,255,0.3);">
+                            ⚠️ ${count} حسابات · @${label}
+                        </div>
+                        <div style="position:relative;width:28px;height:28px;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:#ef4444;
+                                        display:flex;align-items:center;justify-content:center;
+                                        font-size:13px;font-weight:800;color:#fff;
+                                        box-shadow:0 0 0 3px rgba(239,68,68,0.35),0 3px 10px rgba(239,68,68,0.5);
+                                        border:2px solid #fff;">${count}</div>
+                            <div style="position:absolute;top:-3px;right:-3px;width:10px;height:10px;
+                                        border-radius:50%;background:#f59e0b;border:2px solid #0a0a0f;"></div>
+                        </div>
+                    </div>`,
+                    null, [14, 52]
+                );
+                const popupRows = peers.map(p =>
+                    `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+                        <div style="width:24px;height:24px;border-radius:50%;background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;">${(p.username||'?')[0].toUpperCase()}</div>
+                        <div>
+                            <div style="font-weight:800;font-size:12px;">@${p.username||'—'}</div>
+                            <div style="font-size:10px;color:#9ca3af;">${p.displayName||p.fullname||''} ${p.phone?'· +961 '+p.phone:''}</div>
+                        </div>
+                    </div>`
+                ).join('');
+                const m = L.marker([lat, lng], { icon })
+                    .bindPopup(`
+                        <div style="font-family:Almarai;min-width:180px;">
+                            <div style="font-size:11px;font-weight:800;color:#ef4444;margin-bottom:6px;">
+                                ⚠️ ${count} حسابات على جهاز واحد
+                            </div>
+                            <div style="font-size:9px;color:#6b6b82;margin-bottom:6px;word-break:break-all;">
+                                UUID: ${uuid?.slice(0,16)}…
+                            </div>
+                            ${popupRows}
+                        </div>`, { maxWidth: 260 })
+                    .addTo(adminMap);
+                mapMarkers.customers.push(m);
+            } else {
+                // ── Solo marker ───────────────────────────────────
+                const icon = mkDiv(
+                    `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
+                        <div style="${labelStyle}">@${label}</div>
+                        <div style="width:22px;height:22px;border-radius:50%;background:#3b82f6;
+                                    border:2px solid #fff;box-shadow:0 2px 8px rgba(59,130,246,0.4);"></div>
+                    </div>`,
+                    null, [11, 38]
+                );
+                const m = L.marker([lat, lng], { icon })
+                    .bindPopup(`<b style="font-family:Almarai">${u.displayName||u.fullname||u.username||'—'}</b><br><small style="color:#888">${u.phone?'+961 '+u.phone:''}</small>`)
+                    .addTo(adminMap);
+                mapMarkers.customers.push(m);
+            }
+        });
+    }
+
+    // ── Active orders (new) ────────────────────────────────────
+    if (mapLayers.orders) {
+        Object.entries(allOrders).forEach(([key, o]) => {
+            if (!o.lat || !o.lng || (o.state||'0') !== '0') return;
+            const lat = parseFloat(o.lat), lng = parseFloat(o.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+            const idNum = key.replace('id_','');
+            const icon = mkDiv(
+                `<div style="background:#f59e0b;color:#000;font-weight:800;font-size:0.62rem;
+                             padding:3px 6px;border-radius:50px;white-space:nowrap;
+                             box-shadow:0 2px 8px rgba(245,158,11,0.5);font-family:Almarai;
+                             border:1.5px solid rgba(255,255,255,0.4);">#${idNum}</div>`,
+                null, [0, 0]
+            );
+            const m = L.marker([lat, lng], { icon })
+                .bindPopup(`<div style="font-family:Almarai"><b>#${idNum}</b><br>${o.store}<br><small>${o.fullname}</small><br><small style="color:#f59e0b;font-weight:800">$${o.total}</small></div>`)
+                .addTo(adminMap);
+            mapMarkers.orders.push(m);
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ORDERS PANEL
+// ═══════════════════════════════════════════════════════════════
+const STATE_LABELS = { '0':'جديد','1':'تم التوصيل','2':'ملغي','3':'متأخر','5':'ملغي/مدفوع' };
+
+function renderOrders() {
+    const list     = document.getElementById('orders-list');
+    const emptyEl  = document.getElementById('orders-empty');
+    const countEl  = document.getElementById('orders-count-label');
+
+    // ── Remember which cards are expanded before re-render ────
+    const expandedIds = new Set();
+    list.querySelectorAll('.order-card.expanded').forEach(c => expandedIds.add(c.dataset.id));
+
+    // Remove old cards (keep empty state)
+    list.querySelectorAll('.order-card').forEach(c => c.remove());
+
+    const entries = Object.entries(allOrders)
+        .sort(([a],[b]) => (parseInt(b.replace('id_',''))||0) - (parseInt(a.replace('id_',''))||0))
+        .filter(([,o]) => {
+            if (orderFilter !== 'all' && (o.state||'0') !== orderFilter) return false;
+            if (orderSearch) {
+                const q = orderSearch.toLowerCase();
+                if (!(o.fullname||'').toLowerCase().includes(q) &&
+                    !(o.store||'').toLowerCase().includes(q) &&
+                    !(o.username||'').toLowerCase().includes(q)) return false;
+            }
+            return true;
+        });
+
+    countEl.textContent = `${entries.length} طلب`;
+    emptyEl.style.display = entries.length === 0 ? 'flex' : 'none';
+
+    entries.forEach(([key, order]) => {
+        const card = buildOrderCard(key, order);
+        // ── Restore expanded state without animation flash ────
+        if (expandedIds.has(key)) {
+            card.classList.add('expanded');
+        }
+        list.appendChild(card);
+    });
+}
+
+function buildOrderCard(key, order) {
+    const idNum = key.replace('id_','');
+    const state = order.state || '0';
+    const isUnread = order.read !== '1';
+
+    const card = document.createElement('div');
+    card.className = `order-card state-${state}${isUnread ? ' unread' : ''}`;
+    card.dataset.id = key;
+
+    const items = parseCart(order.cart);
+    const driverAssigned = order.driver && order.driver !== '0';
+
+    card.innerHTML = `
+        <div class="oc-header">
+            <span class="oc-id">#${idNum}</span>
+            <span class="oc-store">${order.store || '—'}</span>
+            <span class="oc-customer">${order.fullname || order.username || '—'}</span>
+            <span class="oc-total">$${order.total || '0'}</span>
+            <span class="oc-state state-badge-${state}">${STATE_LABELS[state] || state}</span>
+            <span class="oc-toggle">▾</span>
+        </div>
+        <div class="oc-body">
+          <div class="oc-body-inner">
+            <div class="oc-body-inner-pad">
+            <div class="oc-items-list">
+                ${items.map(i => `
+                    <div class="oc-item-row">
+                        <span class="name">${i.name}</span>
+                        <span class="qty">×${i.qty}</span>
+                        <span class="price">${i.price < 1000 ? '$'+i.price : (i.price/1000).toFixed(0)+'k ل.ل'}</span>
+                    </div>`).join('')}
+            </div>
+            <div class="oc-meta-row">
+                <span class="oc-meta-chip">📅 ${order.date || '—'}</span>
+                <span class="oc-meta-chip">📞 ${order.phone || '—'}</span>
+                <span class="oc-meta-chip">👤 ${order.username || '—'}</span>
+                <span class="oc-meta-chip">🏙 ${order.city || '—'}</span>
+                ${order.street ? `<span class="oc-meta-chip">🛣 ${order.street}</span>` : ''}
+                ${order.lat && order.lat !== '0' ? `<span class="oc-meta-chip">📍 ${parseFloat(order.lat).toFixed(5)}, ${parseFloat(order.lng).toFixed(5)}</span>` : ''}
+                <span class="oc-meta-chip ${driverAssigned ? 'has' : ''}" style="${driverAssigned ? 'border-color:rgba(34,197,94,0.3);color:var(--green);background:var(--green-glow);' : ''}">
+                    🛵 ${driverAssigned ? order.driver : 'غير معين'}
+                </span>
+                ${order.vault && order.vault !== '0' ? `<span class="oc-meta-chip" style="color:var(--yellow);border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);">💰 دفع نقدي: $${order.vault}</span>` : ''}
+                ${order.trackorder && order.trackorder !== '0' ? `<span class="oc-meta-chip" style="color:var(--blue);">📡 تتبع نشط</span>` : ''}
+                ${order.xnote ? `<span class="oc-meta-chip" style="flex-basis:100%;">💬 ${order.xnote}</span>` : ''}
+            </div>
+            <div class="oc-actions">
+                ${hasPerm('orders') ? `
+                <select class="driver-select" data-order="${key}">
+                    <option value="">— تعيين سائق —</option>
+                    ${allDrivers.filter(d => d).map((d,i) => `<option value="${d.owner||d.username}" ${order.driver === (d.owner||d.username) ? 'selected' : ''}>${d.owner || d.username} ${d.status==='online'?'🟢':'⚫'}</option>`).join('')}
+                </select>
+                <button class="oc-action-btn primary" data-assign="${key}">✔ تعيين</button>
+                ` : ''}
+                <button class="oc-action-btn ${state==='1'?'active-state':''}" data-state="${key}" data-val="1">✅ وُصِّل</button>
+                <button class="oc-action-btn danger ${state==='2'||state==='5'?'active-state':''}" data-state="${key}" data-val="2">✕ إلغاء</button>
+                <button class="oc-action-btn ${state==='3'?'active-state':''}" data-state="${key}" data-val="3">⏳ متأخر</button>
+                ${order.lat && order.lat !== '0' ? `<button class="oc-action-btn" data-locate="${order.lat},${order.lng}">🗺 الخريطة</button>` : ''}
+            </div>
+            </div>
+          </div>
+        </div>`;
+
+    // Toggle expand
+    card.querySelector('.oc-header').addEventListener('click', () => {
+        card.classList.toggle('expanded');
+        if (card.classList.contains('expanded') && isUnread) markRead(key);
+    });
+
+    // Assign driver
+    const assignBtn = card.querySelector('[data-assign]');
+    if (assignBtn) {
+        assignBtn.addEventListener('click', async () => {
+            const sel = card.querySelector('.driver-select');
+            const driverName = sel ? sel.value : '';
+            if (!driverName) { toast('اختر سائقاً أولاً', true); return; }
+            await assignDriver(key, driverName);
+        });
+    }
+
+    // State change
+    card.querySelectorAll('[data-state]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            await changeState(btn.dataset.state, btn.dataset.val);
+        });
+    });
+
+    // Locate on map
+    card.querySelectorAll('[data-locate]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const [lat, lng] = btn.dataset.locate.split(',').map(Number);
+            if (adminMap) {
+                switchPanel('map');
+                setTimeout(() => adminMap.setView([lat, lng], 16), 150);
+            }
+        });
+    });
+
+    return card;
+}
+
+function parseCart(cartStr) {
+    const items = [];
+    (cartStr || '').split(',').filter(Boolean).forEach(seg => {
+        const p = seg.split(':');
+        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: parseFloat(p[2]) || 0 });
+    });
+    return items;
+}
+
+async function assignDriver(orderId, driverName) {
+    try {
+        const uid = allOrders[orderId]?.delivryplusid;
+        const updates = {};
+        updates[`/requests/${orderId}/driver`] = driverName;
+        if (uid) updates[`/historyRequests/${uid}/${orderId}/driver`] = driverName;
+        await fbUpdate('', updates);
+        allOrders[orderId].driver = driverName;
+        toast(`✅ تم تعيين ${driverName} للطلب #${orderId.replace('id_','')}`);
+        renderOrders();
+    } catch(e) { toast('خطأ في التعيين', true); }
+}
+
+async function changeState(orderId, newState) {
+    try {
+        const uid = allOrders[orderId]?.delivryplusid;
+        const updates = {};
+        updates[`/requests/${orderId}/state`] = newState;
+        if (uid) updates[`/historyRequests/${uid}/${orderId}/state`] = newState;
+        await fbUpdate('', updates);
+        allOrders[orderId].state = newState;
+        toast(`✅ تم تحديث حالة الطلب #${orderId.replace('id_','')}`);
+
+        // Update the card in-place without re-filtering
+        // so it stays visible regardless of the active filter
+        const card = document.querySelector(`.order-card[data-id="${orderId}"]`);
+        if (card) {
+            // Update state class
+            card.className = card.className.replace(/state-\d+/g, '').trim();
+            card.classList.add(`state-${newState}`);
+
+            // Update state badge text + color
+            const badge = card.querySelector('.oc-state');
+            if (badge) {
+                badge.className = `oc-state state-badge-${newState}`;
+                badge.textContent = STATE_LABELS[newState] || newState;
+            }
+
+            // Rebuild action buttons (they change based on state)
+            const actionsDiv = card.querySelector('.oc-actions');
+            if (actionsDiv && hasPerm('orders')) {
+                const order = allOrders[orderId];
+                const key   = orderId;
+                // Remove old state-change buttons, keep driver assign
+                actionsDiv.querySelectorAll('[data-state], [data-locate]').forEach(b => b.remove());
+
+                // Always show all 3 state buttons so admin can re-change any time
+                const btnDefs = [
+                    { val:'1', label:'✅ وُصِّل', cls: newState==='1' ? ' primary' : '' },
+                    { val:'2', label:'✕ إلغاء',  cls: (newState==='2'||newState==='5') ? ' danger active-state' : ' danger' },
+                    { val:'3', label:'⏳ متأخر',  cls: newState==='3' ? ' active-state' : '' },
+                ];
+                btnDefs.forEach(({ val, label, cls }) => {
+                    const b = document.createElement('button');
+                    b.className = `oc-action-btn${cls}`;
+                    b.dataset.state = key;
+                    b.dataset.val   = val;
+                    b.textContent   = label;
+                    b.addEventListener('click', async () => await changeState(key, val));
+                    actionsDiv.appendChild(b);
+                });
+                if (order.lat && order.lat !== '0') {
+                    const b = document.createElement('button');
+                    b.className       = 'oc-action-btn';
+                    b.dataset.locate  = `${order.lat},${order.lng}`;
+                    b.textContent     = '🗺 الخريطة';
+                    b.addEventListener('click', () => {
+                        const [lat, lng] = b.dataset.locate.split(',').map(Number);
+                        if (adminMap) { switchPanel('map'); setTimeout(() => adminMap.setView([lat, lng], 16), 150); }
+                    });
+                    actionsDiv.appendChild(b);
+                }
+            }
+        } else {
+            renderOrders();
+        }
+        updateTopbarStats();
+        updateNavBadge();
+    } catch(e) { toast('خطأ في تحديث الحالة', true); }
+}
+
+async function markRead(orderId) {
+    try {
+        await fbSet(`requests/${orderId}/read`, '1');
+        if (allOrders[orderId]) allOrders[orderId].read = '1';
+        updateNavBadge();
+    } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DRIVERS PANEL
+// ═══════════════════════════════════════════════════════════════
+function renderDrivers() {
+    const grid    = document.getElementById('drivers-grid');
+    const countEl = document.getElementById('drivers-count-label');
+    grid.innerHTML = '';
+
+    let drivers = allDrivers.filter(d => d);
+
+    // Filter by status
+    if (driverFilter !== 'all') {
+        drivers = drivers.filter(d => (d.status || 'offline') === driverFilter);
+    }
+    // Search by name/username
+    if (driverSearch) {
+        const q = driverSearch.toLowerCase();
+        drivers = drivers.filter(d =>
+            (d.owner || '').toLowerCase().includes(q) ||
+            (d.username || '').toLowerCase().includes(q)
+        );
+    }
+
+    countEl.textContent = `${drivers.length} سائق`;
+
+    if (!drivers.length) {
+        grid.innerHTML = '<div class="empty-state" style="padding:60px;flex:1;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><p>لا يوجد سائقون</p></div>';
+        return;
+    }
+
+    // Count orders per driver
+    const driverOrders = {};
+    Object.values(allOrders).forEach(o => {
+        if (o.driver && o.driver !== '0') {
+            driverOrders[o.driver] = (driverOrders[o.driver] || 0) + 1;
+        }
+    });
+
+    drivers.forEach((d) => {
+        const online   = d.status === 'online';
+        const name     = d.owner || d.username || '—';
+        const ordCount = driverOrders[d.owner] || driverOrders[d.username] || 0;
+        const hasLoc   = !!(d.location?.lat);
+        const avatarLetter = name[0].toUpperCase();
+        const lastSeen = d.location?.timestamp
+            ? new Date(d.location.timestamp).toLocaleTimeString('ar', {hour:'2-digit', minute:'2-digit'})
+            : '—';
+
+        const card = document.createElement('div');
+        card.className = `driver-card${online ? ' online' : ''}`;
+        card.innerHTML = `
+            <div class="dc-top">
+                <div class="dc-avatar">
+                    ${avatarLetter}
+                    <div class="dc-online-dot${online ? ' on' : ''}"></div>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div class="dc-name">${name}</div>
+                    <div class="dc-sub">@${d.username}</div>
+                </div>
+                <span style="font-size:0.62rem;padding:2px 8px;border-radius:50px;font-weight:800;
+                    background:${online ? 'var(--green-glow)' : 'var(--surface3)'};
+                    color:${online ? 'var(--green)' : 'var(--gray)'};">
+                    ${online ? 'نشط' : 'غير نشط'}
+                </span>
+            </div>
+            <div class="dc-stats">
+                <div class="dc-stat">
+                    <div class="dc-stat-val">${ordCount}</div>
+                    <div class="dc-stat-label">طلبات معينة</div>
+                </div>
+                <div class="dc-stat">
+                    <div class="dc-stat-val" style="font-size:0.75rem;">${hasLoc ? lastSeen : '—'}</div>
+                    <div class="dc-stat-label">آخر موقع</div>
+                </div>
+            </div>
+            ${hasLoc
+                ? `<button class="dc-locate-btn" data-lat="${d.location.lat}" data-lng="${d.location.lng}">📍 عرض على الخريطة</button>`
+                : '<div style="margin-top:8px;font-size:0.7rem;color:var(--gray);text-align:center;">لا يوجد موقع</div>'
+            }
+        `;
+        if (hasLoc) {
+            card.querySelector('.dc-locate-btn').addEventListener('click', (e) => {
+                const lat = parseFloat(e.currentTarget.dataset.lat);
+                const lng = parseFloat(e.currentTarget.dataset.lng);
+                switchPanel('map');
+                setTimeout(() => adminMap && adminMap.setView([lat, lng], 16), 150);
+            });
+        }
+        grid.appendChild(card);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CUSTOMERS PANEL
+// ═══════════════════════════════════════════════════════════════
+function renderCustomers() {
+    const tbody   = document.getElementById('customers-tbody');
+    const countEl = document.getElementById('customers-count-label');
+    tbody.innerHTML = '';
+
+    // Count orders per user
+    const userOrders = {};
+    Object.values(allOrders).forEach(o => {
+        if (o.delivryplusid) userOrders[o.delivryplusid] = (userOrders[o.delivryplusid] || 0) + 1;
+        else if (o.username) userOrders[o.username] = (userOrders[o.username] || 0) + 1;
+    });
+
+    // Build device groups: uuid → [users]
+    // Already in allDeviceGroups, but apply filters per-user
+    let users = Object.entries(allUsers);
+
+    if (customerFilter !== 'all') {
+        users = users.filter(([, u]) => (u.status || 'offline') === customerFilter);
+    }
+    if (customerSearch) {
+        const q = customerSearch.toLowerCase();
+        users = users.filter(([, u]) =>
+            (u.displayName || '').toLowerCase().includes(q) ||
+            (u.fullname || '').toLowerCase().includes(q) ||
+            (u.username || '').toLowerCase().includes(q) ||
+            (u.phone || '').includes(q) ||
+            (u.deviceUUID || '').toLowerCase().includes(q)
+        );
+    }
+
+    // Group by deviceUUID for display — keep ordering by newest
+    const seenUUIDs  = new Set();
+    const rows       = []; // each row: { isGroup, uuid, users[], primary }
+
+    users.sort(([,a],[,b]) => (b.createdAt||b.timestamp||0) - (a.createdAt||a.timestamp||0))
+         .forEach(([uid, u]) => {
+            const uuid  = u.deviceUUID;
+            const peers = uuid ? (allDeviceGroups[uuid] || [u]) : [u];
+            const key   = uuid || uid;
+            if (seenUUIDs.has(key)) return;
+            seenUUIDs.add(key);
+            rows.push({ isGroup: peers.length > 1, uuid, users: peers, primary: u });
+         });
+
+    countEl.textContent = `${rows.length} جهاز · ${users.length} حساب`;
+
+    if (!rows.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="7" style="text-align:center;padding:40px;color:var(--gray);">لا يوجد عملاء</td>`;
+        tbody.appendChild(tr);
+        return;
+    }
+
+    rows.forEach(({ isGroup, uuid, users: peers, primary: u }) => {
+        if (isGroup) {
+            // ── Grouped row (multi-account device) ───────────
+            const groupRow = document.createElement('tr');
+            groupRow.style.cssText = 'background:rgba(239,68,68,0.06);cursor:pointer;';
+            groupRow.innerHTML = `
+                <td colspan="7">
+                    <div style="display:flex;align-items:center;gap:10px;padding:4px 2px;">
+                        <div style="display:flex;align-items:center;justify-content:center;
+                                    width:28px;height:28px;border-radius:50%;flex-shrink:0;
+                                    background:rgba(239,68,68,0.15);border:1.5px solid rgba(239,68,68,0.4);
+                                    font-size:0.72rem;font-weight:800;color:var(--red);">${peers.length}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:0.7rem;font-weight:800;color:var(--red);">⚠️ جهاز واحد · ${peers.length} حسابات</span>
+                                ${peers.map(p => `
+                                    <span style="background:var(--surface2);border:1px solid var(--border);
+                                                 border-radius:50px;padding:1px 8px;font-size:0.65rem;
+                                                 font-weight:700;color:var(--gray-light);">@${p.username||'—'}</span>`).join('')}
+                            </div>
+                            <div style="font-size:0.62rem;color:var(--gray);margin-top:2px;font-family:var(--mono);">
+                                UUID: ${uuid ? uuid.slice(0,20)+'…' : '—'}
+                            </div>
+                        </div>
+                        <span style="font-size:0.65rem;color:var(--gray);flex-shrink:0;">▾ عرض التفاصيل</span>
+                    </div>
+                </td>`;
+
+            // Sub-rows (hidden by default, toggle on click)
+            const subRows = peers.map(p => {
+                const initial  = (p.displayName||p.fullname||p.username||'?')[0].toUpperCase();
+                const isActive = p.status === 'active';
+                const ts       = p.createdAt
+                    ? new Date(p.createdAt).toLocaleDateString('ar')
+                    : (p.timestamp ? new Date(p.timestamp).toLocaleDateString('ar') : '—');
+                const ordCount = userOrders[p._id] || userOrders[p.username] || 0;
+                const tr2      = document.createElement('tr');
+                tr2.style.cssText = 'display:none;background:rgba(239,68,68,0.03);';
+                tr2.dataset.sub   = uuid;
+                tr2.innerHTML = `
+                    <td style="padding-right:24px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;"></span>
+                            <span class="ut-avatar-sm" style="background:rgba(239,68,68,0.15);color:var(--red);border-color:rgba(239,68,68,0.3);">${initial}</span>
+                            <span class="ut-name">${p.displayName||p.fullname||'—'}</span>
+                        </div>
+                    </td>
+                    <td class="ut-phone" style="font-family:var(--mono);color:var(--gray-light);">@${p.username||'—'}</td>
+                    <td class="ut-phone">${p.phone?'+961 '+p.phone:'—'}</td>
+                    <td class="ut-points">${p.points||0}</td>
+                    <td style="font-family:var(--mono);font-size:0.72rem;color:var(--gray-light);">${ordCount}</td>
+                    <td><span class="ut-status ${isActive?'active':'offline'}">${isActive?'نشط':'غير نشط'}</span></td>
+                    <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>`;
+                return tr2;
+            });
+
+            let expanded = false;
+            groupRow.addEventListener('click', () => {
+                expanded = !expanded;
+                subRows.forEach(r => r.style.display = expanded ? '' : 'none');
+                groupRow.querySelector('span:last-child').textContent = expanded ? '▴ إخفاء' : '▾ عرض التفاصيل';
+            });
+
+            tbody.appendChild(groupRow);
+            subRows.forEach(r => tbody.appendChild(r));
+
+        } else {
+            // ── Solo row ─────────────────────────────────────
+            const initial  = (u.displayName||u.fullname||u.username||'?')[0].toUpperCase();
+            const isActive = u.status === 'active';
+            const ts       = u.createdAt
+                ? new Date(u.createdAt).toLocaleDateString('ar')
+                : (u.timestamp ? new Date(u.timestamp).toLocaleDateString('ar') : '—');
+            const ordCount = userOrders[u._id] || userOrders[u.username] || 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><div style="display:flex;align-items:center;gap:8px;">
+                    <span class="ut-avatar-sm">${initial}</span>
+                    <span class="ut-name">${u.displayName||u.fullname||'—'}</span>
+                </div></td>
+                <td class="ut-phone" style="font-family:var(--mono);color:var(--gray-light);">@${u.username||'—'}</td>
+                <td class="ut-phone">${u.phone?'+961 '+u.phone:'—'}</td>
+                <td class="ut-points">${u.points||0}</td>
+                <td style="font-family:var(--mono);font-size:0.72rem;color:var(--gray-light);">${ordCount}</td>
+                <td><span class="ut-status ${isActive?'active':'offline'}">${isActive?'نشط':'غير نشط'}</span></td>
+                <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>`;
+            tbody.appendChild(tr);
+        }
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STORES PANEL
+// ═══════════════════════════════════════════════════════════════
+const TYPE_LABELS = { Restaurants:'مطعم', BakeryShops:'مخبز', ButcherShops:'ملحمة', Markets:'سوبرماركت', Groceries:'بقالة', SweetsShops:'حلويات', FishShops:'أسماك', CoffeeShops:'قهوة' };
+const TYPE_EMOJI  = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', Groceries:'🏪', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕' };
+
+function renderStores() {
+    const grid    = document.getElementById('stores-grid');
+    const countEl = document.getElementById('stores-count-label');
+    grid.innerHTML = '';
+
+    let stores = Object.entries(allStores);
+
+    // Type filter
+    if (storeFilter !== 'all') {
+        stores = stores.filter(([, s]) => s.type === storeFilter);
+    }
+    // Search
+    if (storeSearch) {
+        const q = storeSearch.toLowerCase();
+        stores = stores.filter(([name]) => name.toLowerCase().includes(q));
+    }
+
+    countEl.textContent = `${stores.length} متجر`;
+
+    if (!stores.length) {
+        grid.innerHTML = '<div class="empty-state" style="padding:60px;flex:1;"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><p>لا توجد متاجر</p></div>';
+        return;
+    }
+
+    stores.forEach(([name, s]) => {
+        const emoji     = TYPE_EMOJI[s.type] || '🏪';
+        const typeLabel = TYPE_LABELS[s.type] || s.type;
+        const imgPath   = `assets/${name.toLowerCase()}.png`;
+        const ordCount  = Object.values(allOrders).filter(o => o.store === name).length;
+        const newOrders = Object.values(allOrders).filter(o => o.store === name && (o.state||'0') === '0').length;
+
+        const card = document.createElement('div');
+        card.className = 'store-card-admin';
+        card.style.cursor = 'pointer';
+        card.innerHTML = `
+            <div class="sc-thumb">
+                <img src="${imgPath}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;">${emoji}</div>
+                <div class="sc-type-badge">${typeLabel}</div>
+                ${newOrders > 0 ? `<div style="position:absolute;top:6px;left:6px;background:var(--orange);color:#fff;font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:50px;">🔴 ${newOrders} جديد</div>` : ''}
+            </div>
+            <div class="sc-body">
+                <div class="sc-name">${name}</div>
+                <div class="sc-meta">
+                    <span class="sc-items">${ordCount} طلب إجمالي</span>
+                    <span class="sc-rank">${s.rank ? '⭐ '+s.rank : ''}</span>
+                </div>
+                ${s.soon ? `<div style="font-size:0.65rem;color:var(--gray);margin-top:4px;">⏱ وقت التوصيل: ${s.soon} دقيقة</div>` : ''}
+            </div>`;
+
+        // Click → show on map
+        card.addEventListener('click', () => {
+            if (s.lat && s.lng) {
+                switchPanel('map');
+                setTimeout(() => adminMap && adminMap.setView([s.lat, s.lng], 16), 150);
+            }
+        });
+
+        grid.appendChild(card);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EMPLOYEES PANEL
+// ═══════════════════════════════════════════════════════════════
+const ROLE_COLORS = { superadmin:'role-superadmin', dispatcher:'role-dispatcher', viewer:'role-viewer', store:'role-store' };
+const AVATAR_COLORS = ['#FF5C00','#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444'];
+const ALL_PERMS = ['map','orders','drivers','customers','stores','employees','settings'];
+const PERM_LABELS = { map:'🗺 خريطة', orders:'📦 طلبات', drivers:'🛵 سائقون', customers:'👤 عملاء', stores:'🏪 متاجر', employees:'🔐 موظفون', settings:'⚙️ إعدادات' };
+
+function renderEmployees() {
+    if (!hasPerm('employees')) return;
+    const grid = document.getElementById('emp-grid');
+    grid.innerHTML = '';
+
+    // Always show seed super-admin
+    const allEmps = [
+        { _key: '__seed', ...SEED_SUPERADMIN },
+        ...Object.entries(adminUsers).map(([k,v]) => ({ ...v, _key: k })),
+    ];
+
+    allEmps.forEach((emp, idx) => {
+        const color     = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+        const initial   = (emp.fullname || emp.username || '?')[0].toUpperCase();
+        const roleClass = ROLE_COLORS[emp.role] || 'role-viewer';
+        const isSelf    = currentAdmin.username === emp.username;
+
+        const card = document.createElement('div');
+        card.className = 'emp-card';
+        card.innerHTML = `
+            <div class="ec-top">
+                <div class="ec-avatar" style="background:${color};">${initial}</div>
+                <div>
+                    <div class="ec-name">${emp.fullname || emp.username}</div>
+                    <div class="ec-username">@${emp.username}</div>
+                </div>
+                <span class="ec-role-badge ${roleClass}">${roleLabel(emp.role)}</span>
+            </div>
+            <div class="ec-perms">
+                ${ALL_PERMS.map(p => {
+                    const has = emp.role === 'superadmin' || (emp.permissions||[]).includes(p);
+                    return `<span class="ec-perm${has?' has':''}">${PERM_LABELS[p]}</span>`;
+                }).join('')}
+            </div>
+            ${!isSelf && emp._key !== '__seed' ? `
+            <div class="ec-actions-row">
+                <button class="ec-btn" data-edit="${emp._key}">✏️ تعديل</button>
+                <button class="ec-btn danger" data-delete="${emp._key}">🗑 حذف</button>
+            </div>` : ''}`;
+
+        card.querySelectorAll('[data-delete]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm(`حذف ${emp.fullname||emp.username}؟`)) return;
+                await fbSet(`adminUsers/${btn.dataset.delete}`, null);
+                toast('✅ تم حذف الموظف');
+                await loadAllData();
+                renderEmployees();
+            });
+        });
+        grid.appendChild(card);
+    });
+}
+
+// ── Add employee modal ────────────────────────────────────────
+document.getElementById('add-emp-btn').addEventListener('click', () => {
+    document.getElementById('emp-fullname').value = '';
+    document.getElementById('emp-username').value = '';
+    document.getElementById('emp-password').value = '';
+    document.getElementById('emp-role').value = 'dispatcher';
+    document.querySelectorAll('#perm-checks input').forEach(c => c.checked = false);
+    document.getElementById('modal-emp').classList.add('open');
+});
+document.getElementById('emp-cancel-btn').addEventListener('click', () => document.getElementById('modal-emp').classList.remove('open'));
+document.getElementById('emp-save-btn').addEventListener('click', async () => {
+    const fullname = document.getElementById('emp-fullname').value.trim();
+    const username = document.getElementById('emp-username').value.trim().toLowerCase();
+    const password = document.getElementById('emp-password').value.trim();
+    const role     = document.getElementById('emp-role').value;
+    const perms    = [...document.querySelectorAll('#perm-checks input:checked')].map(c => c.value);
+
+    if (!username || !password) { toast('أدخل اسم المستخدم وكلمة المرور', true); return; }
+    if (password.length < 6)    { toast('كلمة المرور قصيرة جداً', true); return; }
+
+    try {
+        await fbPush('adminUsers', { fullname, username, password, role, permissions: perms, createdAt: Date.now() });
+        document.getElementById('modal-emp').classList.remove('open');
+        toast('✅ تم إضافة الموظف');
+        await loadAllData();
+        renderEmployees();
+    } catch(e) { toast('خطأ في الحفظ', true); }
+});
+
+// Auto-select permissions by role
+document.getElementById('emp-role').addEventListener('change', function() {
+    const presets = {
+        superadmin: ALL_PERMS,
+        dispatcher: ['map','orders','drivers'],
+        viewer:     ['map','orders'],
+        store:      ['orders','stores'],
+    };
+    const preset = presets[this.value] || [];
+    document.querySelectorAll('#perm-checks input').forEach(c => { c.checked = preset.includes(c.value); });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════
+function renderSettings() {
+    const el = document.getElementById('settings-content');
+    el.innerHTML = `
+        <div class="settings-section">
+            <div class="settings-section-title">وضع الصيانة</div>
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">تفعيل وضع الصيانة</div>
+                    <div class="setting-sub">يوقف الموقع عن العملاء ويعرض رسالة صيانة</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-maintenance" onchange="setMaintenance(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">رسوم التوصيل</div>
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">رسوم التوصيل لكل متجر ($)</div>
+                    <div class="setting-sub">القيمة الحالية المحددة في الكود: $2</div>
+                </div>
+                <input type="number" id="delivery-fee-input" value="2" min="0" step="0.5"
+                       style="width:70px;background:var(--surface2);border:1.5px solid var(--border);
+                              border-radius:var(--radius-md);padding:6px 10px;color:var(--white);
+                              font-family:var(--mono);outline:none;text-align:center;"
+                       onchange="setDeliveryFee(this.value)">
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">الحد اليومي للطلبات</div>
+            <div class="setting-row">
+                <div>
+                    <div class="setting-label">أقصى طلبات يومية للعميل</div>
+                    <div class="setting-sub">يُقرأ من /settings/orders/maxPerDay</div>
+                </div>
+                <input type="number" id="max-orders-input" value="3" min="1" max="20"
+                       style="width:70px;background:var(--surface2);border:1.5px solid var(--border);
+                              border-radius:var(--radius-md);padding:6px 10px;color:var(--white);
+                              font-family:var(--mono);outline:none;text-align:center;"
+                       onchange="setMaxOrders(this.value)">
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">معلومات النظام</div>
+            <div class="setting-row">
+                <div><div class="setting-label">Firebase Project</div><div class="setting-sub" style="font-family:var(--mono);">deliveryonline-300f7</div></div>
+            </div>
+            <div class="setting-row">
+                <div><div class="setting-label">آخر تحديث للبيانات</div></div>
+                <span style="font-size:0.72rem;color:var(--gray);font-family:var(--mono);" id="last-refresh-time">${new Date().toLocaleTimeString('ar')}</span>
+            </div>
+        </div>
+    `;
+    // Load current maintenance state
+    fbGet('maintenance').then(data => {
+        const isOn = Array.isArray(data) ? (data[1]?.state === true) : (data?.state === true);
+        const toggle = document.getElementById('toggle-maintenance');
+        if (toggle) toggle.checked = isOn;
+    }).catch(() => {});
+    // Load max orders
+    fbGet('settings/orders/maxPerDay').then(val => {
+        const inp = document.getElementById('max-orders-input');
+        if (inp && val) inp.value = val;
+    }).catch(() => {});
+}
+
+window.setMaintenance = async function(on) {
+    try {
+        await fbSet('maintenance/1/state', on);
+        toast(on ? '🔧 وضع الصيانة مفعّل' : '✅ الموقع متاح للعملاء');
+    } catch(e) { toast('خطأ', true); }
+};
+
+window.setDeliveryFee = async function(val) {
+    try {
+        await fbSet('settings/deliveryFee', parseFloat(val) || 2);
+        toast('✅ تم حفظ رسوم التوصيل');
+    } catch(e) { toast('خطأ', true); }
+};
+
+window.setMaxOrders = async function(val) {
+    try {
+        await fbSet('settings/orders/maxPerDay', parseInt(val) || 3);
+        toast('✅ تم حفظ الحد اليومي');
+    } catch(e) { toast('خطأ', true); }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// WIRING
+// ═══════════════════════════════════════════════════════════════
+
+// Login
+document.getElementById('adm-login-btn').addEventListener('click', doLogin);
+document.getElementById('adm-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('adm-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Topbar user button → logout confirm
+document.getElementById('topbar-user-btn').addEventListener('click', () => {
+    if (confirm(`تسجيل الخروج من حساب ${currentAdmin?.username}؟`)) doLogout();
+});
+
+// Drivers refresh
+document.getElementById('drivers-refresh-btn').addEventListener('click', async () => {
+    await loadAllData(); renderDrivers(); toast('✅ تم تحديث السائقين');
+});
+
+// Driver filter pills
+document.querySelectorAll('[data-driver-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-driver-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        driverFilter = btn.dataset.driverFilter;
+        renderDrivers();
+    });
+});
+
+// Driver search
+document.getElementById('drivers-search').addEventListener('input', e => {
+    driverSearch = e.target.value.trim();
+    renderDrivers();
+});
+
+// Customers refresh
+document.getElementById('customers-refresh-btn').addEventListener('click', async () => {
+    await loadAllData(); renderCustomers(); toast('✅ تم تحديث العملاء');
+});
+
+// Customer filter pills
+document.querySelectorAll('[data-cust-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-cust-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        customerFilter = btn.dataset.custFilter;
+        renderCustomers();
+    });
+});
+
+// Customer search
+document.getElementById('customers-search').addEventListener('input', e => {
+    customerSearch = e.target.value.trim();
+    renderCustomers();
+});
+
+// Stores refresh
+document.getElementById('stores-refresh-btn').addEventListener('click', async () => {
+    await loadAllData(); renderStores(); toast('✅ تم تحديث المتاجر');
+});
+
+// Stores filter pills
+document.querySelectorAll('[data-store-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-store-filter]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        storeFilter = btn.dataset.storeFilter;
+        renderStores();
+    });
+});
+
+// Stores search
+document.getElementById('stores-search').addEventListener('input', e => {
+    storeSearch = e.target.value.trim();
+    renderStores();
+});
+
+// Map refresh
+document.getElementById('map-refresh-btn').addEventListener('click', async () => {
+    await loadAllData(); renderMap();
+    document.getElementById('map-last-update').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+    toast('✅ تم تحديث الخريطة');
+});
+
+// Orders refresh
+document.getElementById('orders-refresh-btn').addEventListener('click', async () => {
+    await loadAllData(); renderOrders(); toast('✅ تم تحديث الطلبات');
+});
+
+// Order filter pills
+document.querySelectorAll('.filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        orderFilter = btn.dataset.filter;
+        renderOrders();
+    });
+});
+
+// Order search
+document.getElementById('orders-search').addEventListener('input', e => {
+    orderSearch = e.target.value.trim();
+    renderOrders();
+});
+
+// Map layer toggles
+document.querySelectorAll('.map-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        btn.classList.toggle('active');
+        mapLayers[btn.dataset.layer] = btn.classList.contains('active');
+        renderMap();
+    });
+});
+
+// Sidebar collapse
+document.getElementById('collapse-btn').addEventListener('click', () => {
+    sidebarCollapsed = !sidebarCollapsed;
+    document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+});
+
+
+
+// Restore session
+const savedSession = sessionStorage.getItem('delivoAdmin');
+if (savedSession) {
+    try {
+        currentAdmin = JSON.parse(savedSession);
+        startApp();
+    } catch(e) { sessionStorage.removeItem('delivoAdmin'); }
+}
+
+// Responsive: sidebar is always visible as icon rail on narrow screens
+
+</script>
+</body>
+</html>
