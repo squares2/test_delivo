@@ -257,6 +257,29 @@ function onFirebaseReady() {
                     window.DelivoUser = { ...window.DelivoUser, ...snap.data() };
                 }
             } catch (_) {}
+
+            // ── Blacklist check ───────────────────────────────
+            try {
+                const RTDB_BASE = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+                const uid       = user.uid;
+                const uuid      = window.DelivoUser?.deviceUUID || null;
+
+                // Fetch both uid-based and uuid-based blacklist entries in parallel
+                const checks = [fetch(`${RTDB_BASE}/blacklist/${uid}.json`).then(r => r.json())];
+                if (uuid) checks.push(fetch(`${RTDB_BASE}/blacklist/${uuid}.json`).then(r => r.json()));
+
+                const results   = await Promise.all(checks);
+                const blEntry   = results.find(r => r && r.reason);
+
+                if (blEntry) {
+                    // Sign out silently then show blocked screen
+                    await auth.signOut();
+                    window.DelivoUser = null;
+                    _showBlockedScreen(blEntry.reason || 'مخالفة سياسة الاستخدام');
+                    return;
+                }
+            } catch (_) {}
+            // ─────────────────────────────────────────────────
         } else {
             window.DelivoUser = null;
         }
@@ -326,6 +349,19 @@ function onFirebaseReady() {
             const deviceCheck = await checkDeviceLimit();
             if (!deviceCheck.allowed)
                 return { error: true, message: deviceCheck.message };
+
+            // Check if device UUID is blacklisted
+            if (deviceCheck.uuid) {
+                try {
+                    const RTDB_BASE = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+                    const blResp = await fetch(`${RTDB_BASE}/blacklist/${deviceCheck.uuid}.json`);
+                    const blData = await blResp.json();
+                    if (blData && blData.reason) {
+                        _showBlockedScreen(blData.reason);
+                        return { error: true, message: 'هذا الجهاز محظور من استخدام Delivo.' };
+                    }
+                } catch (_) {}
+            }
 
             // Check username not already taken
             try {
@@ -642,4 +678,82 @@ function onFirebaseReady() {
     };
 
     console.log('[Delivo] Firebase ready ✓');
+}
+// ── Blocked screen ────────────────────────────────────────────
+function _showBlockedScreen(reason) {
+    // Remove splash so blocked screen is visible
+    const splash = document.getElementById('delivo-splash');
+    if (splash) splash.classList.add('hidden');
+
+    // Inject blocked screen if not already there
+    if (document.getElementById('delivo-blocked')) return;
+
+    const el = document.createElement('div');
+    el.id = 'delivo-blocked';
+    el.innerHTML = `
+        <div class="blk-card">
+            <div class="blk-icon">🚫</div>
+            <h1 class="blk-title">تم حظرك من Delivo</h1>
+            <p class="blk-msg">
+                لقد تم حظر حسابك من منصة Delivo من قِبل الإدارة.
+            </p>
+            <div class="blk-reason">
+                <span class="blk-reason-label">سبب الحظر</span>
+                <span class="blk-reason-val">${reason}</span>
+            </div>
+            <p class="blk-contact">
+                إذا كنت تعتقد أن هذا خطأ، تواصل معنا عبر واتساب
+                <a href="https://wa.me/96170714152">📞 +961 70 714 152</a>
+            </p>
+        </div>
+    `;
+
+    // Inline styles so this works even if CSS fails to load
+    const style = document.createElement('style');
+    style.textContent = `
+        #delivo-blocked {
+            position: fixed; inset: 0; z-index: 99999;
+            background: #0a0a0f;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Almarai', 'Segoe UI', sans-serif;
+            direction: rtl; padding: 24px;
+        }
+        .blk-card {
+            background: #111118; border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 24px; padding: 40px 32px;
+            max-width: 420px; width: 100%; text-align: center;
+            box-shadow: 0 0 0 1px rgba(239,68,68,0.08), 0 24px 80px rgba(0,0,0,0.7);
+        }
+        .blk-icon { font-size: 3.5rem; margin-bottom: 20px; display: block; }
+        .blk-title {
+            font-size: 1.5rem; font-weight: 800; color: #f0f0f8;
+            margin: 0 0 12px;
+        }
+        .blk-msg {
+            font-size: 0.92rem; color: #9898a6; line-height: 1.7; margin: 0 0 20px;
+        }
+        .blk-reason {
+            background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .blk-reason-label {
+            font-size: 0.68rem; font-weight: 800; color: #ef4444;
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+        .blk-reason-val {
+            font-size: 0.9rem; color: #f0f0f8; font-weight: 700; line-height: 1.5;
+        }
+        .blk-contact {
+            font-size: 0.8rem; color: #6b6b82; line-height: 1.7; margin: 0;
+        }
+        .blk-contact a {
+            color: #FF5C00; text-decoration: none; font-weight: 700;
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(el);
+
+    // Also block all interaction
+    document.body.style.overflow = 'hidden';
 }

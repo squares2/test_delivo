@@ -502,6 +502,22 @@ input, select, textarea { font-family: var(--font); }
     font-size: 0.72rem; font-weight: 800; transition: all 0.15s;
 }
 .dc-locate-btn:hover { border-color: var(--orange); color: var(--orange); }
+.dc-actions { display: flex; gap: 6px; margin-top: 8px; }
+.dc-edit-btn {
+    flex: 1; padding: 7px; border-radius: var(--radius-md);
+    background: none; border: 1.5px solid var(--border); color: var(--gray-light);
+    font-size: 0.72rem; font-weight: 800; transition: all 0.15s; cursor: pointer;
+    font-family: var(--font);
+}
+.dc-edit-btn:hover { border-color: var(--blue); color: var(--blue); }
+.dc-delete-btn {
+    padding: 7px 10px; border-radius: var(--radius-md);
+    background: none; border: 1.5px solid var(--border); color: var(--gray);
+    font-size: 0.72rem; font-weight: 800; transition: all 0.15s; cursor: pointer;
+    font-family: var(--font);
+}
+.dc-delete-btn:hover { border-color: var(--red); color: var(--red); }
+.dc-phone { font-size: 0.7rem; color: var(--gray); font-family: var(--mono); margin-top: 2px; direction: ltr; }
 
 /* ─── USERS PANEL ───────────────────────────────────────────── */
 .users-table-wrap { flex: 1; overflow: auto; padding: 16px 20px; }
@@ -520,6 +536,54 @@ input, select, textarea { font-family: var(--font); }
 .ut-status { padding: 2px 8px; border-radius: 50px; font-size: 0.62rem; font-weight: 800; }
 .ut-status.active   { background: var(--green-glow);   color: var(--green); }
 .ut-status.offline  { background: var(--surface2);     color: var(--gray);  }
+.ut-status.blocked  { background: rgba(239,68,68,0.15); color: var(--red);  }
+.ut-row--blocked td { background: rgba(239,68,68,0.04) !important; }
+.ut-row--blocked .ut-name { color: var(--red) !important; }
+/* blacklist reason modal */
+#bl-reason-overlay {
+    position:fixed;inset:0;z-index:10200;background:rgba(0,0,0,0.75);
+    backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;
+}
+#bl-reason-overlay.open { display:flex; }
+#bl-reason-box {
+    background:var(--surface);border:1px solid var(--border-bright);
+    border-radius:20px;padding:28px 24px 22px;
+    width:420px;max-width:94vw;direction:rtl;
+    box-shadow:0 24px 80px rgba(0,0,0,0.7);
+    animation:confirmIn 0.28s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+.bl-icon { width:56px;height:56px;border-radius:16px;margin:0 auto 16px;
+    background:rgba(239,68,68,0.15);display:flex;align-items:center;
+    justify-content:center;font-size:1.7rem; }
+#bl-reason-title { font-size:1rem;font-weight:800;color:var(--white);text-align:center;margin-bottom:6px; }
+#bl-reason-sub   { font-size:0.8rem;color:var(--gray-light);text-align:center;margin-bottom:18px;line-height:1.5; }
+#bl-reason-input {
+    width:100%;padding:11px 14px;background:var(--surface2);
+    border:1.5px solid var(--border);border-radius:12px;
+    color:var(--white);font-size:0.88rem;font-family:var(--font);
+    resize:vertical;min-height:80px;outline:none;
+    transition:border-color 0.2s;
+}
+#bl-reason-input:focus { border-color:var(--red); }
+.bl-actions { display:flex;gap:10px;margin-top:16px;flex-direction:row-reverse; }
+.bl-btn { flex:1;padding:12px;border-radius:12px;border:none;
+    font-size:0.9rem;font-weight:800;cursor:pointer;
+    font-family:var(--font);transition:opacity 0.15s; }
+.bl-btn:hover { opacity:0.87; }
+.bl-btn--confirm { background:var(--red);color:#fff; }
+.bl-btn--cancel  { background:var(--surface2);border:1.5px solid var(--border);color:var(--gray-light); }
+/* blocked screen (shown on index.html) */
+.bl-badge { display:inline-flex;align-items:center;gap:4px;
+    padding:2px 8px;border-radius:50px;font-size:0.62rem;font-weight:800;
+    background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3); }
+.bl-uuid-badge { font-size:0.65rem;padding:2px 8px;border-radius:50px;font-weight:800;
+    background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25);
+    font-family:var(--mono); }
+.uuid-bl-btn { padding:3px 10px;border-radius:50px;border:1.5px solid var(--border);
+    background:none;color:var(--gray);font-size:0.62rem;font-weight:800;
+    cursor:pointer;transition:all 0.15s;font-family:var(--font); }
+.uuid-bl-btn:hover { border-color:var(--red);color:var(--red); }
+.uuid-bl-btn.unblock:hover { border-color:var(--green);color:var(--green); }
 .ut-avatar-sm {
     width: 30px; height: 30px; border-radius: 50%;
     background: var(--surface3); display: inline-flex;
@@ -641,16 +705,106 @@ input, select, textarea { font-family: var(--font); }
 .modal-btn.primary:hover { background: var(--orange-dim); }
 
 /* ─── Toast ─────────────────────────────────────────────────── */
-#admin-toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
-    background: var(--surface); border: 1px solid var(--border-bright);
-    border-radius: 50px; padding: 10px 20px;
-    font-size: 0.82rem; font-weight: 800; color: var(--white);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    opacity: 0; z-index: 9000; white-space: nowrap;
+/* --- NOTIFICATION TOASTS --- */
+#admin-toast { display: none; }
+#notif-stack {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    z-index: 10000; pointer-events: none;
 }
-#admin-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.notif {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 12px;
+    min-width: 300px; max-width: 480px;
+    padding: 13px 16px 13px 18px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border-bright);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3);
+    font-size: 0.86rem; font-weight: 700; color: var(--white);
+    pointer-events: all; direction: rtl;
+    animation: notifIn 0.32s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.notif.out { animation: notifOut 0.25s ease forwards; }
+.notif--success { border-color: rgba(34,197,94,0.5); }
+.notif--error   { border-color: rgba(239,68,68,0.5); }
+.notif--warning { border-color: rgba(245,158,11,0.5); }
+.notif--info    { border-color: rgba(59,130,246,0.5); }
+.notif__icon {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+}
+.notif--success .notif__icon { background: rgba(34,197,94,0.15);  color: var(--green); }
+.notif--error   .notif__icon { background: rgba(239,68,68,0.15);  color: var(--red); }
+.notif--warning .notif__icon { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.notif--info    .notif__icon { background: rgba(59,130,246,0.15); color: var(--blue); }
+.notif__body { flex: 1; line-height: 1.4; min-width: 0; }
+.notif__title { font-size: 0.84rem; font-weight: 800; }
+.notif__sub   { font-size: 0.75rem; color: var(--gray-light); font-weight: 600; margin-top: 1px; }
+.notif__close {
+    width: 24px; height: 24px; border-radius: 6px; border: none;
+    background: rgba(255,255,255,0.05); color: var(--gray); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; flex-shrink: 0; transition: background 0.15s, color 0.15s;
+    font-family: var(--font);
+}
+.notif__close:hover { background: rgba(255,255,255,0.12); color: var(--white); }
+.notif__bar {
+    position: absolute; bottom: 0; right: 0; left: 0; height: 3px;
+    border-radius: 0 0 14px 14px; opacity: 0.4;
+    animation: notifBar linear forwards;
+}
+.notif--success .notif__bar { background: var(--green); }
+.notif--error   .notif__bar { background: var(--red); }
+.notif--warning .notif__bar { background: var(--yellow); }
+.notif--info    .notif__bar { background: var(--blue); }
+@keyframes notifIn  { from { opacity:0; transform:translateY(-16px) scale(0.94); } to { opacity:1; transform:translateY(0) scale(1); } }
+@keyframes notifOut { to   { opacity:0; transform:translateY(-10px) scale(0.94); } }
+@keyframes notifBar { from { width:100%; } to { width:0; } }
+
+/* --- CONFIRM DIALOG --- */
+#confirm-overlay {
+    position: fixed; inset: 0; z-index: 10100;
+    background: rgba(0,0,0,0.72); backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center;
+}
+#confirm-overlay.open { display: flex; }
+#confirm-box {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: 20px; padding: 28px 24px 22px;
+    width: 370px; max-width: 93vw; direction: rtl;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+    animation: confirmIn 0.28s cubic-bezier(0.34,1.4,0.64,1) both;
+}
+@keyframes confirmIn { from { opacity:0; transform:scale(0.88) translateY(14px); } to { opacity:1; transform:scale(1) translateY(0); } }
+.confirm-icon-wrap {
+    width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 18px;
+    display: flex; align-items: center; justify-content: center; font-size: 1.7rem;
+}
+.confirm-icon-wrap.danger  { background: rgba(239,68,68,0.15); }
+.confirm-icon-wrap.warning { background: rgba(245,158,11,0.15); }
+.confirm-icon-wrap.info    { background: rgba(59,130,246,0.15); }
+#confirm-title {
+    font-size: 1.05rem; font-weight: 800; color: var(--white);
+    text-align: center; margin-bottom: 8px;
+}
+#confirm-msg {
+    font-size: 0.82rem; color: var(--gray-light); font-weight: 600;
+    text-align: center; line-height: 1.65; margin-bottom: 24px;
+}
+#confirm-actions { display: flex; gap: 10px; flex-direction: row-reverse; }
+.confirm-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: none;
+    font-size: 0.9rem; font-weight: 800; cursor: pointer;
+    font-family: var(--font); transition: opacity 0.15s, transform 0.1s;
+}
+.confirm-btn:hover  { opacity: 0.88; }
+.confirm-btn:active { transform: scale(0.97); }
+.confirm-btn--cancel {
+    background: var(--surface2); border: 1.5px solid var(--border);
+    color: var(--gray-light);
+}
+.confirm-btn--ok.danger  { background: var(--red);    color: #fff; }
+.confirm-btn--ok.warning { background: var(--yellow);  color: #111; }
+.confirm-btn--ok.info    { background: var(--blue);    color: #fff; }
 
 /* ─── Scrollbars ────────────────────────────────────────────── */
 *::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -891,6 +1045,10 @@ input, select, textarea { font-family: var(--font); }
                     <h2>السائقون</h2>
                     <span class="panel-header-sub" id="drivers-count-label">—</span>
                     <input type="text" class="search-box" id="drivers-search" placeholder="بحث باسم السائق…" style="max-width:200px;">
+                    <button class="ph-btn ph-btn--primary" id="add-driver-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        إضافة سائق
+                    </button>
                     <button class="ph-btn" id="drivers-refresh-btn">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                         تحديث
@@ -920,11 +1078,12 @@ input, select, textarea { font-family: var(--font); }
                     <button class="filter-pill active" data-cust-filter="all">الكل</button>
                     <button class="filter-pill" data-cust-filter="active">🟢 نشط</button>
                     <button class="filter-pill" data-cust-filter="offline">⚫ غير نشط</button>
+                    <button class="filter-pill" data-cust-filter="blocked" style="color:var(--red);">🚫 قائمة الحظر</button>
                 </div>
                 <div class="users-table-wrap">
                     <table class="users-table">
                         <thead><tr>
-                            <th>العميل</th><th>اسم المستخدم</th><th>الهاتف</th><th>النقاط</th><th>الطلبات</th><th>الحالة</th><th>آخر نشاط</th>
+                            <th>العميل</th><th>اسم المستخدم</th><th>الهاتف</th><th>النقاط</th><th>الطلبات</th><th>الحالة</th><th>آخر نشاط</th><th>إجراءات</th>
                         </tr></thead>
                         <tbody id="customers-tbody"></tbody>
                     </table>
@@ -1019,6 +1178,49 @@ input, select, textarea { font-family: var(--font); }
     </div>
 </div>
 
+<!-- Edit / Add driver modal -->
+<div class="modal-overlay" id="modal-driver-edit">
+    <div class="modal-box">
+        <div class="modal-title" id="driver-modal-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            تعديل بيانات السائق
+        </div>
+        <p id="driver-modal-error" style="color:var(--red);font-size:0.78rem;margin-bottom:10px;display:none;"></p>
+
+        <div class="modal-field">
+            <label>الاسم الظاهر (Driver Name)</label>
+            <input type="text" id="driver-edit-name" placeholder="مثال: أحمد خليل" autocomplete="off">
+        </div>
+        <div class="modal-field">
+            <label>اسم المستخدم (Username)</label>
+            <input type="text" id="driver-edit-username" placeholder="مثال: ahmad_driver" dir="ltr" autocomplete="off">
+            <small style="color:var(--gray);font-size:0.68rem;">سيُستخدم لتسجيل الدخول في تطبيق السائق</small>
+        </div>
+        <div class="modal-field">
+            <label>رقم الهاتف</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:0.82rem;color:var(--gray-light);background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;white-space:nowrap;">🇱🇧 +961</span>
+                <input type="tel" id="driver-edit-phone" placeholder="03 123 456" dir="ltr" autocomplete="off" maxlength="10" style="flex:1;">
+            </div>
+        </div>
+        <div class="modal-field">
+            <label>كلمة المرور الجديدة <span style="color:var(--gray);font-weight:400;">(اتركها فارغة للإبقاء على الحالية)</span></label>
+            <div style="position:relative;">
+                <input type="password" id="driver-edit-password" placeholder="8 أحرف على الأقل" autocomplete="new-password" style="width:100%;padding-left:40px;">
+                <button type="button" id="driver-pwd-toggle" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gray);cursor:pointer;padding:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <input type="hidden" id="driver-edit-key">
+        <div class="modal-actions">
+            <button class="modal-btn" id="driver-edit-cancel">إلغاء</button>
+            <button class="modal-btn primary" id="driver-edit-save">💾 حفظ التغييرات</button>
+        </div>
+    </div>
+</div>
+
 <!-- Assign driver modal -->
 <div class="modal-overlay" id="modal-assign">
     <div class="modal-box" style="width:360px;">
@@ -1040,6 +1242,36 @@ input, select, textarea { font-family: var(--font); }
 
 <!-- Toast -->
 <div id="admin-toast"></div>
+
+<!-- Notification stack -->
+<div id="notif-stack"></div>
+
+<!-- Confirm dialog -->
+<div id="confirm-overlay">
+    <div id="confirm-box">
+        <div class="confirm-icon-wrap danger" id="confirm-icon-wrap">🗑</div>
+        <div id="confirm-title"></div>
+        <div id="confirm-msg"></div>
+        <div id="confirm-actions">
+            <button class="confirm-btn confirm-btn--ok danger" id="confirm-ok">تأكيد</button>
+            <button class="confirm-btn confirm-btn--cancel" id="confirm-cancel">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<!-- Blacklist reason modal -->
+<div id="bl-reason-overlay">
+    <div id="bl-reason-box">
+        <div class="bl-icon">🚫</div>
+        <div id="bl-reason-title">حظر المستخدم</div>
+        <div id="bl-reason-sub">أدخل سبب الحظر أو اسم المستخدم / UUID</div>
+        <textarea id="bl-reason-input" placeholder="مثال: سلوك مشبوه — تلاعب بالنظام — طلبات كاذبة"></textarea>
+        <div class="bl-actions">
+            <button class="bl-btn bl-btn--confirm" id="bl-confirm-btn">🚫 حظر</button>
+            <button class="bl-btn bl-btn--cancel"  id="bl-cancel-btn">إلغاء</button>
+        </div>
+    </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -1112,6 +1344,7 @@ let driverFilter   = 'all';
 let driverSearch   = '';
 let customerFilter = 'all';
 let customerSearch = '';
+let allBlacklist   = {};
 let storeFilter    = 'all';
 let storeSearch    = '';
 let mapLayers    = { stores: true, drivers: true, customers: true, orders: true };
@@ -1141,12 +1374,85 @@ function empIcon()     { return `<svg width="15" height="15" viewBox="0 0 24 24"
 function settingsIcon(){ return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`; }
 
 // ── Toast ─────────────────────────────────────────────────────
+/* ================================================================
+   NOTIFICATION SYSTEM
+   showNotif(title, sub, type, duration)  -- type: success|error|warning|info
+   toast(msg, isError)                    -- legacy wrapper
+   showConfirm({title,msg,type,icon,okLabel,cancelLabel}) -> Promise<bool>
+================================================================ */
+const NOTIF_ICONS = {
+    success: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    error:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    info:    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+};
+
+function showNotif(title, sub = '', type = 'success', duration = 3800) {
+    const stack = document.getElementById('notif-stack');
+    const el = document.createElement('div');
+    el.className = `notif notif--${type}`;
+    el.innerHTML = `
+        <div class="notif__icon">${NOTIF_ICONS[type] || NOTIF_ICONS.info}</div>
+        <div class="notif__body">
+            <div class="notif__title">${title}</div>
+            ${sub ? `<div class="notif__sub">${sub}</div>` : ''}
+        </div>
+        <button class="notif__close" aria-label="close">\u2715</button>
+        <div class="notif__bar" style="animation-duration:${duration}ms"></div>
+    `;
+    el.querySelector('.notif__close').addEventListener('click', () => dismissNotif(el));
+    stack.appendChild(el);
+    const t = setTimeout(() => dismissNotif(el), duration);
+    el._timer = t;
+}
+
+function dismissNotif(el) {
+    clearTimeout(el._timer);
+    el.classList.add('out');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
 function toast(msg, isError = false) {
-    const el = document.getElementById('admin-toast');
-    el.textContent = msg;
-    el.style.borderColor = isError ? 'var(--red)' : 'var(--border-bright)';
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), 3000);
+    // Strip leading emoji for title, use rest as sub if long
+    const clean = msg.replace(/^[\u{1F300}-\u{1FFFF}\u2600-\u27BF\uFE0F\u20D0-\u20FF\s]+/u, '').trim();
+    const type  = isError ? 'error' : 'success';
+    showNotif(clean || msg, '', type);
+}
+
+function showConfirm({ title, msg, type = 'danger', icon = '\uD83D\uDDD1', okLabel, cancelLabel }) {
+    return new Promise(resolve => {
+        const overlay   = document.getElementById('confirm-overlay');
+        const iconWrap  = document.getElementById('confirm-icon-wrap');
+        const titleEl   = document.getElementById('confirm-title');
+        const msgEl     = document.getElementById('confirm-msg');
+        const okBtn     = document.getElementById('confirm-ok');
+        const cancelBtn = document.getElementById('confirm-cancel');
+
+        iconWrap.className  = `confirm-icon-wrap ${type}`;
+        iconWrap.textContent = icon;
+        titleEl.textContent  = title;
+        msgEl.innerHTML      = msg;
+        okBtn.className      = `confirm-btn confirm-btn--ok ${type}`;
+        okBtn.textContent    = okLabel    || '\u062a\u0623\u0643\u064a\u062f';
+        cancelBtn.textContent = cancelLabel || '\u0625\u0644\u063a\u0627\u0621';
+
+        overlay.classList.add('open');
+
+        const done = (val) => {
+            overlay.classList.remove('open');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onBg);
+            resolve(val);
+        };
+        const onOk     = () => done(true);
+        const onCancel = () => done(false);
+        const onBg     = (e) => { if (e.target === overlay) done(false); };
+
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onBg);
+    });
 }
 
 // ── Firebase RTDB helpers ─────────────────────────────────────
@@ -1388,17 +1694,30 @@ function doLogout() {
 // ── Load all data ─────────────────────────────────────────────
 async function loadAllData() {
     try {
-        const [orders, drivers, users, devices, pattern, admins] = await Promise.all([
+        const [orders, drivers, users, devices, pattern, admins, blacklist] = await Promise.all([
             fbGet('requests'),
             fbGet('drivers'),
             fsGetCollection('users'),          // ← Firestore
             fsGetCollection('devices').catch(() => ({})),  // ← device groups
             fbGet('pattern'),
             fbGet('adminUsers').catch(() => null),
+            fbGet('blacklist').catch(() => null),
         ]);
 
-        allOrders  = orders  || {};
-        allDrivers = Array.isArray(drivers) ? drivers : (drivers ? Object.values(drivers) : []);
+        allOrders    = orders     || {};
+        allBlacklist = blacklist  || {};
+        // Normalize drivers: old format = array, new format = auto-keyed object, possibly mixed.
+        // Always produce allDrivers as [{...fields, _key, _isNumeric}], filtering null slots.
+        if (drivers) {
+            const _raw = Array.isArray(drivers)
+                ? drivers.reduce((acc, v, i) => { acc[String(i)] = v; return acc; }, {})
+                : drivers;
+            allDrivers = Object.entries(_raw)
+                .map(([k, v]) => (v && typeof v === 'object') ? { ...v, _key: k, _isNumeric: /^\d+$/.test(k) } : null)
+                .filter(Boolean);
+        } else {
+            allDrivers = [];
+        }
         allUsers   = users   || {};
         adminUsers = admins  || {};
 
@@ -1853,7 +2172,7 @@ function renderMap() {
     // ── Map: assign driver from popup ──────────────────────────
     window.mapAssignDriver = async function(orderId) {
         const sel = document.getElementById(`map-drv-${orderId}`);
-        if (!sel || !sel.value) { alert('اختر سائقاً أولاً'); return; }
+        if (!sel || !sel.value) { showNotif('اختر سائقاً أولاً', '', 'warning'); return; }
         await assignDriver(orderId, sel.value);
         adminMap.closePopup();
         renderMap(); // refresh markers
@@ -2270,6 +2589,7 @@ function renderDrivers() {
                 <div style="flex:1;min-width:0;">
                     <div class="dc-name">${name}</div>
                     <div class="dc-sub">@${d.username}</div>
+                    ${d.phone ? `<div class="dc-phone">📞 ${d.phone}</div>` : ''}
                 </div>
                 <span style="font-size:0.62rem;padding:2px 8px;border-radius:50px;font-weight:800;
                     background:${online ? 'var(--green-glow)' : 'var(--surface3)'};
@@ -2291,6 +2611,12 @@ function renderDrivers() {
                 ? `<button class="dc-locate-btn" data-lat="${d.location.lat}" data-lng="${d.location.lng}">📍 عرض على الخريطة</button>`
                 : '<div style="margin-top:8px;font-size:0.7rem;color:var(--gray);text-align:center;">لا يوجد موقع</div>'
             }
+            <div class="dc-actions">
+                <button class="dc-edit-btn" data-driver-key="${d._key}">
+                    ✏️ تعديل البيانات
+                </button>
+                <button class="dc-delete-btn" data-driver-key="${d._key}" title="حذف السائق">🗑</button>
+            </div>
         `;
         if (hasLoc) {
             card.querySelector('.dc-locate-btn').addEventListener('click', (e) => {
@@ -2300,17 +2626,248 @@ function renderDrivers() {
                 setTimeout(() => adminMap && adminMap.setView([lat, lng], 16), 150);
             });
         }
+        card.querySelector('.dc-edit-btn').addEventListener('click', () => openDriverEditModal(d));
+        card.querySelector('.dc-delete-btn').addEventListener('click', () => deleteDriver(d));
         grid.appendChild(card);
     });
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DRIVER EDIT / ADD / DELETE
+// ═══════════════════════════════════════════════════════════════
+
+function openDriverEditModal(driver) {
+    const isNew = !driver;
+    document.getElementById('driver-modal-title').innerHTML = isNew
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> إضافة سائق جديد`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> تعديل بيانات السائق`;
+    document.getElementById('driver-edit-save').textContent = isNew ? '➕ إضافة السائق' : '💾 حفظ التغييرات';
+
+    document.getElementById('driver-edit-name').value     = driver?.owner || '';
+    document.getElementById('driver-edit-username').value = driver?.username || '';
+    document.getElementById('driver-edit-phone').value    = (driver?.phone || '').replace(/^\+?961/, '');
+    document.getElementById('driver-edit-password').value = '';
+    document.getElementById('driver-edit-key').value      = driver?._key ?? 'NEW';
+    document.getElementById('driver-modal-error').style.display = 'none';
+    document.getElementById('modal-driver-edit').classList.add('open');
+}
+
+document.getElementById('driver-edit-cancel').addEventListener('click', () => {
+    document.getElementById('modal-driver-edit').classList.remove('open');
+});
+document.getElementById('modal-driver-edit').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+// Password visibility toggle
+document.getElementById('driver-pwd-toggle').addEventListener('click', () => {
+    const inp = document.getElementById('driver-edit-password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+document.getElementById('driver-edit-save').addEventListener('click', async () => {
+    const saveBtn  = document.getElementById('driver-edit-save');
+    const errorEl  = document.getElementById('driver-modal-error');
+    const name     = document.getElementById('driver-edit-name').value.trim();
+    const username = document.getElementById('driver-edit-username').value.trim().toLowerCase();
+    const phone    = document.getElementById('driver-edit-phone').value.trim();
+    const password = document.getElementById('driver-edit-password').value;
+    const key      = document.getElementById('driver-edit-key').value;
+    const isNew    = key === '' || key === 'NEW';
+
+    errorEl.style.display = 'none';
+
+    if (!name)     { errorEl.textContent = '⚠️ الاسم الظاهر مطلوب'; errorEl.style.display = 'block'; return; }
+    if (!username) { errorEl.textContent = '⚠️ اسم المستخدم مطلوب'; errorEl.style.display = 'block'; return; }
+    if (isNew && !password) { errorEl.textContent = '⚠️ كلمة المرور مطلوبة لسائق جديد'; errorEl.style.display = 'block'; return; }
+    if (password && password.length < 8) { errorEl.textContent = '⚠️ كلمة المرور يجب أن تكون 8 أحرف على الأقل'; errorEl.style.display = 'block'; return; }
+
+    // Check username uniqueness (skip self when editing)
+    const duplicate = allDrivers.find(d => d && d.username === username && d._key !== key);
+    if (duplicate) { errorEl.textContent = '⚠️ اسم المستخدم مستخدم من قبل سائق آخر'; errorEl.style.display = 'block'; return; }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'جاري الحفظ…';
+
+    try {
+        const phoneFormatted = phone ? '+961' + phone.replace(/^0/, '') : '';
+
+        if (isNew) {
+            const newDriver = {
+                owner    : name,
+                username : username,
+                password : password,
+                phone    : phoneFormatted,
+                status   : 'offline',
+            };
+            // If existing drivers use numeric indices, append to the array
+            // to stay consistent with the driver app's expected format.
+            // Otherwise (all auto-keys) use fbPush for a proper named key.
+            const hasNumeric = allDrivers.some(d => d._isNumeric);
+            if (hasNumeric) {
+                const current = await fbGet('drivers');
+                const arr = (Array.isArray(current) ? current : Object.values(current || {}))
+                    .filter(v => v && typeof v === 'object');
+                arr.push(newDriver);
+                await fbSet('drivers', arr);
+            } else {
+                await fbPush('drivers', newDriver);
+            }
+            toast('✅ تمت إضافة السائق بنجاح');
+        } else {
+            // Patch existing driver fields
+            const updates = { owner: name, username: username, phone: phoneFormatted };
+            if (password) updates.password = password;
+            await fbUpdate(`drivers/${key}`, updates);
+            toast('✅ تم حفظ التغييرات بنجاح');
+        }
+
+        document.getElementById('modal-driver-edit').classList.remove('open');
+        await loadAllData();
+        renderDrivers();
+    } catch (err) {
+        errorEl.textContent = '❌ حدث خطأ أثناء الحفظ: ' + err.message;
+        errorEl.style.display = 'block';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = key ? '💾 حفظ التغييرات' : '➕ إضافة السائق';
+    }
+});
+
+async function deleteDriver(driver) {
+    const name = driver.owner || driver.username || 'هذا السائق';
+    const _confirmDrv = await showConfirm({
+        title: `حذف السائق`,
+        msg: `هل تريد حذف السائق <b>${name}</b> بشكل نهائي؟<br><span style="color:var(--red)">لا يمكن التراجع عن هذا الإجراء.</span>`,
+        type: 'danger', icon: '🗑',
+        okLabel: 'حذف السائق', cancelLabel: 'إلغاء'
+    });
+    if (!_confirmDrv) return;
+    try {
+        // Firebase REST DELETE works for both auto-keys and numeric array indices
+        const r = await fetch(`${RTDB}/drivers/${driver._key}.json`, { method: 'DELETE' });
+        if (!r.ok) throw new Error(`RTDB DELETE ${r.status}`);
+        // After deleting a numeric-index driver, clean up null slots
+        if (driver._isNumeric) {
+            const current = await fbGet('drivers');
+            if (current) {
+                // Rebuild as clean numbered array without nulls
+                const clean = (Array.isArray(current) ? current : Object.values(current))
+                    .filter(v => v && typeof v === 'object');
+                await fbSet('drivers', clean.length ? clean : null);
+            }
+        }
+        toast(`🗑 تم حذف السائق "${name}"`);
+        await loadAllData();
+        renderDrivers();
+    } catch (err) {
+        toast('❌ خطأ في الحذف: ' + err.message, true);
+    }
+}
+
+document.getElementById('add-driver-btn').addEventListener('click', () => openDriverEditModal(null));
+
+// ═══════════════════════════════════════════════════════════════
 // CUSTOMERS PANEL
 // ═══════════════════════════════════════════════════════════════
+// =================================================================
+// BLACKLIST
+// RTDB: /blacklist/{uid|uuid} = { reason, by, at, type }
+// =================================================================
+
+function handleBlacklistAction(btn) {
+    const action = btn.dataset.action;
+    const uid    = btn.dataset.uid;
+    const uuid   = btn.dataset.uuid;
+    const name   = btn.dataset.name || '';
+
+    if (action === 'unblock-uid') {
+        showConfirm({
+            title: 'رفع الحظر عن المستخدم',
+            msg: `هل تريد رفع الحظر عن <b>${name}</b>؟<br>سيتمكن من استخدام Delivo مجددا.`,
+            type: 'info', icon: '✅',
+            okLabel: 'رفع الحظر', cancelLabel: 'إلغاء'
+        }).then(async ok => {
+            if (!ok) return;
+            await fbSet(`blacklist/${uid}`, null);
+            delete allBlacklist[uid];
+            showNotif('✅ تم رفع الحظر', `المستخدم ${name} مفعل مجددا`, 'success');
+            renderCustomers();
+        });
+        return;
+    }
+
+    if (action === 'unblock-uuid') {
+        showConfirm({
+            title: 'رفع حظر الجهاز',
+            msg: `هل تريد رفع الحظر عن هذا الجهاز (UUID)؟<br>جميع الحسابات عليه ستعود للعمل.`,
+            type: 'info', icon: '✅',
+            okLabel: 'رفع حظر الجهاز', cancelLabel: 'إلغاء'
+        }).then(async ok => {
+            if (!ok) return;
+            await fbSet(`blacklist/${uuid}`, null);
+            delete allBlacklist[uuid];
+            showNotif('✅ تم رفع حظر الجهاز', 'مفعل مجددا', 'success');
+            renderCustomers();
+        });
+        return;
+    }
+
+    // block-uid or block-uuid -> show reason modal
+    showBlacklistReasonModal({ uid, uuid, name, action });
+}
+
+function showBlacklistReasonModal({ uid, uuid, name, action }) {
+    const overlay = document.getElementById('bl-reason-overlay');
+    const titleEl = document.getElementById('bl-reason-title');
+    const subEl   = document.getElementById('bl-reason-sub');
+    const input   = document.getElementById('bl-reason-input');
+    const okBtn   = document.getElementById('bl-confirm-btn');
+    const canBtn  = document.getElementById('bl-cancel-btn');
+
+    titleEl.textContent = action === 'block-uuid'
+        ? 'حظر الجهاز (UUID)'
+        : `حظر المستخدم ${name}`;
+    subEl.innerHTML = action === 'block-uuid'
+        ? `جميع الحسابات على هذا الجهاز ستُحظر — <b style='color:var(--red)'>حظر كامل للجهاز</b>`
+        : `سيتم حظر هذا الحساب ومنعه من الدخول إلى Delivo.`;
+    input.value = '';
+    overlay.classList.add('open');
+    setTimeout(() => input.focus(), 100);
+
+    const save = async () => {
+        const reason = input.value.trim() || 'مخالفة سياسة الاستخدام';
+        const entry  = { reason, by: currentAdmin?.username || 'admin', at: Date.now(), type: action === 'block-uuid' ? 'uuid' : 'uid' };
+        const key    = action === 'block-uuid' ? uuid : uid;
+        try {
+            await fbSet(`blacklist/${key}`, entry);
+            allBlacklist[key] = entry;
+            cleanup();
+            const label = action === 'block-uuid' ? 'الجهاز' : `مستخدم ${name}`;
+            showNotif(`⛔ تم حظر ${label}`, reason, 'error');
+            renderCustomers();
+        } catch(e) {
+            showNotif('خطأ في الحظر', e.message, 'error');
+        }
+    };
+    const cleanup = () => {
+        overlay.classList.remove('open');
+        okBtn.removeEventListener('click', save);
+        canBtn.removeEventListener('click', cleanup);
+        overlay.removeEventListener('click', onBg);
+    };
+    const onBg = (e) => { if (e.target === overlay) cleanup(); };
+    okBtn.addEventListener('click', save);
+    canBtn.addEventListener('click', cleanup);
+    overlay.addEventListener('click', onBg);
+}
+
 function renderCustomers() {
     const tbody   = document.getElementById('customers-tbody');
     const countEl = document.getElementById('customers-count-label');
     tbody.innerHTML = '';
+
+    const bl = allBlacklist || {};  // { uid: {reason,by,at}, uuid: {...} }
 
     // Count orders per user
     const userOrders = {};
@@ -2319,27 +2876,28 @@ function renderCustomers() {
         else if (o.username) userOrders[o.username] = (userOrders[o.username] || 0) + 1;
     });
 
-    // Build device groups: uuid → [users]
-    // Already in allDeviceGroups, but apply filters per-user
     let users = Object.entries(allUsers);
 
     if (customerFilter !== 'all') {
-        users = users.filter(([, u]) => (u.status || 'offline') === customerFilter);
+        if (customerFilter === 'blocked') {
+            users = users.filter(([uid, u]) => bl[uid] || (u.deviceUUID && bl[u.deviceUUID]));
+        } else {
+            users = users.filter(([, u]) => (u.status || 'offline') === customerFilter);
+        }
     }
     if (customerSearch) {
         const q = customerSearch.toLowerCase();
         users = users.filter(([, u]) =>
             (u.displayName || '').toLowerCase().includes(q) ||
-            (u.fullname || '').toLowerCase().includes(q) ||
-            (u.username || '').toLowerCase().includes(q) ||
-            (u.phone || '').includes(q) ||
-            (u.deviceUUID || '').toLowerCase().includes(q)
+            (u.fullname    || '').toLowerCase().includes(q) ||
+            (u.username    || '').toLowerCase().includes(q) ||
+            (u.phone       || '').includes(q) ||
+            (u.deviceUUID  || '').toLowerCase().includes(q)
         );
     }
 
-    // Group by deviceUUID for display — keep ordering by newest
-    const seenUUIDs  = new Set();
-    const rows       = []; // each row: { isGroup, uuid, users[], primary }
+    const seenUUIDs = new Set();
+    const rows = [];
 
     users.sort(([,a],[,b]) => (b.createdAt||b.timestamp||0) - (a.createdAt||a.timestamp||0))
          .forEach(([uid, u]) => {
@@ -2348,110 +2906,159 @@ function renderCustomers() {
             const key   = uuid || uid;
             if (seenUUIDs.has(key)) return;
             seenUUIDs.add(key);
-            rows.push({ isGroup: peers.length > 1, uuid, users: peers, primary: u });
+            rows.push({ isGroup: peers.length > 1, uuid, users: peers, primary: u, uid });
          });
 
-    countEl.textContent = `${rows.length} جهاز · ${users.length} حساب`;
+    countEl.textContent = `${rows.length} \u062c\u0647\u0627\u0632 \u00b7 ${users.length} \u062d\u0633\u0627\u0628`;
 
     if (!rows.length) {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="7" style="text-align:center;padding:40px;color:var(--gray);">لا يوجد عملاء</td>`;
-        tbody.appendChild(tr);
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--gray);">\u0644\u0627 \u064a\u0648\u062c\u062f \u0639\u0645\u0644\u0627\u0621</td></tr>`;
         return;
     }
 
-    rows.forEach(({ isGroup, uuid, users: peers, primary: u }) => {
+    rows.forEach(({ isGroup, uuid, users: peers, primary: u, uid }) => {
+        const uuidBlocked = uuid && bl[uuid];
+        const uidBlocked  = bl[uid];
+        const anyBlocked  = uuidBlocked || uidBlocked || peers.some(p => bl[p._id]);
+
         if (isGroup) {
-            // ── Grouped row (multi-account device) ───────────
             const groupRow = document.createElement('tr');
-            groupRow.style.cssText = 'background:rgba(239,68,68,0.06);cursor:pointer;';
+            groupRow.style.cssText = `background:${uuidBlocked ? 'rgba(239,68,68,0.09)' : 'rgba(239,68,68,0.04)'};cursor:pointer;`;
+            const blInfo = uuidBlocked ? `<span class="bl-uuid-badge">\ud83d\udea7 UUID \u0645\u062d\u0638\u0648\u0631</span>` : '';
             groupRow.innerHTML = `
-                <td colspan="7">
+                <td colspan="8">
                     <div style="display:flex;align-items:center;gap:10px;padding:4px 2px;">
-                        <div style="display:flex;align-items:center;justify-content:center;
-                                    width:28px;height:28px;border-radius:50%;flex-shrink:0;
+                        <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;
                                     background:rgba(239,68,68,0.15);border:1.5px solid rgba(239,68,68,0.4);
+                                    display:flex;align-items:center;justify-content:center;
                                     font-size:0.72rem;font-weight:800;color:var(--red);">${peers.length}</div>
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                <span style="font-size:0.7rem;font-weight:800;color:var(--red);">⚠️ جهاز واحد · ${peers.length} حسابات</span>
-                                ${peers.map(p => `
-                                    <span style="background:var(--surface2);border:1px solid var(--border);
-                                                 border-radius:50px;padding:1px 8px;font-size:0.65rem;
-                                                 font-weight:700;color:var(--gray-light);">@${p.username||'—'}</span>`).join('')}
+                                <span style="font-size:0.7rem;font-weight:800;color:var(--red);">\u26a0\ufe0f \u062c\u0647\u0627\u0632 \u0648\u0627\u062d\u062f \u00b7 ${peers.length} \u062d\u0633\u0627\u0628\u0627\u062a</span>
+                                ${blInfo}
+                                ${peers.map(p => `<span style="background:var(--surface2);border:1px solid var(--border);
+                                    border-radius:50px;padding:1px 8px;font-size:0.65rem;font-weight:700;color:var(--gray-light);">@${p.username||'\u2014'}</span>`).join('')}
                             </div>
                             <div style="font-size:0.62rem;color:var(--gray);margin-top:2px;font-family:var(--mono);">
-                                UUID: ${uuid ? uuid.slice(0,20)+'…' : '—'}
+                                UUID: ${uuid ? uuid.slice(0,24)+'\u2026' : '\u2014'}
                             </div>
+                            ${uuidBlocked ? `<div style="font-size:0.65rem;color:var(--red);margin-top:2px;">\u26d4 \u0633\u0628\u0628: ${bl[uuid].reason||'\u2014'}</div>` : ''}
                         </div>
-                        <span style="font-size:0.65rem;color:var(--gray);flex-shrink:0;">▾ عرض التفاصيل</span>
+                        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
+                            ${uuid ? `<button class="uuid-bl-btn ${uuidBlocked?'unblock':''}"
+                                data-uuid="${uuid}" data-action="${uuidBlocked?'unblock-uuid':'block-uuid'}">
+                                ${uuidBlocked ? '\u2705 \u0631\u0641\u0639 \u0627\u0644\u062d\u0638\u0631' : '\ud83d\udea7 \u062d\u0638\u0631 UUID'}
+                            </button>` : ''}
+                            <span style="font-size:0.65rem;color:var(--gray);">\u25be \u0639\u0631\u0636</span>
+                        </div>
                     </div>
                 </td>`;
 
-            // Sub-rows (hidden by default, toggle on click)
             const subRows = peers.map(p => {
-                const initial  = (p.displayName||p.fullname||p.username||'?')[0].toUpperCase();
-                const isActive = p.status === 'active';
-                const ts       = p.createdAt
+                const pBlocked  = bl[p._id] || uuidBlocked;
+                const initial   = (p.displayName||p.fullname||p.username||'?')[0].toUpperCase();
+                const isActive  = p.status === 'active';
+                const ts        = p.createdAt
                     ? new Date(p.createdAt).toLocaleDateString('ar')
-                    : (p.timestamp ? new Date(p.timestamp).toLocaleDateString('ar') : '—');
-                const ordCount = userOrders[p._id] || userOrders[p.username] || 0;
-                const tr2      = document.createElement('tr');
-                tr2.style.cssText = 'display:none;background:rgba(239,68,68,0.03);';
-                tr2.dataset.sub   = uuid;
+                    : (p.timestamp ? new Date(p.timestamp).toLocaleDateString('ar') : '\u2014');
+                const ordCount  = userOrders[p._id] || userOrders[p.username] || 0;
+                const tr2       = document.createElement('tr');
+                tr2.className   = pBlocked ? 'ut-row--blocked' : '';
+                tr2.style.display = 'none';
+                tr2.dataset.sub = uuid;
                 tr2.innerHTML = `
                     <td style="padding-right:24px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <span style="width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;"></span>
                             <span class="ut-avatar-sm" style="background:rgba(239,68,68,0.15);color:var(--red);border-color:rgba(239,68,68,0.3);">${initial}</span>
-                            <span class="ut-name">${p.displayName||p.fullname||'—'}</span>
+                            <div>
+                                <div class="ut-name">${p.displayName||p.fullname||'\u2014'}</div>
+                                ${bl[p._id] ? `<div style="font-size:0.62rem;color:var(--red);">\u26d4 ${bl[p._id].reason||'\u0645\u062d\u0638\u0648\u0631'}</div>` : ''}
+                            </div>
                         </div>
                     </td>
-                    <td class="ut-phone" style="font-family:var(--mono);color:var(--gray-light);">@${p.username||'—'}</td>
-                    <td class="ut-phone">${p.phone?'+961 '+p.phone:'—'}</td>
+                    <td style="font-family:var(--mono);color:var(--gray-light);">@${p.username||'\u2014'}</td>
+                    <td class="ut-phone">${p.phone?'+961 '+p.phone:'\u2014'}</td>
                     <td class="ut-points">${p.points||0}</td>
                     <td style="font-family:var(--mono);font-size:0.72rem;color:var(--gray-light);">${ordCount}</td>
-                    <td><span class="ut-status ${isActive?'active':'offline'}">${isActive?'نشط':'غير نشط'}</span></td>
-                    <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>`;
+                    <td><span class="ut-status ${pBlocked?'blocked':(isActive?'active':'offline')}">${pBlocked?'\u26d4 \u0645\u062d\u0638\u0648\u0631':(isActive?'\u0646\u0634\u0637':'\u063a\u064a\u0631 \u0646\u0634\u0637')}</span></td>
+                    <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>
+                    <td>
+                        <button class="uuid-bl-btn ${bl[p._id]?'unblock':''}"
+                            data-uid="${p._id}" data-name="${p.displayName||p.username||''}"
+                            data-action="${bl[p._id]?'unblock-uid':'block-uid'}" style="width:100%;">
+                            ${bl[p._id] ? '\u2705 \u0631\u0641\u0639 \u0627\u0644\u062d\u0638\u0631' : '\ud83d\udea7 \u062d\u0638\u0631'}
+                        </button>
+                    </td>`;
                 return tr2;
+            });
+
+            // UUID block button
+            groupRow.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', e => { e.stopPropagation(); handleBlacklistAction(btn); });
             });
 
             let expanded = false;
             groupRow.addEventListener('click', () => {
                 expanded = !expanded;
                 subRows.forEach(r => r.style.display = expanded ? '' : 'none');
-                groupRow.querySelector('span:last-child').textContent = expanded ? '▴ إخفاء' : '▾ عرض التفاصيل';
+                const arrow = groupRow.querySelector('span:last-of-type');
+                if (arrow) arrow.textContent = expanded ? '\u25b4 \u0625\u062e\u0641\u0627\u0621' : '\u25be \u0639\u0631\u0636';
+            });
+
+            subRows.forEach(r => {
+                r.querySelectorAll('[data-action]').forEach(btn =>
+                    btn.addEventListener('click', e => { e.stopPropagation(); handleBlacklistAction(btn); })
+                );
             });
 
             tbody.appendChild(groupRow);
             subRows.forEach(r => tbody.appendChild(r));
 
         } else {
-            // ── Solo row ─────────────────────────────────────
-            const initial  = (u.displayName||u.fullname||u.username||'?')[0].toUpperCase();
-            const isActive = u.status === 'active';
-            const ts       = u.createdAt
+            // Solo row
+            const isBlocked = bl[uid] || (uuid && bl[uuid]);
+            const initial   = (u.displayName||u.fullname||u.username||'?')[0].toUpperCase();
+            const isActive  = u.status === 'active';
+            const ts        = u.createdAt
                 ? new Date(u.createdAt).toLocaleDateString('ar')
-                : (u.timestamp ? new Date(u.timestamp).toLocaleDateString('ar') : '—');
-            const ordCount = userOrders[u._id] || userOrders[u.username] || 0;
-            const tr = document.createElement('tr');
+                : (u.timestamp ? new Date(u.timestamp).toLocaleDateString('ar') : '\u2014');
+            const ordCount  = userOrders[uid] || userOrders[u.username] || 0;
+            const blEntry   = bl[uid] || (uuid && bl[uuid]);
+            const tr        = document.createElement('tr');
+            tr.className    = isBlocked ? 'ut-row--blocked' : '';
             tr.innerHTML = `
-                <td><div style="display:flex;align-items:center;gap:8px;">
-                    <span class="ut-avatar-sm">${initial}</span>
-                    <span class="ut-name">${u.displayName||u.fullname||'—'}</span>
-                </div></td>
-                <td class="ut-phone" style="font-family:var(--mono);color:var(--gray-light);">@${u.username||'—'}</td>
-                <td class="ut-phone">${u.phone?'+961 '+u.phone:'—'}</td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="ut-avatar-sm" style="${isBlocked?'background:rgba(239,68,68,0.15);color:var(--red);border-color:rgba(239,68,68,0.3);':''}">${initial}</span>
+                        <div>
+                            <div class="ut-name">${u.displayName||u.fullname||'\u2014'}</div>
+                            ${blEntry ? `<div style="font-size:0.62rem;color:var(--red);margin-top:1px;">\u26d4 ${blEntry.reason||'\u0645\u062d\u0638\u0648\u0631'}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td style="font-family:var(--mono);color:var(--gray-light);">@${u.username||'\u2014'}</td>
+                <td class="ut-phone">${u.phone?'+961 '+u.phone:'\u2014'}</td>
                 <td class="ut-points">${u.points||0}</td>
                 <td style="font-family:var(--mono);font-size:0.72rem;color:var(--gray-light);">${ordCount}</td>
-                <td><span class="ut-status ${isActive?'active':'offline'}">${isActive?'نشط':'غير نشط'}</span></td>
-                <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>`;
+                <td><span class="ut-status ${isBlocked?'blocked':(isActive?'active':'offline')}">${isBlocked?'\u26d4 \u0645\u062d\u0638\u0648\u0631':(isActive?'\u0646\u0634\u0637':'\u063a\u064a\u0631 \u0646\u0634\u0637')}</span></td>
+                <td style="font-size:0.7rem;color:var(--gray);">${ts}</td>
+                <td>
+                    <button class="uuid-bl-btn ${isBlocked?'unblock':''}"
+                        data-uid="${uid}" data-name="${u.displayName||u.username||''}"
+                        data-action="${isBlocked?'unblock-uid':'block-uid'}">
+                        ${isBlocked ? '\u2705 \u0631\u0641\u0639 \u0627\u0644\u062d\u0638\u0631' : '\ud83d\udea7 \u062d\u0638\u0631'}
+                    </button>
+                </td>`;
+            tr.querySelector('[data-action]').addEventListener('click', e => {
+                e.stopPropagation();
+                handleBlacklistAction(tr.querySelector('[data-action]'));
+            });
             tbody.appendChild(tr);
         }
     });
 }
 
-// ═══════════════════════════════════════════════════════════════
 // STORES PANEL
 // ═══════════════════════════════════════════════════════════════
 const TYPE_LABELS = { Restaurants:'مطعم', BakeryShops:'مخبز', ButcherShops:'ملحمة', Markets:'سوبرماركت', Groceries:'بقالة', SweetsShops:'حلويات', FishShops:'أسماك', CoffeeShops:'قهوة' };
@@ -2569,7 +3176,13 @@ function renderEmployees() {
 
         card.querySelectorAll('[data-delete]').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (!confirm(`حذف ${emp.fullname||emp.username}؟`)) return;
+                const _confirmEmp = await showConfirm({
+                    title: 'حذف الموظف',
+                    msg: `هل تريد حذف <b>${emp.fullname||emp.username}</b>؟<br><span style="color:var(--red)">لا يمكن التراجع عن هذا الإجراء.</span>`,
+                    type: 'danger', icon: '🗑',
+                    okLabel: 'حذف', cancelLabel: 'إلغاء'
+                });
+                if (!_confirmEmp) return;
                 await fbSet(`adminUsers/${btn.dataset.delete}`, null);
                 toast('✅ تم حذف الموظف');
                 await loadAllData();
@@ -2767,7 +3380,12 @@ document.getElementById('adm-user').addEventListener('keydown', e => { if (e.key
 
 // Topbar user button → logout confirm
 document.getElementById('topbar-user-btn').addEventListener('click', () => {
-    if (confirm(`تسجيل الخروج من حساب ${currentAdmin?.username}؟`)) doLogout();
+    showConfirm({
+        title: 'تسجيل الخروج',
+        msg: `هل تريد تسجيل الخروج من حساب <b>${currentAdmin?.username}</b>؟`,
+        type: 'warning', icon: '🚪',
+        okLabel: 'خروج', cancelLabel: 'إلغاء'
+    }).then(ok => { if (ok) doLogout(); });
 });
 
 // Drivers refresh
