@@ -438,6 +438,22 @@ input, select, textarea { font-family: var(--font); }
 .oc-action-btn.danger { border-color: var(--red); color: var(--red); }
 .oc-action-btn.active-state { opacity: 0.45; cursor: default; box-shadow: inset 0 0 0 1px currentColor; }
 
+/* Delivered — green */
+.oc-action-btn.btn-delivered { border-color: var(--green, #22c55e); color: var(--green, #22c55e); }
+.oc-action-btn.btn-delivered--active { background: var(--green, #22c55e); border-color: var(--green, #22c55e); color: #fff; font-weight: 700; cursor: default; }
+
+/* Cancelled — red */
+.oc-action-btn.btn-cancelled { border-color: var(--red, #ef4444); color: var(--red, #ef4444); }
+.oc-action-btn.btn-cancelled--active { background: var(--red, #ef4444); border-color: var(--red, #ef4444); color: #fff; font-weight: 700; cursor: default; }
+
+/* Late — yellow/orange */
+.oc-action-btn.btn-late { border-color: var(--yellow, #f59e0b); color: var(--yellow, #f59e0b); }
+.oc-action-btn.btn-late--active { background: var(--yellow, #f59e0b); border-color: var(--yellow, #f59e0b); color: #fff; font-weight: 700; cursor: default; }
+
+/* Track — blue, always last */
+.oc-action-btn.btn-track { border-color: #60a5fa; color: #60a5fa; }
+.oc-action-btn.btn-track--active { background: rgba(59,130,246,0.15); border-color: #60a5fa; color: #60a5fa; font-weight: 700; }
+
 /* Driver assign select */
 .driver-select {
     flex: 2; background: var(--surface3); border: 1.5px solid var(--border);
@@ -832,7 +848,10 @@ input, select, textarea { font-family: var(--font); }
                         <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>سائق نشط</div>
                         <div class="legend-item"><div class="legend-dot" style="background:#9ca3af;"></div>سائق غير نشط</div>
                         <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>عميل مسجل</div>
-                        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>طلب جديد</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#FF5C00;"></div>جديد</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div>وُصِّل</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div>ملغي</div>
+                        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>متأخر</div>
                     </div>
                 </div>
             </div>
@@ -854,6 +873,7 @@ input, select, textarea { font-family: var(--font); }
                     <button class="filter-pill" data-filter="1">🟢 وُصِّل</button>
                     <button class="filter-pill" data-filter="3">🟡 متأخر</button>
                     <button class="filter-pill" data-filter="2">🔴 ملغي</button>
+                    <button class="filter-pill" data-filter="archived" style="border-color:rgba(156,163,175,0.4);color:#9ca3af;">📦 مؤرشف</button>
                     <input type="text" class="search-box" id="orders-search" placeholder="بحث باسم العميل أو المتجر…">
                 </div>
                 <div class="orders-list" id="orders-list">
@@ -1266,6 +1286,7 @@ function roleLabel(role) {
 
 // ── Start app ─────────────────────────────────────────────────
 function startApp() {
+    loadSettings();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
@@ -1404,6 +1425,18 @@ async function loadAllData() {
 
         updateTopbarStats();
         updateNavBadge();
+
+        // Render whichever panel is currently active — initial load only
+        const activePanel = document.querySelector('.panel.active');
+        if (activePanel) {
+            const id = activePanel.id.replace('panel-', '');
+            if (id === 'map')       renderMap();
+            if (id === 'orders')    renderOrders();
+            if (id === 'drivers')   renderDrivers();
+            if (id === 'customers') renderCustomers();
+            if (id === 'stores')    renderStores();
+            if (id === 'employees') renderEmployees();
+        }
     } catch(e) {
         console.error('[Admin] loadAllData:', e);
         toast('خطأ في تحميل البيانات', true);
@@ -1429,15 +1462,69 @@ function updateNavBadge() {
 
 function startAutoRefresh() {
     refreshTimer = setInterval(async () => {
+        // 1. Always fetch fresh data
         await loadAllData();
+
+        // 2. Always update stats & badge (non-destructive text changes)
+        updateTopbarStats();
+        updateNavBadge();
+
         const activePanel = document.querySelector('.panel.active');
-        if (activePanel) {
-            const id = activePanel.id.replace('panel-', '');
-            if (id === 'map') renderMap();
-            if (id === 'orders') renderOrders();
-            if (id === 'drivers') renderDrivers();
-            document.getElementById('map-last-update').textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+        if (!activePanel) return;
+        const id = activePanel.id.replace('panel-', '');
+
+        if (id === 'map') {
+            const lu = document.getElementById('map-last-update');
+            if (lu) lu.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
+
+            const openPopup = document.querySelector('.leaflet-popup');
+            if (openPopup) {
+                // ── Popup is open: update markers AND refresh popup content ──
+
+                // Find which order's popup is open by matching the popup HTML
+                // Leaflet stores the source marker; we search via data attribute we set
+                const popupContent = openPopup.querySelector('[data-order-popup-id]');
+                const openOrderId  = popupContent ? popupContent.dataset.orderPopupId : null;
+
+                // Re-render markers without closing popup
+                // We do a full renderMap but immediately re-open the same popup after
+                if (openOrderId && allOrders[openOrderId]) {
+                    // Rebuild markers
+                    renderMap();
+                    // After renderMap, find the marker for this order and re-open its popup
+                    // with fresh data. We stored marker refs in mapMarkers.orders.
+                    // Find by iterating markers and matching popup content.
+                    setTimeout(() => {
+                        for (const m of mapMarkers.orders) {
+                            const pc = m.getPopup()?.getContent();
+                            if (pc && pc.includes(`data-order-popup-id="${openOrderId}"`)) {
+                                m.openPopup();
+                                break;
+                            }
+                        }
+                    }, 100);
+                } else {
+                    renderMap();
+                }
+            } else {
+                renderMap();
+            }
+
+        } else if (id === 'orders') {
+            const expanded = new Set([...document.querySelectorAll('.order-card.expanded')].map(c => c.dataset.id));
+            renderOrders();
+            expanded.forEach(eid => {
+                const c = document.querySelector(`.order-card[data-id="${eid}"]`);
+                if (c) c.classList.add('expanded');
+            });
+
+        } else if (id === 'drivers') {
+            renderDrivers();
+
+        } else if (id === 'customers') {
+            renderCustomers();
         }
+
     }, 12000);
 }
 
@@ -1454,7 +1541,7 @@ function initMap() {
 
 function renderMap() {
     if (!document.getElementById('panel-map').classList.contains('active')) return;
-    if (!adminMap) { initMap(); setTimeout(renderMap, 300); return; }
+    if (!adminMap) { initMap(); setTimeout(renderMap, 400); return; }
     adminMap.invalidateSize();
 
     // Clear all layers
@@ -1603,26 +1690,174 @@ function renderMap() {
         });
     }
 
-    // ── Active orders (new) ────────────────────────────────────
+    // ── Active orders — cluster stacked markers, spider spread ──
     if (mapLayers.orders) {
+        // Collect valid active orders
+        const activeOrders = [];
         Object.entries(allOrders).forEach(([key, o]) => {
-            if (!o.lat || !o.lng || (o.state||'0') !== '0') return;
+            if (!o.lat || !o.lng) return;
+            if (o.vault == 1) return;
             const lat = parseFloat(o.lat), lng = parseFloat(o.lng);
             if (isNaN(lat) || isNaN(lng)) return;
-            const idNum = key.replace('id_','');
-            const icon = mkDiv(
-                `<div style="background:#f59e0b;color:#000;font-weight:800;font-size:0.62rem;
-                             padding:3px 6px;border-radius:50px;white-space:nowrap;
-                             box-shadow:0 2px 8px rgba(245,158,11,0.5);font-family:Almarai;
-                             border:1.5px solid rgba(255,255,255,0.4);">#${idNum}</div>`,
-                null, [0, 0]
-            );
-            const m = L.marker([lat, lng], { icon })
-                .bindPopup(`<div style="font-family:Almarai"><b>#${idNum}</b><br>${o.store}<br><small>${o.fullname}</small><br><small style="color:#f59e0b;font-weight:800">$${o.total}</small></div>`)
-                .addTo(adminMap);
-            mapMarkers.orders.push(m);
+            activeOrders.push({ key, o, lat, lng });
+        });
+
+        // Group by proximity — orders within ~60m radius are clustered
+        const CLUSTER_RADIUS = 0.0006; // ~60m in degrees
+        const assigned = new Set();
+        const clusters = [];
+
+        activeOrders.forEach((item, i) => {
+            if (assigned.has(i)) return;
+            const group = [item];
+            assigned.add(i);
+            activeOrders.forEach((other, j) => {
+                if (assigned.has(j)) return;
+                const dLat = Math.abs(item.lat - other.lat);
+                const dLng = Math.abs(item.lng - other.lng);
+                if (dLat < CLUSTER_RADIUS && dLng < CLUSTER_RADIUS) {
+                    group.push(other);
+                    assigned.add(j);
+                }
+            });
+            clusters.push(group);
+        });
+
+        // ── Helper: state color ──────────────────────────────────
+        const STATE_CLR = {
+            '0':{ bg:'#FF5C00', tx:'#fff', lbl:'جديد'      },
+            '1':{ bg:'#22c55e', tx:'#fff', lbl:'وُصِّل'     },
+            '2':{ bg:'#ef4444', tx:'#fff', lbl:'ملغي'       },
+            '3':{ bg:'#f59e0b', tx:'#000', lbl:'متأخر'      },
+            '5':{ bg:'#a855f7', tx:'#fff', lbl:'ملغي/مدفوع' },
+        };
+
+        // ── Helper: editable popup HTML for one order ─────────
+        function orderPopupHTML(key, o) {
+            const idNum   = key.replace('id_','');
+            const state   = o.state || '0';
+            const clr     = STATE_CLR[state] || STATE_CLR['0'];
+            const drvOpts = allDrivers.filter(d=>d).map(d => {
+                const name = d.owner || d.username || '';
+                const sel  = o.driver === name ? 'selected' : '';
+                const dot  = d.status === 'online' ? '🟢' : '⚫';
+                return `<option value="${name}" ${sel}>${dot} ${name}</option>`;
+            }).join('');
+            return `
+            <div data-order-popup-id="${key}" style="font-family:Almarai;min-width:200px;direction:rtl;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+                    <span style="background:${clr.bg};color:${clr.tx};padding:2px 8px;border-radius:20px;font-size:0.7rem;font-weight:800;">${clr.lbl}</span>
+                    <b style="font-size:0.95rem">#${idNum}</b>
+                </div>
+                <div style="font-size:0.8rem;margin-bottom:2px;">🏪 ${o.store || '—'}</div>
+                <div style="font-size:0.8rem;margin-bottom:2px;">👤 ${o.fullname || o.username || '—'}</div>
+                <div style="font-size:0.8rem;margin-bottom:6px;">💰 <b style="color:#f59e0b">$${o.total || '0'}</b></div>
+                <div style="font-size:0.75rem;color:#aaa;margin-bottom:8px;">📅 ${o.date || '—'}</div>
+                <div style="border-top:1px solid #333;padding-top:8px;">
+                    <div style="font-size:0.72rem;color:#aaa;margin-bottom:4px;">تعيين سائق</div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <select id="map-drv-${key}" style="flex:1;background:#1a1a2e;border:1px solid #333;
+                            border-radius:6px;padding:4px 6px;color:#fff;font-family:Almarai;font-size:0.72rem;">
+                            <option value="">— اختر سائقاً —</option>
+                            ${drvOpts}
+                        </select>
+                        <button onclick="mapAssignDriver('${key}')"
+                            style="background:#FF5C00;border:none;color:#fff;padding:4px 10px;
+                                   border-radius:6px;cursor:pointer;font-family:Almarai;font-size:0.72rem;
+                                   font-weight:700;white-space:nowrap;">✔ تعيين</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // ── Render each cluster ───────────────────────────────
+        clusters.forEach(group => {
+            const centerLat = group.reduce((s, g) => s + g.lat, 0) / group.length;
+            const centerLng = group.reduce((s, g) => s + g.lng, 0) / group.length;
+
+            if (group.length === 1) {
+                const { key, o, lat, lng } = group[0];
+                const state = o.state || '0';
+                const clr   = STATE_CLR[state] || STATE_CLR['0'];
+                const idNum = key.replace('id_','');
+                const icon  = mkDiv(
+                    `<div style="background:${clr.bg};color:${clr.tx};font-weight:800;font-size:0.62rem;
+                                 padding:3px 7px;border-radius:50px;white-space:nowrap;
+                                 box-shadow:0 2px 8px ${clr.bg}88;font-family:Almarai;
+                                 border:1.5px solid rgba(255,255,255,0.35);">#${idNum}</div>`,
+                    null, [0, 0]
+                );
+                const m = L.marker([lat, lng], { icon })
+                    .bindPopup(orderPopupHTML(key, o), { maxWidth: 240 })
+                    .addTo(adminMap);
+                mapMarkers.orders.push(m);
+
+            } else {
+                // Cluster badge — count with mixed-state color (use dominant state)
+                const dominant = group.reduce((acc, {o}) => {
+                    const s = o.state||'0'; acc[s] = (acc[s]||0)+1; return acc;
+                }, {});
+                const domState = Object.entries(dominant).sort((a,b)=>b[1]-a[1])[0][0];
+                const clr = STATE_CLR[domState] || STATE_CLR['0'];
+
+                const clusterIcon = mkDiv(
+                    `<div style="background:${clr.bg};color:${clr.tx};font-weight:900;font-size:0.72rem;
+                                 width:28px;height:28px;border-radius:50%;display:flex;
+                                 align-items:center;justify-content:center;
+                                 box-shadow:0 2px 12px ${clr.bg}99;font-family:Almarai;
+                                 border:2px solid rgba(255,255,255,0.5);">${group.length}</div>`,
+                    null, [14, 14]
+                );
+                const listHTML = group.map(({key, o}) => {
+                    const s = o.state||'0';
+                    const c = STATE_CLR[s]||STATE_CLR['0'];
+                    return `<div style="border-bottom:1px solid #2a2a3a;padding:5px 0;font-size:0.78rem;">
+                        <span style="background:${c.bg};color:${c.tx};padding:1px 6px;border-radius:10px;font-size:0.62rem;font-weight:800;margin-left:4px;">${c.lbl}</span>
+                        <b>#${key.replace('id_','')}</b> · ${o.store}<br>
+                        <small style="color:#aaa">${o.fullname} · <span style="color:#f59e0b">$${o.total}</span></small>
+                    </div>`;
+                }).join('');
+                const cm = L.marker([centerLat, centerLng], { icon: clusterIcon })
+                    .bindPopup(`<div style="font-family:Almarai;min-width:200px;max-height:240px;overflow-y:auto;direction:rtl;">
+                        <b style="color:#f59e0b;font-size:0.82rem;">${group.length} طلبات في نفس الموقع</b>
+                        ${listHTML}
+                    </div>`, { maxWidth: 260 })
+                    .addTo(adminMap);
+                mapMarkers.orders.push(cm);
+
+                // Spider: spread with state color per marker
+                const SPREAD = 0.0008;
+                group.forEach(({ key, o }, idx) => {
+                    const angle = (2 * Math.PI * idx) / group.length - Math.PI / 2;
+                    const sLat  = centerLat + SPREAD * Math.cos(angle);
+                    const sLng  = centerLng + SPREAD * Math.sin(angle) * 1.5;
+                    const state = o.state || '0';
+                    const clr   = STATE_CLR[state] || STATE_CLR['0'];
+                    const idNum = key.replace('id_','');
+                    const icon  = mkDiv(
+                        `<div style="background:${clr.bg};color:${clr.tx};font-weight:800;font-size:0.6rem;
+                                     padding:2px 6px;border-radius:50px;white-space:nowrap;
+                                     box-shadow:0 2px 6px ${clr.bg}88;font-family:Almarai;
+                                     border:1px solid rgba(255,255,255,0.4);">#${idNum}</div>`,
+                        null, [0, 0]
+                    );
+                    const m = L.marker([sLat, sLng], { icon })
+                        .bindPopup(orderPopupHTML(key, o), { maxWidth: 240 })
+                        .addTo(adminMap);
+                    mapMarkers.orders.push(m);
+                });
+            }
         });
     }
+
+    // ── Map: assign driver from popup ──────────────────────────
+    window.mapAssignDriver = async function(orderId) {
+        const sel = document.getElementById(`map-drv-${orderId}`);
+        if (!sel || !sel.value) { alert('اختر سائقاً أولاً'); return; }
+        await assignDriver(orderId, sel.value);
+        adminMap.closePopup();
+        renderMap(); // refresh markers
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1645,7 +1880,15 @@ function renderOrders() {
     const entries = Object.entries(allOrders)
         .sort(([a],[b]) => (parseInt(b.replace('id_',''))||0) - (parseInt(a.replace('id_',''))||0))
         .filter(([,o]) => {
-            if (orderFilter !== 'all' && (o.state||'0') !== orderFilter) return false;
+            const isClosed = (o.vault == 1);
+            if (orderFilter === 'archived') {
+                // Show ONLY archived
+                if (!isClosed) return false;
+            } else {
+                // Hide archived from all other views
+                if (isClosed) return false;
+                if (orderFilter !== 'all' && (o.state||'0') !== orderFilter) return false;
+            }
             if (orderSearch) {
                 const q = orderSearch.toLowerCase();
                 if (!(o.fullname||'').toLowerCase().includes(q) &&
@@ -1711,7 +1954,7 @@ function buildOrderCard(key, order) {
                     🛵 ${driverAssigned ? order.driver : 'غير معين'}
                 </span>
                 ${order.vault && order.vault !== '0' ? `<span class="oc-meta-chip" style="color:var(--yellow);border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);">💰 دفع نقدي: $${order.vault}</span>` : ''}
-                ${order.trackorder && order.trackorder !== '0' ? `<span class="oc-meta-chip" style="color:var(--blue);">📡 تتبع نشط</span>` : ''}
+                ${order.trackorder==1 ? `<span class="oc-meta-chip" style="color:var(--blue);">📡 تتبع نشط</span>` : ''}
                 ${order.xnote ? `<span class="oc-meta-chip" style="flex-basis:100%;">💬 ${order.xnote}</span>` : ''}
             </div>
             <div class="oc-actions">
@@ -1722,10 +1965,15 @@ function buildOrderCard(key, order) {
                 </select>
                 <button class="oc-action-btn primary" data-assign="${key}">✔ تعيين</button>
                 ` : ''}
-                <button class="oc-action-btn ${state==='1'?'active-state':''}" data-state="${key}" data-val="1">✅ وُصِّل</button>
-                <button class="oc-action-btn danger ${state==='2'||state==='5'?'active-state':''}" data-state="${key}" data-val="2">✕ إلغاء</button>
-                <button class="oc-action-btn ${state==='3'?'active-state':''}" data-state="${key}" data-val="3">⏳ متأخر</button>
+                <button class="oc-action-btn btn-delivered ${state==='1'?'btn-delivered--active':''}" data-state="${key}" data-val="1">✅ وُصِّل</button>
+                <button class="oc-action-btn btn-cancelled ${state==='2'||state==='5'?'btn-cancelled--active':''}" data-state="${key}" data-val="2">✕ إلغاء</button>
+                <button class="oc-action-btn btn-late ${state==='3'?'btn-late--active':''}" data-state="${key}" data-val="3">⏳ متأخر</button>
                 ${order.lat && order.lat !== '0' ? `<button class="oc-action-btn" data-locate="${order.lat},${order.lng}">🗺 الخريطة</button>` : ''}
+                <button class="oc-action-btn btn-track ${order.trackorder==1?'btn-track--active':''}" data-trackorder="${key}">📡 ${order.trackorder==1?'إيقاف التتبع':'تفعيل التتبع'}</button>
+                ${order.vault==1
+                    ? `<button class="oc-action-btn" data-unarchive="${key}" style="border-color:rgba(156,163,175,0.4);color:#9ca3af;">↩ استعادة</button>`
+                    : `<button class="oc-action-btn" data-archive="${key}" style="border-color:rgba(156,163,175,0.4);color:#9ca3af;">📦 أرشفة</button>`
+                }
             </div>
             </div>
           </div>
@@ -1752,6 +2000,58 @@ function buildOrderCard(key, order) {
     card.querySelectorAll('[data-state]').forEach(btn => {
         btn.addEventListener('click', async () => {
             await changeState(btn.dataset.state, btn.dataset.val);
+        });
+    });
+
+    // Toggle trackorder
+    card.querySelectorAll('[data-trackorder]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const oid  = btn.dataset.trackorder;
+            const cur  = allOrders[oid]?.trackorder;
+            const newVal = (cur == 1) ? '0' : '1';
+            const uid  = allOrders[oid]?.delivryplusid;
+            const updates = {};
+            updates[`/requests/${oid}/trackorder`] = newVal;
+            if (uid) updates[`/historyRequests/${uid}/${oid}/trackorder`] = newVal;
+            await fbUpdate('', updates);
+            allOrders[oid].trackorder = newVal;
+            toast(newVal === '1' ? '📡 تم تفعيل التتبع' : '🔴 تم إيقاف التتبع');
+            const card2 = document.querySelector(`.order-card[data-id="${oid}"]`);
+            if (card2) { const expanded = card2.classList.contains('expanded'); card2.replaceWith(buildOrderCard(oid, allOrders[oid])); if (expanded) document.querySelector(`.order-card[data-id="${oid}"]`)?.classList.add('expanded'); }
+        });
+    });
+
+    // Archive order
+    card.querySelectorAll('[data-archive]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const oid = btn.dataset.archive;
+            const uid = allOrders[oid]?.delivryplusid;
+            const upd = {};
+            upd[`/requests/${oid}/vault`] = '1';
+            if (uid) upd[`/historyRequests/${uid}/${oid}/vault`] = '1';
+            allOrders[oid].vault = '1';
+            await fbUpdate('', upd);
+            toast('📦 تم أرشفة الطلب');
+            const c2 = document.querySelector(`.order-card[data-id="${oid}"]`);
+            if (c2) c2.remove();
+            renderMap();
+        });
+    });
+
+    // Unarchive order
+    card.querySelectorAll('[data-unarchive]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const oid = btn.dataset.unarchive;
+            const uid = allOrders[oid]?.delivryplusid;
+            const upd = {};
+            upd[`/requests/${oid}/vault`] = '0';
+            if (uid) upd[`/historyRequests/${uid}/${oid}/vault`] = '0';
+            allOrders[oid].vault = '0';
+            await fbUpdate('', upd);
+            toast('✅ تمت استعادة الطلب');
+            const c2 = document.querySelector(`.order-card[data-id="${oid}"]`);
+            if (c2) c2.remove();
+            renderMap();
         });
     });
 
@@ -1797,8 +2097,8 @@ async function changeState(orderId, newState) {
         const updates = {};
         updates[`/requests/${orderId}/state`] = newState;
         if (uid) updates[`/historyRequests/${uid}/${orderId}/state`] = newState;
+        allOrders[orderId].state = newState; // update local BEFORE await so any re-render is correct
         await fbUpdate('', updates);
-        allOrders[orderId].state = newState;
         toast(`✅ تم تحديث حالة الطلب #${orderId.replace('id_','')}`);
 
         // Update the card in-place without re-filtering
@@ -1822,13 +2122,14 @@ async function changeState(orderId, newState) {
                 const order = allOrders[orderId];
                 const key   = orderId;
                 // Remove old state-change buttons, keep driver assign
-                actionsDiv.querySelectorAll('[data-state], [data-locate]').forEach(b => b.remove());
+                // Remove state, locate AND track buttons — rebuild all in correct fixed order
+                actionsDiv.querySelectorAll('[data-state], [data-locate], [data-trackorder]').forEach(b => b.remove());
 
                 // Always show all 3 state buttons so admin can re-change any time
                 const btnDefs = [
-                    { val:'1', label:'✅ وُصِّل', cls: newState==='1' ? ' primary' : '' },
-                    { val:'2', label:'✕ إلغاء',  cls: (newState==='2'||newState==='5') ? ' danger active-state' : ' danger' },
-                    { val:'3', label:'⏳ متأخر',  cls: newState==='3' ? ' active-state' : '' },
+                    { val:'1', label:'✅ وُصِّل', cls: ' btn-delivered' + (newState==='1' ? ' btn-delivered--active' : '') },
+                    { val:'2', label:'✕ إلغاء',  cls: ' btn-cancelled' + ((newState==='2'||newState==='5') ? ' btn-cancelled--active' : '') },
+                    { val:'3', label:'⏳ متأخر',  cls: ' btn-late'      + (newState==='3' ? ' btn-late--active' : '') },
                 ];
                 btnDefs.forEach(({ val, label, cls }) => {
                     const b = document.createElement('button');
@@ -1850,6 +2151,49 @@ async function changeState(orderId, newState) {
                     });
                     actionsDiv.appendChild(b);
                 }
+
+                // Track button — always last, fixed position
+                const trackBtn = document.createElement('button');
+                const isTracked = allOrders[orderId]?.trackorder == 1;
+                trackBtn.className = 'oc-action-btn btn-track' + (isTracked ? ' btn-track--active' : '');
+                trackBtn.dataset.trackorder = orderId;
+                trackBtn.textContent = '📡 ' + (isTracked ? 'إيقاف التتبع' : 'تفعيل التتبع');
+                trackBtn.addEventListener('click', async () => {
+                    const cur    = allOrders[orderId]?.trackorder;
+                    const newVal = (cur == 1) ? '0' : '1';
+                    const uid2   = allOrders[orderId]?.delivryplusid;
+                    const upd    = {};
+                    upd[`/requests/${orderId}/trackorder`] = newVal;
+                    if (uid2) upd[`/historyRequests/${uid2}/${orderId}/trackorder`] = newVal;
+                    allOrders[orderId].trackorder = newVal;
+                    await fbUpdate('', upd);
+                    toast(newVal === '1' ? '📡 تم تفعيل التتبع' : '🔴 تم إيقاف التتبع');
+                    const c2 = document.querySelector(`.order-card[data-id="${orderId}"]`);
+                    if (c2) { const exp = c2.classList.contains('expanded'); c2.replaceWith(buildOrderCard(orderId, allOrders[orderId])); if (exp) document.querySelector(`.order-card[data-id="${orderId}"]`)?.classList.add('expanded'); }
+                });
+                actionsDiv.appendChild(trackBtn);
+
+                // Archive/Unarchive button — always last
+                const archBtn = document.createElement('button');
+                const isClosed2 = allOrders[orderId]?.vault == 1;
+                archBtn.className = 'oc-action-btn';
+                archBtn.style.cssText = 'border-color:rgba(156,163,175,0.4);color:#9ca3af;';
+                archBtn.textContent = isClosed2 ? '↩ استعادة' : '📦 أرشفة';
+                archBtn.dataset[isClosed2 ? 'unarchive' : 'archive'] = orderId;
+                archBtn.addEventListener('click', async () => {
+                    const newVault = isClosed2 ? '0' : '1';
+                    const uid3 = allOrders[orderId]?.delivryplusid;
+                    const upd3 = {};
+                    upd3[`/requests/${orderId}/vault`] = newVault;
+                    if (uid3) upd3[`/historyRequests/${uid3}/${orderId}/vault`] = newVault;
+                    allOrders[orderId].vault = newVault;
+                    await fbUpdate('', upd3);
+                    toast(newVault === '1' ? '📦 تم أرشفة الطلب' : '✅ تمت استعادة الطلب');
+                    const c3 = document.querySelector(`.order-card[data-id="${orderId}"]`);
+                    if (c3) c3.remove();
+                    renderMap();
+                });
+                actionsDiv.appendChild(archBtn);
             }
         } else {
             renderOrders();
@@ -2374,6 +2718,49 @@ window.setMaxOrders = async function(val) {
 // ═══════════════════════════════════════════════════════════════
 
 // Login
+
+/* ══════════════════════════════════════════════════════════
+   SETTINGS FUNCTIONS
+══════════════════════════════════════════════════════════ */
+
+async function loadSettings() {
+    try {
+        const s = await fbGet('settings');
+        if (!s) return;
+        const maint = document.getElementById('toggle-maintenance');
+        if (maint) maint.checked = s.maintenance === true || s.maintenance === 'true';
+        const fee = document.getElementById('delivery-fee-input');
+        if (fee && s.deliveryFee) fee.value = s.deliveryFee;
+        const max = document.getElementById('max-orders-input');
+        if (max && s.orders?.maxPerDay) max.value = s.orders.maxPerDay;
+    } catch(e) {}
+}
+
+async function setMaintenance(val) {
+    try {
+        await fbSet('settings/maintenance', val);
+        toast(val ? '🔧 وضع الصيانة مفعّل' : '✅ الموقع يعمل بشكل طبيعي');
+    } catch(e) { toast('فشل تحديث وضع الصيانة', true); }
+}
+
+async function setDeliveryFee(val) {
+    const fee = parseFloat(val);
+    if (isNaN(fee) || fee < 0) { toast('قيمة غير صالحة', true); return; }
+    try {
+        await fbSet('settings/deliveryFee', fee);
+        toast(`✅ تم تحديث رسوم التوصيل: $${fee}`);
+    } catch(e) { toast('فشل تحديث رسوم التوصيل', true); }
+}
+
+async function setMaxOrders(val) {
+    const max = parseInt(val);
+    if (isNaN(max) || max < 1) { toast('قيمة غير صالحة', true); return; }
+    try {
+        await fbSet('settings/orders/maxPerDay', max);
+        toast(`✅ تم تحديث الحد اليومي: ${max} طلبات`);
+    } catch(e) { toast('فشل تحديث الحد اليومي', true); }
+}
+
 document.getElementById('adm-login-btn').addEventListener('click', doLogin);
 document.getElementById('adm-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('adm-user').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });

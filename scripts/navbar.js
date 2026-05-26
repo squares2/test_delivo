@@ -1,17 +1,21 @@
 /* ============================================================
-   scripts/navbar.js  —  Bottom bar logic
+   scripts/navbar.js  —  Bottom bar + realtime logo flip
+   Loaded BEFORE firebase-init.js so refreshActiveOrders is
+   defined when onAuthStateChanged fires.
    ============================================================ */
+
+const _RTDB = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+let _trackListener = null;
+let _activeOrders  = [];
 
 function initNavbar() {
 
-    /* ── Inject bottom bar HTML into <body> ─────────────────── */
+    /* ── Inject bottom bar HTML ──────────────────────────────── */
     const bar = document.createElement('nav');
     bar.className = 'bottom-bar';
     bar.setAttribute('aria-label', 'القائمة الرئيسية');
     bar.innerHTML = `
         <div class="bottom-bar__inner">
-
-            <!-- 1. Cart -->
             <button class="bb-tab" id="bb-cart-btn" aria-label="سلة التسوق">
                 <span class="bb-tab__icon">
                     <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -22,7 +26,6 @@ function initNavbar() {
                 <span class="bb-tab__label">السلة</span>
             </button>
 
-            <!-- 2. اطلب -->
             <button class="bb-order-btn" id="bb-order-btn" aria-label="اطلب الآن">
                 <span class="bb-order-btn__icon">
                     <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -33,15 +36,34 @@ function initNavbar() {
                 <span class="bb-order-btn__label">اطلب</span>
             </button>
 
-            <!-- 3. Logo (center, elevated) -->
             <button class="bb-logo-btn" id="bb-logo-btn" aria-label="الرئيسية">
                 <div class="bb-logo-btn__circle">
-                    <img src="assets/icon-192.png" alt="Delivo">
+                    <span class="bb-logo-state" id="bb-state-logo">
+                        <img src="assets/icon-192.png" alt="Delivo">
+                    </span>
+                    <span class="bb-logo-state bb-logo-state--hidden" id="bb-state-track">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                            <path d="M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+                        </svg>
+                        <span class="bb-track-pulse"></span>
+                    </span>
+                    <span class="bb-logo-state bb-logo-state--hidden" id="bb-state-multi">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
+                            <circle cx="5" cy="7"  r="1.5" fill="#fff"/>
+                            <circle cx="5" cy="12" r="1.5" fill="#fff"/>
+                            <circle cx="5" cy="17" r="1.5" fill="#fff"/>
+                            <line x1="9" y1="7"  x2="20" y2="7"/>
+                            <line x1="9" y1="12" x2="20" y2="12"/>
+                            <line x1="9" y1="17" x2="20" y2="17"/>
+                        </svg>
+                        <span class="bb-multi-badge" id="bb-multi-badge">2</span>
+                    </span>
                 </div>
-                <span class="bb-logo-btn__label">Delivo</span>
+                <span class="bb-logo-btn__label" id="bb-logo-label">Delivo</span>
             </button>
 
-            <!-- 4. My orders -->
             <button class="bb-tab" id="bb-orders-btn" aria-label="طلباتي">
                 <span class="bb-tab__icon">
                     <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -53,7 +75,6 @@ function initNavbar() {
                 <span class="bb-tab__label">طلباتي</span>
             </button>
 
-            <!-- 5. Account -->
             <button class="bb-account-btn" id="bb-account-btn" aria-label="حسابي">
                 <span class="bb-account-btn__icon">
                     <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
@@ -63,67 +84,253 @@ function initNavbar() {
                 </span>
                 <span class="bb-account-btn__label">حسابي</span>
             </button>
+        </div>
 
+        <div class="bb-track-sheet" id="bb-track-sheet">
+            <div class="bb-track-sheet__backdrop" id="bb-track-sheet-backdrop"></div>
+            <div class="bb-track-sheet__panel">
+                <div class="bb-track-sheet__handle"></div>
+                <div class="bb-track-sheet__header">
+                    <span>🛵 طلباتك النشطة</span>
+                    <button id="bb-track-sheet-close">✕</button>
+                </div>
+                <div class="bb-track-sheet__list" id="bb-track-sheet-list"></div>
+            </div>
         </div>
     `;
     document.body.appendChild(bar);
 
-    /* ── Wire up buttons ─────────────────────────────────────── */
-
-    // Cart → open cart sidebar
+    /* ── Button wiring ────────────────────────────────────────── */
     document.getElementById('bb-cart-btn').addEventListener('click', () => {
         if (typeof openCartSidebar === 'function') openCartSidebar();
     });
-
-    // اطلب → scroll to categories section
     document.getElementById('bb-order-btn').addEventListener('click', () => {
-        const target = document.getElementById('categories') || document.getElementById('stores-section');
-        if (target) target.scrollIntoView({ behavior: 'smooth' });
+        const t = document.getElementById('categories') || document.getElementById('stores-section');
+        if (t) t.scrollIntoView({ behavior: 'smooth' });
     });
-
-    // Logo → scroll to top
-    document.getElementById('bb-logo-btn').addEventListener('click', () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    // My orders → open account modal then trigger orders tab
     document.getElementById('bb-orders-btn').addEventListener('click', () => {
-        const overlay = document.getElementById('modal-account');
-        if (overlay) {
-            overlay.classList.add('open');
+        const ov = document.getElementById('modal-account');
+        if (ov) {
+            ov.classList.add('open');
             document.body.classList.add('modal-open');
-            // trigger orders button inside account modal if logged in
-            setTimeout(() => {
-                const ordersBtn = document.getElementById('acct-orders-btn');
-                if (ordersBtn) ordersBtn.click();
-            }, 80);
+            setTimeout(() => { const b = document.getElementById('acct-orders-btn'); if (b) b.click(); }, 80);
         }
     });
-
-    // Account → open account modal
     document.getElementById('bb-account-btn').addEventListener('click', () => {
-        const btn = document.getElementById('account-btn');
-        if (btn) btn.click();
+        const b = document.getElementById('account-btn'); if (b) b.click();
     });
+    document.getElementById('bb-track-sheet-close').addEventListener('click', _closeTrackSheet);
+    document.getElementById('bb-track-sheet-backdrop').addEventListener('click', _closeTrackSheet);
+    document.getElementById('bb-logo-btn').addEventListener('click', _handleLogoClick);
 
-    /* ── Sync logged-in state ─────────────────────────────────── */
+    /* ── Auth sync ────────────────────────────────────────────── */
     window.updateBottomBarAuth = function(loggedIn) {
-        const accBtn = document.getElementById('bb-account-btn');
-        if (!accBtn) return;
-        if (loggedIn) accBtn.classList.add('logged-in');
-        else          accBtn.classList.remove('logged-in');
+        const btn = document.getElementById('bb-account-btn');
+        if (btn) loggedIn ? btn.classList.add('logged-in') : btn.classList.remove('logged-in');
     };
 
-    /* ── Cart badge sync ─────────────────────────────────────── */
     updateCartBadge();
 }
 
-function updateCartBadge() {
-    // old badge (kept in DOM for compatibility, hidden)
-    const oldBadge = document.getElementById('cart-badge');
-    if (oldBadge) oldBadge.style.display = 'none';
+/* ══════════════════════════════════════════════════════════════
+   REALTIME TRACKING — called by firebase-init.js onAuthStateChanged
+══════════════════════════════════════════════════════════════ */
 
-    // new bottom-bar badge
+window.refreshActiveOrders = async function() {
+    const user = window.DelivoUser;
+    if (!user) { _resetLogo(); return; }
+
+    // Close previous SSE
+    if (_trackListener) { _trackListener.close(); _trackListener = null; }
+
+    // Get Firebase auth token to authenticate the SSE stream
+    let token = '';
+    try {
+        if (window.firebase && window.firebase.auth) {
+            const fbUser = window.firebase.auth().currentUser;
+            if (fbUser) token = await fbUser.getIdToken();
+        }
+    } catch(e) {}
+
+    // Open SSE stream with auth token
+    const url = `${_RTDB}/historyRequests/${user.uid}.json${token ? '?auth=' + token : ''}`;
+    const es  = new EventSource(url);
+    _trackListener = es;
+
+    // Firebase SSE sends 'put' for initial load AND for every direct write.
+    // We keep a full local cache so any event type can update it correctly.
+    let _ordersCache = {};  // full copy of historyRequests/{uid}
+
+    es.addEventListener('put', (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            if (!msg.path || msg.path === '/') {
+                // Full node replace
+                _ordersCache = msg.data && typeof msg.data === 'object' ? msg.data : {};
+            } else {
+                // Sub-path put e.g. /id_241
+                const parts = msg.path.split('/').filter(Boolean);
+                if (parts.length === 1) {
+                    if (msg.data === null) delete _ordersCache[parts[0]];
+                    else _ordersCache[parts[0]] = msg.data;
+                } else if (parts.length === 2) {
+                    if (!_ordersCache[parts[0]]) _ordersCache[parts[0]] = {};
+                    _ordersCache[parts[0]][parts[1]] = msg.data;
+                }
+            }
+            _rebuildFromCache();
+        } catch(_) {}
+    });
+
+    es.addEventListener('patch', (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+
+            // Firebase patch data can have flat slash-separated keys like:
+            // path="/" data={"id_244/trackorder":"1","id_244/driverid":"3"}
+            // OR nested: path="/id_244" data={trackorder:"1"}
+            // We normalize both into _ordersCache
+
+            const baseParts = (msg.path || '/').split('/').filter(Boolean);
+            const patchData  = msg.data || {};
+
+            if (typeof patchData === 'object' && patchData !== null) {
+                Object.entries(patchData).forEach(([key, val]) => {
+                    // key may be "id_244/trackorder" (flat) or "trackorder" (field)
+                    const keyParts   = key.split('/').filter(Boolean);
+                    const allParts   = [...baseParts, ...keyParts];
+
+                    if (allParts.length >= 2) {
+                        const orderId = allParts[0];
+                        const field   = allParts[1];
+                        if (!_ordersCache[orderId]) _ordersCache[orderId] = {};
+                        _ordersCache[orderId][field] = val;
+                    } else if (allParts.length === 1) {
+                        // Whole order replaced
+                        if (val === null) delete _ordersCache[allParts[0]];
+                        else _ordersCache[allParts[0]] = Object.assign(_ordersCache[allParts[0]] || {}, val);
+                    }
+                });
+            } else if (baseParts.length >= 2) {
+                // Scalar value at a deep path
+                const orderId = baseParts[0];
+                const field   = baseParts[1];
+                if (!_ordersCache[orderId]) _ordersCache[orderId] = {};
+                _ordersCache[orderId][field] = patchData;
+            }
+
+            _rebuildFromCache();
+        } catch(_) {}
+    });
+
+    function _rebuildFromCache() {
+        _activeOrders = Object.entries(_ordersCache)
+            .filter(([, o]) => o && (o.trackorder === '1' || o.trackorder === 1))
+            .map(([id, order]) => ({ id, order }));
+        _applyLogoState();
+    }
+
+    es.onerror = () => {
+        if (_trackListener === es) {
+            es.close(); _trackListener = null;
+            // Retry after 6s
+            setTimeout(() => { if (window.DelivoUser) window.refreshActiveOrders(); }, 6000);
+        }
+    };
+};
+
+window._resetLogoToDefault = _resetLogo;
+
+function _resetLogo() {
+    if (_trackListener) { _trackListener.close(); _trackListener = null; }
+    _activeOrders = [];
+    _setLogoState('logo');
+}
+
+function _updateFromData(data) {
+    _activeOrders = [];
+    if (data && typeof data === 'object') {
+        Object.entries(data).forEach(([id, o]) => {
+            if (o && (o.trackorder === '1' || o.trackorder === 1)) {
+                _activeOrders.push({ id, order: o });
+            }
+        });
+    }
+    _applyLogoState();
+}
+
+function _applyLogoState() {
+    if (_activeOrders.length === 0)      _setLogoState('logo');
+    else if (_activeOrders.length === 1) _setLogoState('track');
+    else                                 _setLogoState('multi');
+}
+
+function _setLogoState(state) {
+    const stLogo  = document.getElementById('bb-state-logo');
+    const stTrack = document.getElementById('bb-state-track');
+    const stMulti = document.getElementById('bb-state-multi');
+    const label   = document.getElementById('bb-logo-label');
+    const circle  = document.querySelector('.bb-logo-btn__circle');
+    if (!stLogo) return;
+    stLogo.classList.add('bb-logo-state--hidden');
+    stTrack.classList.add('bb-logo-state--hidden');
+    stMulti.classList.add('bb-logo-state--hidden');
+    if (state === 'track') {
+        stTrack.classList.remove('bb-logo-state--hidden');
+        label.textContent = 'تتبع';
+        circle.classList.add('bb-logo-btn__circle--active');
+    } else if (state === 'multi') {
+        stMulti.classList.remove('bb-logo-state--hidden');
+        document.getElementById('bb-multi-badge').textContent = _activeOrders.length;
+        label.textContent = 'طلبات نشطة';
+        circle.classList.add('bb-logo-btn__circle--active');
+    } else {
+        stLogo.classList.remove('bb-logo-state--hidden');
+        label.textContent = 'Delivo';
+        circle.classList.remove('bb-logo-btn__circle--active');
+    }
+}
+
+function _handleLogoClick() {
+    if (_activeOrders.length === 0) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (_activeOrders.length === 1) {
+        const { id, order } = _activeOrders[0];
+        const uid = order.delivryplusid || window.DelivoUser?.uid || '';
+        if (typeof window._openTrackModal === 'function') window._openTrackModal(id, uid);
+    } else {
+        _openTrackSheet();
+    }
+}
+
+window._openTrackSheet = function _openTrackSheet() {
+    const sheet  = document.getElementById('bb-track-sheet');
+    const listEl = document.getElementById('bb-track-sheet-list');
+    sheet.classList.add('open');
+    document.body.classList.add('modal-open');
+    listEl.innerHTML = _activeOrders.map(({ id, order }) => {
+        const store = order.store || order.storeName || id;
+        const uid   = order.delivryplusid || window.DelivoUser?.uid || '';
+        return `
+        <div class="bb-track-item" onclick="_closeTrackSheet();setTimeout(()=>window._openTrackModal('${id}','${uid}',true),200);">
+            <span class="bb-track-item__icon">🛵</span>
+            <div class="bb-track-item__body">
+                <strong>${store}</strong>
+                <small>${order.date || ''}</small>
+            </div>
+            <span class="bb-track-item__arrow">›</span>
+        </div>`;
+    }).join('');
+}
+
+window._closeTrackSheet = function _closeTrackSheet() {
+    document.getElementById('bb-track-sheet').classList.remove('open');
+    document.body.classList.remove('modal-open');
+}
+
+function updateCartBadge() {
+    const old = document.getElementById('cart-badge');
+    if (old) old.style.display = 'none';
     const badge = document.getElementById('bb-cart-badge');
     if (!badge) return;
     const count = window.DelivoCart ? window.DelivoCart.getCount() : 0;

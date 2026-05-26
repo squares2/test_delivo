@@ -1121,14 +1121,29 @@ function _moveTo(lat, lng, bearing) {
 }
 
 // ── Open tracking modal ───────────────────────────────────────
-window._openTrackModal = function(orderId, uid) {
+window._openTrackModal = function(orderId, uid, fromList) {
     _trackOrderId = orderId;
     _trackFitted  = false;
     _animBearing  = 0;
     _animPrevBearing = 0;
     _ensureTrackModal();
 
-    const modal = document.getElementById('track-modal');
+    const modal   = document.getElementById('track-modal');
+    const backBtn = document.getElementById('track-back-btn');
+    if (backBtn) {
+        if (fromList) {
+            backBtn.style.display = 'block';
+            backBtn.onclick = () => {
+                // Close map, reopen the list sheet
+                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                if (typeof _openTrackSheet === 'function') _openTrackSheet();
+            };
+        } else {
+            backBtn.style.display = 'none';
+        }
+    }
+
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
     _setTrackStatus('جاري تحميل بيانات التتبع…', 'loading');
@@ -1284,6 +1299,7 @@ function _ensureTrackModal() {
 
             <!-- Header -->
             <div id="track-header">
+                <button id="track-back-btn" aria-label="رجوع" style="display:none;background:none;border:none;cursor:pointer;padding:4px 8px;font-size:1.3rem;color:#FF5C00;font-weight:900;">‹</button>
                 <div id="track-header-title">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                          stroke="#FF5C00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

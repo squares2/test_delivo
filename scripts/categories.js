@@ -1,7 +1,6 @@
 /* ============================================================
    scripts/categories.js
    Category buttons → Firebase fetch → dropdown.
-   The dropdown div is hardcoded in index.html — no injection.
    ============================================================ */
 
 const RTDB_BASE = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
@@ -15,6 +14,13 @@ const CAT_MAP = {
     sweets      : { fbKey: 'SweetsShops',  label: 'الحلويات',    emoji: '🍰' },
     fish        : { fbKey: 'FishShops',    label: 'الأسماك',     emoji: '🐟' },
     coffee      : { fbKey: 'CoffeeShops',  label: 'القهوة',      emoji: '☕' },
+    chickenshop : { fbKey: 'ChickenShops', label: 'الدجاج',      emoji: '🍗' },
+    dairyshop   : { fbKey: 'DairyShops',   label: 'الألبان',     emoji: '🥛' },
+    groceries   : { fbKey: 'GroceryShops', label: 'البقالة',     emoji: '🧺' },
+    flowershop  : { fbKey: 'FlowerShops',  label: 'الزهور',      emoji: '💐' },
+    taxi        : { fbKey: 'Taxi',         label: 'تاكسي',       emoji: '🚕' },
+    tobacco     : { fbKey: 'TobaccoShops', label: 'التبغ',       emoji: '🚬' },
+    toys        : { fbKey: 'ToysShops',    label: 'الألعاب',     emoji: '🧸' },
 };
 
 let _openCategory = null;
@@ -149,10 +155,21 @@ function _initDragScroll(row) {
 }
 
 function _catEmoji(cat) {
-    return {restaurants:'🍔',meat:'🥩',bakery:'🥖',supermarket:'🛒',sweets:'🍰',fish:'🐟',coffee:'☕'}[cat]||'🏪';
+    return {
+        restaurants:'🍔', meat:'🥩',      bakery:'🥖',     supermarket:'🛒',
+        sweets:'🍰',      fish:'🐟',       coffee:'☕',     chickenshop:'🍗',
+        dairyshop:'🥛',   groceries:'🧺',  flowershop:'💐', taxi:'🚕',
+        tobacco:'🚬',     toys:'🧸'
+    }[cat] || '🏪';
 }
+
 function _catLabel(cat) {
-    return {restaurants:'مطعم',meat:'ملحمة',bakery:'مخبز',supermarket:'سوبرماركت',sweets:'حلويات',fish:'أسماك',coffee:'قهوة'}[cat]||'';
+    return {
+        restaurants:'مطعم',    meat:'ملحمة',      bakery:'مخبز',     supermarket:'سوبرماركت',
+        sweets:'حلويات',       fish:'أسماك',       coffee:'قهوة',     chickenshop:'دجاج',
+        dairyshop:'ألبان',     groceries:'بقالة',  flowershop:'زهور', taxi:'تاكسي',
+        tobacco:'تبغ',         toys:'ألعاب'
+    }[cat] || '';
 }
 
 window.initCategories   = initCategories;

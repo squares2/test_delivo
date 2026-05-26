@@ -279,6 +279,13 @@ function onFirebaseReady() {
             window.__renderAccountModal();
         }
 
+        // Trigger bottom bar logo state update
+        if (window.DelivoUser) {
+            if (typeof window.refreshActiveOrders === 'function') window.refreshActiveOrders();
+        } else {
+            if (typeof window._resetLogoToDefault === 'function') window._resetLogoToDefault();
+        }
+
         console.log('[Delivo Auth] User:', window.DelivoUser
             ? (window.DelivoUser.phone || window.DelivoUser.email || window.DelivoUser.uid)
             : 'none');
