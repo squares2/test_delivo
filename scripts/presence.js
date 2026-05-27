@@ -13,8 +13,8 @@
 
     const RTDB_BASE   = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
     const SESSION_KEY = '_dlv_sid';
-    const HEARTBEAT   = 30 * 1000;       /* update lastSeen every 30s  */
-    const STALE_MS    = 90 * 1000;       /* session older than 90s = stale */
+    const HEARTBEAT   = 5 * 1000;        /* update lastSeen every 5s   */
+    const STALE_MS    = 15 * 1000;       /* session older than 15s = stale */
 
     /* ── Session ID ─────────────────────────────────────────── */
     function getSessionId() {
@@ -107,10 +107,27 @@
             await sessionRef.set(buildPayload(sid));
         });
 
-        /* Heartbeat — keeps lastSeen fresh so sweep doesn't remove us */
+        /* Heartbeat — keeps lastSeen fresh + re-registers if tab was hidden */
         setInterval(() => {
-            sessionRef.update({ lastSeen: Date.now() }).catch(() => {});
+            if (document.visibilityState === 'hidden') return; /* skip when hidden */
+            sessionRef.once('value').then(snap => {
+                if (!snap.exists()) {
+                    /* Session was swept while in background — re-register */
+                    sessionRef.onDisconnect().remove();
+                    sessionRef.set(buildPayload(sid));
+                } else {
+                    sessionRef.update({ lastSeen: Date.now() }).catch(() => {});
+                }
+            }).catch(() => {});
         }, HEARTBEAT);
+
+        /* Re-register when tab comes back to foreground */
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            sessionRef.onDisconnect().remove().then(() => {
+                sessionRef.set(buildPayload(sid));
+            }).catch(() => {});
+        });
 
         /* Live count listener */
         db.ref('presence').on('value', snap => {
@@ -147,12 +164,12 @@
         window.addEventListener('pagehide',     cleanup);
         window.addEventListener('beforeunload', cleanup);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                /* Don't cleanup immediately — user may switch tabs */
-                setTimeout(() => {
-                    if (document.visibilityState === 'hidden') cleanup();
-                }, 20_000);
+            if (document.visibilityState === 'visible') {
+                /* Tab came back to foreground — re-register session */
+                cleaned = false;
+                rtdbPut(path, { ...buildPayload(sid), lastSeen: Date.now() });
             }
+            /* Do NOT cleanup on hidden — stale sweep handles it */
         });
 
         /* Poll count */
@@ -162,7 +179,7 @@
             updateWidget(count);
         }
         pollCount();
-        setInterval(pollCount, 15_000);
+        setInterval(pollCount, 5_000);
     }
 
     /* ── Widget ─────────────────────────────────────────────── */
