@@ -354,18 +354,15 @@ function initScrollDrag() {
     });
 }
 
-/* ── Category filter ───────────────────────────────────────── */
+/* ── Category filter — only affects categories scroll, not stores section ── */
 function initCategoryFilter() {
     document.addEventListener('click', e => {
         const btn = e.target.closest('[data-category]');
         if (!btn) return;
         document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const selected = btn.getAttribute('data-category');
-        document.querySelectorAll('[data-store-type]').forEach(card => {
-            const type = card.getAttribute('data-store-type');
-            card.style.display = (selected === 'all' || type === selected) ? '' : 'none';
-        });
+        /* Intentionally does NOT touch store cards — stores section
+           is ranked by requests and is independent of category tabs */
     });
 }
 
