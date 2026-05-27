@@ -262,7 +262,7 @@
 .hero__online {
     position: absolute;
     top: clamp(10px, 2.5vw, 16px);
-    left: clamp(10px, 2.5vw, 16px);
+    right: clamp(10px, 2.5vw, 16px);
     z-index: 4;
     display: flex;
     align-items: center;
