@@ -2863,6 +2863,13 @@ function showBlacklistReasonModal({ uid, uuid, name, action }) {
 }
 
 function renderCustomers() {
+    // Preserve which UUID groups are currently expanded before wiping the table
+    const _expandedUUIDs = new Set(
+        [...document.querySelectorAll('tr[data-sub]')]
+            .filter(r => r.style.display !== 'none')
+            .map(r => r.dataset.sub)
+    );
+
     const tbody   = document.getElementById('customers-tbody');
     const countEl = document.getElementById('customers-count-label');
     tbody.innerHTML = '';
@@ -2998,7 +3005,14 @@ function renderCustomers() {
                 btn.addEventListener('click', e => { e.stopPropagation(); handleBlacklistAction(btn); });
             });
 
-            let expanded = false;
+            // Restore expanded state if this UUID was open before the re-render
+            let expanded = uuid ? _expandedUUIDs.has(uuid) : false;
+            if (expanded) {
+                subRows.forEach(r => r.style.display = '');
+                const arrow = groupRow.querySelector('span:last-of-type');
+                if (arrow) arrow.textContent = '\u25b4 \u0625\u062e\u0641\u0627\u0621';
+            }
+
             groupRow.addEventListener('click', () => {
                 expanded = !expanded;
                 subRows.forEach(r => r.style.display = expanded ? '' : 'none');

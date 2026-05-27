@@ -119,7 +119,7 @@
         <section class="hero" id="hero-section">
 
             <!-- Background -->
-            <img class="hero__bg" src="assets/hero-bg.png" alt="">
+            <img class="hero__bg" src="assets/hero-bg2.png" alt="">
 
             <!-- Carousel / Desktop layout -->
             <div class="hero__carousel">
@@ -194,6 +194,35 @@
                 <div class="hero__progress" id="hero-progress"></div>
 
             </div>
+
+            <!-- Bottom badges strip -->
+            <div class="hero__badges">
+                <div class="hero__badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                    </svg>
+                    <span>دفع آمن</span>
+                </div>
+                <div class="hero__badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10a19.79 19.79 0 01-3.07-8.67A2 2 0 012 .18h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/>
+                    </svg>
+                    <span>دعم 24/7</span>
+                </div>
+                <div class="hero__badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>توصيل سريع</span>
+                </div>
+                <div class="hero__badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span>أمن وموثوق</span>
+                </div>
+            </div>
+
         </section>
 
         <script>
@@ -261,81 +290,10 @@
         <section class="stores" id="stores-section">
             <div class="stores__header">
                 <h2 class="section-title">المتاجر الأكثر طلباً</h2>
+                <span class="stores__stat-total"></span>
             </div>
             <div class="stores__scroll hide-scrollbar" id="stores-scroll">
-
-                <div class="store-card" data-store-id="classic-food" data-store-type="restaurants">
-                    <div class="store-card__thumb store-thumb" style="background-image:url('assets/classic-food.png')">
-                        <button class="store-card__wish" aria-label="حفظ">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        </button>
-                        <div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>4.5</div>
-                        <div class="store-card__time">قد. 20-30 د</div>
-                    </div>
-                    <div class="store-card__body">
-                        <p class="store-card__name">كلاسيك فود</p>
-                        <p class="store-card__tags">شاورما • غربي</p>
-                        <div class="store-card__footer">
-                            <span class="store-card__min-label">حد أدنى للطلب</span>
-                            <strong class="store-card__min-val">500,000 ل.ل</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="store-card" data-store-id="king-pizza" data-store-type="restaurants">
-                    <div class="store-card__thumb store-thumb" style="background-image:url('assets/king-pizza.png')">
-                        <button class="store-card__wish" aria-label="حفظ">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        </button>
-                        <div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>4.5</div>
-                        <div class="store-card__time">قد. 20-30 د</div>
-                    </div>
-                    <div class="store-card__body">
-                        <p class="store-card__name">كينغ بيتزا</p>
-                        <p class="store-card__tags">بيتزا</p>
-                        <div class="store-card__footer">
-                            <span class="store-card__min-label">حد أدنى للطلب</span>
-                            <strong class="store-card__min-val">500,000 ل.ل</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="store-card" data-store-id="zahret-lobnan" data-store-type="restaurants">
-                    <div class="store-card__thumb store-thumb" style="background-image:url('assets/zahret-lobnan.png'); background-size:contain; background-color:#fff;">
-                        <button class="store-card__wish" aria-label="حفظ">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        </button>
-                        <div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>4.5</div>
-                        <div class="store-card__time">قد. 20-30 د</div>
-                    </div>
-                    <div class="store-card__body">
-                        <p class="store-card__name">زهرة لبنان</p>
-                        <p class="store-card__tags">مطعم</p>
-                        <div class="store-card__footer">
-                            <span class="store-card__min-label">حد أدنى للطلب</span>
-                            <strong class="store-card__min-val">500,000 ل.ل</strong>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="store-card" data-store-id="burger-house" data-store-type="restaurants">
-                    <div class="store-card__thumb store-thumb" style="background-image:url('assets/cat_burger.png')">
-                        <button class="store-card__wish" aria-label="حفظ">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        </button>
-                        <div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>4.7</div>
-                        <div class="store-card__time">قد. 20-30 د</div>
-                    </div>
-                    <div class="store-card__body">
-                        <p class="store-card__name">برجر هاوس</p>
-                        <p class="store-card__tags">برجر • سندويشات</p>
-                        <div class="store-card__footer">
-                            <span class="store-card__min-label">حد أدنى للطلب</span>
-                            <strong class="store-card__min-val">15,000 ل.ل</strong>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- Populated dynamically by stores.js -->
             </div>
         </section>
 
@@ -366,26 +324,30 @@
         <section class="app-download section">
             <div class="container">
                 <div class="app-download__card">
-                    <div class="app-download__phone">
-                        <img src="assets/app-phone.png" alt="Delivo App" class="app-download__phone-img" onerror="this.style.display='none'">
+                    <!-- 1: QR code — far right (RTL) -->
+                    <div class="app-download__qr-wrap">
+                        <img src="assets/qr-code.png" alt="QR Code" class="app-download__qr-img">
                     </div>
+                    <!-- 2: Store buttons — Google Play top, App Store bottom -->
+                    <div class="app-download__btns">
+                        <a href="#" class="store-btn">
+                            <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.24.98.24.4 0 .8-.11 1.15-.32L18.4 16.4l-3.26-3.26-11.96 10.62zM.5 1.4C.19 1.83 0 2.4 0 3.1v17.8c0 .7.19 1.27.5 1.7l.09.08 9.97-9.97v-.24L.59 1.32.5 1.4zM22.55 10.4l-3.01-1.71-3.38 3.38 3.38 3.38 3.03-1.72c.87-.49.87-1.3 0-1.79l-.02-.54zM4.11.32L18.18 8.6l-3.26 3.26L3.09.56C3.4.35 3.8.13 4.11.32z"/></svg></span>
+                            <span class="store-btn__label"><span class="store-btn__small">GET IT ON</span><span class="store-btn__name">Google Play</span></span>
+                        </a>
+                        <a href="#" class="store-btn">
+                            <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.78M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
+                            <span class="store-btn__label"><span class="store-btn__small">Download on the</span><span class="store-btn__name">App Store</span></span>
+                        </a>
+                    </div>
+                    <!-- 3: Text — title, tagline, desc -->
                     <div class="app-download__text">
                         <h2 class="app-download__title">حمل تطبيق <span>Delivo</span></h2>
                         <p class="app-download__tagline">تجربة أسهل، أسرع وأفضل!</p>
                         <p class="app-download__desc">حمل التطبيق الآن واستمتع بتجربة طلب طعام مميزة</p>
-                        <div class="app-download__btns">
-                            <a href="#" class="store-btn">
-                                <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.24.98.24.4 0 .8-.11 1.15-.32L18.4 16.4l-3.26-3.26-11.96 10.62zM.5 1.4C.19 1.83 0 2.4 0 3.1v17.8c0 .7.19 1.27.5 1.7l.09.08 9.97-9.97v-.24L.59 1.32.5 1.4zM22.55 10.4l-3.01-1.71-3.38 3.38 3.38 3.38 3.03-1.72c.87-.49.87-1.3 0-1.79l-.02-.54zM4.11.32L18.18 8.6l-3.26 3.26L3.09.56C3.4.35 3.8.13 4.11.32z"/></svg></span>
-                                <span class="store-btn__label"><span class="store-btn__small">GET IT ON</span><span class="store-btn__name">Google Play</span></span>
-                            </a>
-                            <a href="#" class="store-btn">
-                                <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.78M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
-                                <span class="store-btn__label"><span class="store-btn__small">Download on the</span><span class="store-btn__name">App Store</span></span>
-                            </a>
-                        </div>
                     </div>
-                    <div class="app-download__qr-wrap">
-                        <img src="assets/qr-code.png" alt="QR Code" class="app-download__qr-img">
+                    <!-- 4: Phone — far left, overflows top & bottom -->
+                    <div class="app-download__phone">
+                        <img src="assets/app-phone.png" alt="Delivo App" class="app-download__phone-img" onerror="this.style.display='none'">
                     </div>
                 </div>
             </div>

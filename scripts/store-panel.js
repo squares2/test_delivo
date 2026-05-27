@@ -112,7 +112,7 @@ function showStoreIntro(storeId, storeName, storeType, storeMeta, onDone) {
     }
 
     // Logo
-    const logoPath = `assets/${storeName.toLowerCase()}.png`;
+    const logoPath = `assets/${storeId}.png`;
     logoImg.style.display  = 'none';
     logoEmoji.style.display = 'none';
 
@@ -243,7 +243,7 @@ function _openStorePanelNow(storeId, storeName, storeType) {
     const logoEmoji    = document.getElementById('sp-hero-logo-emoji');
     const bgImg        = document.getElementById('sp-hero-bg');
     const fallbackEl   = document.getElementById('sp-hero-fallback');
-    const logoPath     = `assets/${storeName.toLowerCase()}.png`;
+    const logoPath     = `assets/${storeId}.png`;
     const emojiDefault = _typeEmoji(storeType) || '🏪';
 
     // Reset

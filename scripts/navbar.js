@@ -42,21 +42,47 @@ function initNavbar() {
                         <img src="assets/icon-192.png" alt="Delivo">
                     </span>
                     <span class="bb-logo-state bb-logo-state--hidden" id="bb-state-track">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="28" height="28">
-                            <circle cx="12" cy="12" r="3"/>
-                            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                            <path d="M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+                        <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+                            <!-- Radar ripples expanding from pin center -->
+                            <circle cx="28" cy="30" r="10" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.5">
+                                <animate attributeName="r" values="8;26" dur="1.6s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.8;0" dur="1.6s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="28" cy="30" r="10" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.5">
+                                <animate attributeName="r" values="8;26" dur="1.6s" begin="0.5s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.8;0" dur="1.6s" begin="0.5s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="28" cy="30" r="10" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="1.5">
+                                <animate attributeName="r" values="8;26" dur="1.6s" begin="1.1s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.8;0" dur="1.6s" begin="1.1s" repeatCount="indefinite"/>
+                            </circle>
+                            <!-- Map pin body -->
+                            <path d="M28 6 C21 6 15 12 15 19 C15 29 28 44 28 44 C28 44 41 29 41 19 C41 12 35 6 28 6 Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+                            <!-- Pin inner circle -->
+                            <circle cx="28" cy="19" r="5.5" fill="#fff"/>
+                            <!-- Live dot top-right -->
+                            <circle cx="40" cy="8" r="4" fill="#4ade80"/>
+                            <circle cx="40" cy="8" r="4" fill="#4ade80" opacity="0.4">
+                                <animate attributeName="r" from="4" to="9" dur="1.5s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" from="0.5" to="0" dur="1.5s" repeatCount="indefinite"/>
+                            </circle>
                         </svg>
                         <span class="bb-track-pulse"></span>
                     </span>
                     <span class="bb-logo-state bb-logo-state--hidden" id="bb-state-multi">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="26" height="26">
-                            <circle cx="5" cy="7"  r="1.5" fill="#fff"/>
-                            <circle cx="5" cy="12" r="1.5" fill="#fff"/>
-                            <circle cx="5" cy="17" r="1.5" fill="#fff"/>
-                            <line x1="9" y1="7"  x2="20" y2="7"/>
-                            <line x1="9" y1="12" x2="20" y2="12"/>
-                            <line x1="9" y1="17" x2="20" y2="17"/>
+                        <svg viewBox="0 0 56 50" fill="none" xmlns="http://www.w3.org/2000/svg" width="30" height="30">
+                            <circle cx="8" cy="8" r="3" fill="#fff"/>
+                            <rect x="16" y="5.5" width="0" height="5" rx="2.5" fill="#fff">
+                                <animate attributeName="width" values="0;30;30;0" dur="2s" keyTimes="0;0.3;0.7;1" repeatCount="indefinite"/>
+                            </rect>
+                            <circle cx="8" cy="22" r="3" fill="#fff"/>
+                            <rect x="16" y="19.5" width="0" height="5" rx="2.5" fill="#fff">
+                                <animate attributeName="width" values="0;30;30;0" dur="2s" keyTimes="0;0.3;0.7;1" begin="0.25s" repeatCount="indefinite"/>
+                            </rect>
+                            <circle cx="8" cy="36" r="3" fill="#fff"/>
+                            <rect x="16" y="33.5" width="0" height="5" rx="2.5" fill="#fff">
+                                <animate attributeName="width" values="0;30;30;0" dur="2s" keyTimes="0;0.3;0.7;1" begin="0.5s" repeatCount="indefinite"/>
+                            </rect>
                         </svg>
                         <span class="bb-multi-badge" id="bb-multi-badge">2</span>
                     </span>
@@ -277,7 +303,7 @@ function _setLogoState(state) {
     stMulti.classList.add('bb-logo-state--hidden');
     if (state === 'track') {
         stTrack.classList.remove('bb-logo-state--hidden');
-        label.textContent = 'تتبع';
+        label.textContent = 'تتبّع الطلب';
         circle.classList.add('bb-logo-btn__circle--active');
     } else if (state === 'multi') {
         stMulti.classList.remove('bb-logo-state--hidden');
