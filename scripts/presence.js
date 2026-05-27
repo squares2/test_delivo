@@ -50,14 +50,14 @@
     }
 
     /* ── Build payload ──────────────────────────────────────── */
-    function buildPayload(uuid) {
+    function buildPayload(uuid, connectedAt) {
         const auth = window._delivoAuthUser || null;
         return {
             uuid,
             uid:         auth?.uid      || null,
             username:    auth?.username || null,
             device:      /Mobi/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-            connectedAt: Date.now(),
+            connectedAt: connectedAt || Date.now(),   /* preserve original connect time */
             lastSeen:    Date.now(),
         };
     }
@@ -80,22 +80,33 @@
         const ref          = db.ref(`presence/${uuid}`);
         const connectedRef = db.ref('.info/connected');
 
+        /* Track connectedAt in memory so it never resets */
+        let connectedAt = null;
+
         connectedRef.on('value', async snap => {
             if (!snap.val()) return;
             await sweepStale(db);
             await ref.onDisconnect().remove();
-            await ref.set(buildPayload(uuid));
+            /* Read existing connectedAt if session exists, else use now */
+            const existing = await ref.once('value');
+            connectedAt = (existing.exists() && existing.val().connectedAt) || Date.now();
+            await ref.set(buildPayload(uuid, connectedAt));
         });
 
-        /* Heartbeat — keeps lastSeen fresh, re-registers if swept */
+        /* Heartbeat — only updates lastSeen, never touches connectedAt */
         setInterval(() => {
             if (document.visibilityState === 'hidden') return;
             ref.once('value').then(snap => {
                 if (!snap.exists()) {
+                    /* Session swept while tab was active — re-register with fresh connectedAt */
+                    connectedAt = Date.now();
                     ref.onDisconnect().remove();
-                    ref.set(buildPayload(uuid));
+                    ref.set(buildPayload(uuid, connectedAt));
                 } else {
-                    ref.update({ lastSeen: Date.now(), uuid,
+                    connectedAt = snap.val().connectedAt || connectedAt || Date.now();
+                    ref.update({
+                        lastSeen: Date.now(),
+                        uuid,
                         uid:      window._delivoAuthUser?.uid      || null,
                         username: window._delivoAuthUser?.username || null,
                     }).catch(() => {});
@@ -103,10 +114,15 @@
             }).catch(() => {});
         }, HEARTBEAT);
 
-        /* Re-register on foreground return */
+        /* Re-register on foreground return — preserve connectedAt */
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState !== 'visible') return;
-            ref.onDisconnect().remove().then(() => ref.set(buildPayload(uuid))).catch(() => {});
+            ref.once('value').then(snap => {
+                connectedAt = (snap.exists() && snap.val().connectedAt) || connectedAt || Date.now();
+                ref.onDisconnect().remove().then(() =>
+                    ref.set(buildPayload(uuid, connectedAt))
+                ).catch(() => {});
+            }).catch(() => {});
         });
 
         /* Live count */
@@ -127,8 +143,10 @@
         await sweepStale(null);
         await rtdbPut(path, buildPayload(uuid));
 
+        let restConnectedAt = Date.now();
         const hb = setInterval(() => {
-            rtdbPut(path, { ...buildPayload(uuid), lastSeen: Date.now() });
+            /* Only update lastSeen — never reset connectedAt */
+            rtdbPut(path, { ...buildPayload(uuid, restConnectedAt), lastSeen: Date.now() });
         }, HEARTBEAT);
 
         let cleaned = false;
@@ -143,7 +161,8 @@
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 cleaned = false;
-                rtdbPut(path, buildPayload(uuid));
+                /* Re-register but keep original connectedAt */
+                rtdbPut(path, buildPayload(uuid, restConnectedAt));
             }
         });
 

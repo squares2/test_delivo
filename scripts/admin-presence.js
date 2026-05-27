@@ -137,20 +137,36 @@
             const isUser = !!s.username;
             const uuid = (s.uuid || s.sid || '');
         return `
-            <div class="pm-row ${isUser ? 'pm-row--user' : ''}">
+            <div class="pm-row ${isUser ? 'pm-row--user' : ''}" data-connected="${s.connectedAt || Date.now()}">
                 <div class="pm-rank">${i + 1}</div>
                 <div class="pm-live-dot"></div>
                 <div class="pm-info">
                     <div class="pm-name" style="font-size:1.05rem">${icon} ${name} ${typeTag(s)}</div>
+                    <div class="pm-uuid-full">🔑 ${uuid}</div>
                     <div class="pm-meta">
-                        <span class="pm-uuid" title="${uuid}">🔑 ${uuid.slice(0,22)}…</span>
-                        <span>⏱ ${ago}</span>
-                        ${s.username && s.uid ? `<span class="pm-uid-badge">uid·${s.uid.slice(0,10)}</span>` : ''}
+                        <span class="pm-timer" data-ts="${s.connectedAt || Date.now()}">⏱ ${ago}</span>
+                        ${s.username && s.uid ? `<span class="pm-uid-badge">uid·${s.uid.slice(0,12)}</span>` : ''}
                     </div>
                 </div>
                 <div class="pm-device" style="font-size:.85rem">${s.device === 'mobile' ? '📱 موبايل' : '💻 ويب'}</div>
             </div>`;
         }).join('');
+    }
+
+    /* ── Live timer tick — updates ⏱ every second while modal open ── */
+    function startTimerTick() {
+        setInterval(() => {
+            if (!modalOpen) return;
+            document.querySelectorAll('.pm-timer[data-ts]').forEach(el => {
+                const ts  = parseInt(el.getAttribute('data-ts'));
+                const sec = Math.floor((Date.now() - ts) / 1000);
+                let label;
+                if (sec < 60)        label = `${sec} ث`;
+                else if (sec < 3600) label = `${Math.floor(sec/60)} د ${sec%60} ث`;
+                else                 label = `${Math.floor(sec/3600)} س ${Math.floor((sec%3600)/60)} د`;
+                el.textContent = `⏱ ${label}`;
+            });
+        }, 1000);
     }
 
     /* ── Toggle modal ───────────────────────────────────────── */
@@ -331,10 +347,18 @@
         .ps-tag--guest { color:#6b7280;border-color:rgba(107,114,128,.3);background:rgba(107,114,128,.08); }
         .pm-uuid { font-family:monospace;font-size:.72rem;color:var(--gray,#6b7280);
                    letter-spacing:.03em;cursor:default; }
+        .pm-uuid-full {
+            font-family:monospace;font-size:.74rem;color:#64748b;
+            letter-spacing:.04em;margin-top:4px;word-break:break-all;
+            background:rgba(255,255,255,.04);border-radius:6px;
+            padding:3px 8px;border:1px solid rgba(255,255,255,.06);
+            user-select:all;cursor:text;
+        }
         .pm-uid-badge { font-family:monospace;font-size:.68rem;color:#818cf8;
                         background:rgba(129,140,248,.1);border-radius:4px;padding:1px 6px; }
         .pt-uuid { font-family:monospace;font-size:.58rem;color:var(--gray,#6b7280);
                    margin-top:1px;letter-spacing:.02em; }
+        .pm-timer { font-variant-numeric:tabular-nums; }
         `;
         document.head.appendChild(style);
     }
@@ -375,6 +399,7 @@
     function init() {
         injectCSS();
         injectHTML();
+        startTimerTick();
 
         /* Try SDK first */
         function trySDK() {
