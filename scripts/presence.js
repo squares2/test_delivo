@@ -1,20 +1,22 @@
 /* ============================================================
    presence.js — Real-time online visitor counter
-   Uses Firebase RTDB .info/connected + onDisconnect()
-   Works for ALL visitors — logged in or not.
-   Extensible: each session stored as a full object under
-   /presence/{sessionId} so you can later add location,
-   device type, page, timestamps, etc.
+   Strategy:
+   - SDK path: .info/connected + onDisconnect().remove()
+   - Every session has a TTL timestamp; a cleanup sweep removes
+     any session older than STALE_MS on each connect (handles
+     crashed tabs / lost connections that never disconnected)
+   - REST fallback uses keepalive fetch for reliable cleanup
    ============================================================ */
 
 (function () {
     'use strict';
 
     const RTDB_BASE   = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
-    const SESSION_KEY = '_dlv_sid';          /* sessionStorage key for this tab's ID */
-    const HEARTBEAT   = 45 * 1000;          /* re-ping every 45 s to fight stale data */
+    const SESSION_KEY = '_dlv_sid';
+    const HEARTBEAT   = 30 * 1000;       /* update lastSeen every 30s  */
+    const STALE_MS    = 90 * 1000;       /* session older than 90s = stale */
 
-    /* ── Generate or reuse a session ID for this tab ───────── */
+    /* ── Session ID ─────────────────────────────────────────── */
     function getSessionId() {
         let sid = sessionStorage.getItem(SESSION_KEY);
         if (!sid) {
@@ -24,21 +26,21 @@
         return sid;
     }
 
-    /* ── RTDB REST helpers ──────────────────────────────────── */
-    async function rtdbPut(path, data) {
-        try {
-            await fetch(`${RTDB_BASE}/${path}.json`, {
-                method:  'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(data),
-            });
-        } catch (_) {}
+    /* ── REST helpers ───────────────────────────────────────── */
+    function rtdbPut(path, data, keepalive = false) {
+        return fetch(`${RTDB_BASE}/${path}.json`, {
+            method:    'PUT',
+            headers:   { 'Content-Type': 'application/json' },
+            body:      JSON.stringify(data),
+            keepalive,                    /* stays alive past pagehide */
+        }).catch(() => {});
     }
 
-    async function rtdbDelete(path) {
-        try {
-            await fetch(`${RTDB_BASE}/${path}.json`, { method: 'DELETE' });
-        } catch (_) {}
+    function rtdbDelete(path, keepalive = false) {
+        return fetch(`${RTDB_BASE}/${path}.json`, {
+            method:    'DELETE',
+            keepalive,
+        }).catch(() => {});
     }
 
     async function rtdbGet(path) {
@@ -48,137 +50,163 @@
         } catch (_) { return null; }
     }
 
-    /* ── Build presence payload (extend later as needed) ───── */
+    /* ── Payload ────────────────────────────────────────────── */
     function buildPayload(sid) {
         return {
             sid,
             connectedAt: Date.now(),
             lastSeen:    Date.now(),
-            /* Extensible fields — uncomment / add when needed:
-            uid:      null,          // filled when user logs in
-            page:     location.pathname,
-            device:   /Mobi/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-            city:     null,          // fill from geolocation later
+            /* Future fields (uncomment when needed):
+            uid:    null,
+            device: /Mobi/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+            page:   location.pathname,
             */
         };
     }
 
-    /* ── SDK-based presence (when Firebase SDK is loaded) ───── */
+    /* ── Stale session cleanup ──────────────────────────────── */
+    async function sweepStale(db) {
+        /* Called once on connect — removes sessions whose lastSeen
+           is older than STALE_MS (crashed tabs, lost connections) */
+        try {
+            const snap = await (db
+                ? db.ref('presence').once('value')
+                : rtdbGet('presence'));
+
+            const sessions = db ? snap.val() : snap;
+            if (!sessions) return;
+
+            const cutoff = Date.now() - STALE_MS;
+            const staleKeys = Object.entries(sessions)
+                .filter(([, v]) => v.lastSeen < cutoff)
+                .map(([k]) => k);
+
+            await Promise.all(staleKeys.map(k =>
+                db
+                    ? db.ref(`presence/${k}`).remove()
+                    : rtdbDelete(`presence/${k}`)
+            ));
+        } catch (_) {}
+    }
+
+    /* ── SDK path (preferred) ───────────────────────────────── */
     function initWithSDK(sid, db) {
         const sessionRef   = db.ref(`presence/${sid}`);
         const connectedRef = db.ref('.info/connected');
 
-        connectedRef.on('value', snap => {
-            if (!snap.val()) return;                 /* offline — do nothing */
+        connectedRef.on('value', async snap => {
+            if (!snap.val()) return;
 
-            /* When this session disconnects, Firebase removes it server-side */
-            sessionRef.onDisconnect().remove();
+            /* 1. Clean up stale sessions from previous crashes */
+            await sweepStale(db);
 
-            /* Write this session */
-            sessionRef.set(buildPayload(sid));
+            /* 2. Register server-side disconnect handler FIRST */
+            await sessionRef.onDisconnect().remove();
+
+            /* 3. Then write this session */
+            await sessionRef.set(buildPayload(sid));
         });
 
-        /* Count /presence children = online sessions */
+        /* Heartbeat — keeps lastSeen fresh so sweep doesn't remove us */
+        setInterval(() => {
+            sessionRef.update({ lastSeen: Date.now() }).catch(() => {});
+        }, HEARTBEAT);
+
+        /* Live count listener */
         db.ref('presence').on('value', snap => {
-            const count = snap.numChildren();
-            updateWidget(count);
+            updateWidget(snap.numChildren());
         });
 
-        /* Expose for later login linkage */
+        /* Expose for login linkage */
         window._delivoPresence = {
-            linkUser(uid) {
-                sessionRef.update({ uid, lastSeen: Date.now() });
-            }
+            linkUser(uid) { sessionRef.update({ uid, lastSeen: Date.now() }); }
         };
     }
 
-    /* ── REST-based presence fallback (no SDK) ──────────────── */
-    function initWithREST(sid) {
+    /* ── REST fallback ──────────────────────────────────────── */
+    async function initWithREST(sid) {
         const path = `presence/${sid}`;
 
-        /* Write on load */
-        rtdbPut(path, buildPayload(sid));
+        await sweepStale(null);
+        await rtdbPut(path, buildPayload(sid));
 
-        /* Heartbeat — keeps session alive */
-        let heartbeatTimer = setInterval(() => {
+        /* Heartbeat */
+        const hb = setInterval(() => {
             rtdbPut(path, { ...buildPayload(sid), lastSeen: Date.now() });
         }, HEARTBEAT);
 
-        /* Best-effort cleanup on tab close */
+        /* Cleanup — keepalive:true survives pagehide */
+        let cleaned = false;
         function cleanup() {
-            clearInterval(heartbeatTimer);
-            /* sendBeacon is fire-and-forget, works during pagehide */
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon(
-                    `${RTDB_BASE}/${path}.json?method=DELETE`,
-                    new Blob(['null'], { type: 'application/json' })
-                );
-            } else {
-                rtdbDelete(path);
-            }
+            if (cleaned) return;
+            cleaned = true;
+            clearInterval(hb);
+            rtdbDelete(path, true);   /* keepalive fetch — works on tab close */
         }
-        window.addEventListener('pagehide',        cleanup);
-        window.addEventListener('beforeunload',    cleanup);
+
+        window.addEventListener('pagehide',     cleanup);
+        window.addEventListener('beforeunload', cleanup);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') cleanup();
+            if (document.visibilityState === 'hidden') {
+                /* Don't cleanup immediately — user may switch tabs */
+                setTimeout(() => {
+                    if (document.visibilityState === 'hidden') cleanup();
+                }, 20_000);
+            }
         });
 
-        /* Poll count every 20 s */
+        /* Poll count */
         async function pollCount() {
             const data  = await rtdbGet('presence');
             const count = data ? Object.keys(data).length : 1;
             updateWidget(count);
         }
         pollCount();
-        setInterval(pollCount, 20_000);
+        setInterval(pollCount, 15_000);
     }
 
-    /* ── Widget renderer ────────────────────────────────────── */
+    /* ── Widget ─────────────────────────────────────────────── */
     function updateWidget(count) {
-        const el = document.getElementById('hero-online-count');
+        const el  = document.getElementById('hero-online-count');
         if (!el) return;
-        const dot  = el.querySelector('.online-dot');
-        const num  = el.querySelector('.online-num');
-        const lbl  = el.querySelector('.online-lbl');
+        const num = el.querySelector('.online-num');
+        const dot = el.querySelector('.online-dot');
         if (!num) return;
 
-        /* Animate number change */
         const prev = parseInt(num.textContent) || 0;
-        if (prev !== count) {
-            num.style.transform = 'translateY(-4px)';
-            num.style.opacity   = '0';
-            setTimeout(() => {
-                num.textContent     = count;
-                num.style.transform = 'translateY(0)';
-                num.style.opacity   = '1';
-            }, 180);
-        }
+        if (prev === count) return;
 
-        /* Pulse the dot */
+        num.style.transform = 'translateY(-5px)';
+        num.style.opacity   = '0';
+        setTimeout(() => {
+            num.textContent     = count;
+            num.style.transform = 'translateY(0)';
+            num.style.opacity   = '1';
+        }, 180);
+
         dot?.classList.add('pulse');
         setTimeout(() => dot?.classList.remove('pulse'), 600);
     }
 
-    /* ── Entry point — waits for Firebase SDK if available ──── */
+    /* ── Init ───────────────────────────────────────────────── */
     function init() {
         const sid = getSessionId();
 
-        /* Try SDK first (loaded by firebase-init.js) */
-        if (window.firebase && window.firebase.database) {
-            initWithSDK(sid, window.firebase.database());
-        } else {
-            /* Retry once after firebase-init may have run */
+        function trySDK() {
+            if (window.firebase?.database) {
+                initWithSDK(sid, window.firebase.database());
+                return true;
+            }
+            return false;
+        }
+
+        if (!trySDK()) {
             setTimeout(() => {
-                if (window.firebase && window.firebase.database) {
-                    initWithSDK(sid, window.firebase.database());
-                } else {
-                    initWithREST(sid);
-                }
-            }, 1200);
+                if (!trySDK()) initWithREST(sid);
+            }, 1500);
         }
     }
 
-    /* Run after DOM is ready */
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
