@@ -950,6 +950,11 @@ input, select, textarea { font-family: var(--font); }
                 <span id="stat-users" class="tstat__val">0</span>
                 <span style="color:var(--gray);font-size:0.65rem;">مستخدم</span>
             </div>
+            <div class="tstat tstat--online" id="admin-online-chip" title="الزوار المتصلون الآن" style="cursor:pointer;" onclick="togglePresencePanel()">
+                <span class="admin-online-dot"></span>
+                <span id="admin-online-count" class="tstat__val" style="color:#22c55e;">0</span>
+                <span style="color:var(--gray);font-size:0.65rem;">متصل الآن</span>
+            </div>
         </div>
         <div class="topbar__user" id="topbar-user-btn">
             <div class="topbar__avatar" id="topbar-avatar">A</div>
@@ -1274,11 +1279,20 @@ input, select, textarea { font-family: var(--font); }
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Presence UI injected dynamically by admin-presence.js -->
 <script>
 /* ═══════════════════════════════════════════════════════════════
    DELIVO ADMIN — Core
 ═══════════════════════════════════════════════════════════════ */
 const RTDB        = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+
+    /* Load admin presence monitor after DOM ready */
+    window.addEventListener('load', () => {
+        const s = document.createElement('script');
+        s.src = 'scripts/admin-presence.js?v=1';
+        document.body.appendChild(s);
+    });
 const FIRESTORE   = 'https://firestore.googleapis.com/v1/projects/deliveryonline-300f7/databases/(default)/documents';
 const FB_API_KEY  = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
 const FB_AUTH_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_API_KEY}`;

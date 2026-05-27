@@ -536,6 +536,11 @@ function renderAccountModal() {
         // sync bottom bar
         const bbBtn = document.getElementById('bb-account-btn');
         if (bbBtn) bbBtn.classList.add('logged-in');
+        // Update presence with user identity
+        window._delivoAuthUser = { uid: user.uid, username: user.username || null };
+        if (window._delivoPresence?.linkUser) {
+            window._delivoPresence.linkUser(user.uid, user.username || null);
+        }
     } else {
         guestEl.style.display = '';
         userEl.style.display  = 'none';
