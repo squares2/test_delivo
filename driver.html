@@ -444,6 +444,83 @@
         cursor: pointer; transition: border-color 0.18s, color 0.18s;
     }
     .drv-archive-btn.history-mode { border-color: var(--clr-yellow); color: var(--clr-yellow); }
+
+    /* ── Company state badges ────────────────────────────────── */
+    .drv-state-badge--6  { background: rgba(59,130,246,0.15);  color: var(--clr-blue); }
+    .drv-state-badge--7  { background: rgba(245,158,11,0.15);  color: var(--clr-yellow); }
+    .drv-state-badge--8  { background: rgba(34,197,94,0.15);   color: var(--clr-green); }
+
+    /* Prep countdown inside card */
+    .drv-prep-banner {
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(245,158,11,0.08);
+        border: 1px solid rgba(245,158,11,0.25);
+        border-radius: var(--radius-sm);
+        padding: 8px 12px;
+        font-size: 0.80rem; font-weight: 800; color: var(--clr-yellow);
+    }
+    .drv-prep-banner.ready {
+        background: rgba(34,197,94,0.08);
+        border-color: rgba(34,197,94,0.3);
+        color: var(--clr-green);
+    }
+    .drv-prep-countdown { font-family: monospace; font-size: 1rem; }
+
+    /* Lock overlay on actions/tracking when company not ready */
+    .drv-locked-note {
+        width: 100%; padding: 9px 12px;
+        background: rgba(255,92,0,0.06);
+        border: 1.5px dashed rgba(255,92,0,0.3);
+        border-radius: var(--radius-md);
+        color: var(--clr-orange);
+        font-size: 0.73rem; font-weight: 800;
+        text-align: center; opacity: .85;
+    }
+    .drv-state-btn:disabled, .drv-track-btn:disabled {
+        opacity: 0.35; cursor: not-allowed; pointer-events: none;
+    }
+
+    /* Notification bell */
+    .drv-notif-bell {
+        position: relative; cursor: pointer;
+        background: none; border: none;
+        font-size: 1.3rem; line-height: 1;
+        color: var(--clr-gray-light);
+    }
+    .drv-notif-badge {
+        position: absolute; top: -4px; left: -4px;
+        min-width: 16px; height: 16px;
+        background: var(--clr-orange); color: #fff;
+        border-radius: 50px; font-size: 0.58rem; font-weight: 900;
+        display: none; align-items: center; justify-content: center;
+        padding: 0 3px;
+    }
+    .drv-notif-badge.visible { display: flex; }
+
+    /* Notification popup */
+    .drv-notif-popup {
+        position: fixed; top: 62px; left: 12px; right: 12px; z-index: 500;
+        background: var(--clr-surface);
+        border: 1px solid var(--clr-border);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        max-height: 300px; overflow-y: auto;
+        display: none; flex-direction: column;
+    }
+    .drv-notif-popup.open { display: flex; }
+    .drv-notif-item {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--clr-border);
+        display: flex; flex-direction: column; gap: 3px;
+        cursor: pointer; transition: background .15s;
+    }
+    .drv-notif-item:last-child { border-bottom: none; }
+    .drv-notif-item:hover { background: var(--clr-surface2); }
+    .drv-notif-item.unread { border-right: 3px solid var(--clr-orange); }
+    .drv-notif-item__title { font-size: 0.80rem; font-weight: 800; color: var(--clr-white); }
+    .drv-notif-item__sub   { font-size: 0.70rem; color: var(--clr-gray); }
+    .drv-notif-empty { padding: 20px; text-align: center; color: var(--clr-gray); font-size: 0.80rem; }
+
     </style>
 </head>
 <body>
@@ -562,21 +639,48 @@ let geoWatchId    = null;
 let wakeLock      = null;
 
 const STATE_MAP = {
-    "0": { label: "جديد",        short: "جديد" },
-    "1": { label: "تم التوصيل",  short: "وُصِّل" },
-    "2": { label: "ملغي",        short: "ملغي" },
-    "3": { label: "متأخر",       short: "متأخر" },
-    "5": { label: "ملغي/مدفوع",  short: "ملغي/م" },
+    "0": { label: "جديد",             short: "جديد",         company: false },
+    "1": { label: "تم التوصيل",       short: "وُصِّل",       company: false },
+    "2": { label: "ملغي",             short: "ملغي",         company: false },
+    "3": { label: "متأخر",            short: "متأخر",        company: false },
+    "5": { label: "ملغي/مدفوع",       short: "ملغي/م",       company: false },
+    "6": { label: "استُلم من العميل", short: "استُلم",       company: true  },
+    "7": { label: "قيد التحضير",      short: "قيد التحضير",  company: true  },
+    "8": { label: "جاهز للتسليم",     short: "جاهز ✓",       company: true  },
 };
 
+// Company has finished when state === '8'
+function isCompanyDone(order) { return (order.state || '0') === '8'; }
+// Order is still actionable by driver (new or in-progress, not yet delivered/cancelled)
+function isDriverActionable(order) { return ['0','3'].includes(order.state || '0'); }
+
 // ── Boot ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Try restore session from localStorage
     const saved = localStorage.getItem('delivoDriver');
     if (saved) {
         try {
-            driverData = JSON.parse(saved);
-            startDriverSession();
+            const parsed = JSON.parse(saved);
+            // Re-validate: fetch the exact driver record by stored ID and confirm
+            // username still matches — prevents stale sessions and wrong-user bugs
+            const snap = await db.ref(`drivers/${parsed.id}`).get();
+            if (snap.exists()) {
+                const d = snap.val();
+                if (d && d.username === parsed.username) {
+                    // Refresh owner name in case it changed in admin
+                    parsed.owner = d.owner || d.fullname || d.username;
+                    driverData = parsed;
+                    localStorage.setItem('delivoDriver', JSON.stringify(driverData));
+                    startDriverSession();
+                } else {
+                    // Stored ID no longer matches this username — clear and re-login
+                    localStorage.removeItem('delivoDriver');
+                    showLoginModal();
+                }
+            } else {
+                localStorage.removeItem('delivoDriver');
+                showLoginModal();
+            }
         } catch(e) {
             localStorage.removeItem('delivoDriver');
             showLoginModal();
@@ -621,9 +725,15 @@ function setupLoginForm() {
 
             let found = null;
             snap.forEach(child => {
+                if (found) return; // stop at first match
                 const d = child.val();
                 if (d && d.username === username && d.password === password) {
-                    found = { id: child.key, username, owner: d.owner || d.fullname || username };
+                    // Use child.key as the unique Firebase key — never an index guess
+                    found = {
+                        id:       child.key,
+                        username: d.username,
+                        owner:    d.owner || d.fullname || d.username,
+                    };
                 }
             });
 
@@ -656,10 +766,13 @@ function startDriverSession() {
     document.getElementById('drv-login-modal').style.display = 'none';
     document.getElementById('drv-name').textContent = driverData.owner;
 
-    // Set driver online
-    const statusRef = db.ref(`drivers/${driverData.id}/status`);
-    statusRef.onDisconnect().set('offline');
-    statusRef.set('online');
+    // Set driver online — stamp username so admin map always shows correct identity
+    const driverRef = db.ref(`drivers/${driverData.id}`);
+    driverRef.child('status').onDisconnect().set('offline');
+    driverRef.update({
+        status:      'online',
+        _activeUser: driverData.owner,   // owner display name for admin map label
+    });
     document.getElementById('drv-status-dot').classList.add('online');
 
     // Notify Android bridge if available
@@ -689,11 +802,13 @@ function startDriverSession() {
 function setupLogout() {
     document.getElementById('drv-logout-btn').addEventListener('click', async () => {
         if (!driverData) return;
-        // Set offline
-        await db.ref(`drivers/${driverData.id}/status`).set('offline');
-        // Stop GPS
-        if (geoWatchId !== null) navigator.geolocation.clearWatch(geoWatchId);
-        geoWatchId = null;
+        // Stop GPS first so no stale location writes happen after status clears
+        if (geoWatchId !== null) { navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
+        // Set offline and clear active-user stamp
+        await db.ref(`drivers/${driverData.id}`).update({
+            status:      'offline',
+            _activeUser: null,
+        });
         // Release wake lock
         if (wakeLock) { try { await wakeLock.release(); } catch(e){} wakeLock = null; }
         // Clear session
@@ -757,7 +872,12 @@ function listenOrders() {
         if (snap.exists()) {
             snap.forEach(child => {
                 const order = child.val();
-                if (order && order.driver === driverData.owner) {
+                if (!order) return;
+                // Primary: match by Firebase key (set at order creation)
+                // Fallback: match by owner name for legacy orders that predate driverid
+                const keyMatch  = order.driverid && order.driverid === driverData.id;
+                const nameMatch = !order.driverid && order.driver === driverData.owner;
+                if (keyMatch || nameMatch) {
                     const vaultMatch = historyMode
                         ? (order.vault === '1' || order.vault === 1)
                         : (order.vault === '0' || order.vault === 0 || !order.vault);
@@ -766,6 +886,103 @@ function listenOrders() {
             });
         }
         renderOrders();
+    });
+}
+
+// ── Driver notifications ─────────────────────────────────────
+function listenNotifications() {
+    if (!driverData) return;
+    db.ref('driverNotifications/' + driverData.owner).on('value', snap => {
+        const prev = Object.keys(notifCache).length;
+        notifCache = {};
+        if (snap.exists()) {
+            snap.forEach(child => {
+                notifCache[child.key] = child.val();
+            });
+        }
+        const unread = Object.values(notifCache).filter(n => n.read === '0').length;
+        notifUnread = unread;
+        updateNotifBadge();
+
+        // Show toast for brand-new notifications
+        const total = Object.keys(notifCache).length;
+        if (total > prev && prev >= 0) {
+            // Find newest unread
+            const newest = Object.entries(notifCache)
+                .filter(([,n]) => n.read === '0')
+                .sort(([,a],[,b]) => (b.sentAt||0)-(a.sentAt||0))[0];
+            if (newest) {
+                const [, n] = newest;
+                const msg = n.type === 'ready'
+                    ? `✅ طلب #${n.orderId?.replace('id_','')} جاهز للتسليم من ${n.store}`
+                    : `⏳ طلب #${n.orderId?.replace('id_','')} — وقت التجهيز: ${n.prepMins} دقيقة`;
+                showToast(msg);
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            }
+        }
+        if (notifOpen) renderNotifPopup();
+    });
+}
+
+function updateNotifBadge() {
+    const badge = document.getElementById('drv-notif-badge');
+    if (!badge) return;
+    badge.textContent = notifUnread > 9 ? '9+' : notifUnread;
+    badge.classList.toggle('visible', notifUnread > 0);
+}
+
+function toggleNotifPopup() {
+    notifOpen = !notifOpen;
+    const popup = document.getElementById('drv-notif-popup');
+    popup.classList.toggle('open', notifOpen);
+    if (notifOpen) {
+        renderNotifPopup();
+        // Mark all as read
+        Object.entries(notifCache).forEach(([orderId, n]) => {
+            if (n.read === '0') {
+                db.ref('driverNotifications/' + driverData.owner + '/' + orderId + '/read').set('1');
+                notifCache[orderId].read = '1';
+            }
+        });
+        notifUnread = 0;
+        updateNotifBadge();
+    }
+}
+function closeNotifPopup() {
+    notifOpen = false;
+    document.getElementById('drv-notif-popup').classList.remove('open');
+}
+
+function renderNotifPopup() {
+    const popup   = document.getElementById('drv-notif-popup');
+    const emptyEl = document.getElementById('drv-notif-empty');
+    popup.querySelectorAll('.drv-notif-item').forEach(el => el.remove());
+
+    const entries = Object.entries(notifCache)
+        .sort(([,a],[,b]) => (b.sentAt||0)-(a.sentAt||0));
+
+    emptyEl.style.display = entries.length ? 'none' : '';
+
+    entries.forEach(([orderId, n]) => {
+        const el  = document.createElement('div');
+        el.className = 'drv-notif-item' + (n.read === '0' ? ' unread' : '');
+        const readyTime = n.readyAt ? new Date(n.readyAt).toLocaleTimeString('ar-LB',{hour:'2-digit',minute:'2-digit'}) : '';
+        el.innerHTML = `
+            <div class="drv-notif-item__title">
+                ${n.type === 'ready' ? '✅ جاهز للاستلام' : '⏳ قيد التحضير'}
+                — ${n.store || ''}
+            </div>
+            <div class="drv-notif-item__sub">
+                طلب #${orderId.replace('id_','')}
+                ${n.type === 'standby' ? '· ' + n.prepMins + ' دقيقة · موعد الجاهزية: ' + readyTime : '· جاهز الآن'}
+            </div>`;
+        el.addEventListener('click', () => {
+            closeNotifPopup();
+            // Scroll to / expand the matching card
+            const card = document.querySelector(`.drv-order[data-id="${orderId}"]`);
+            if (card) { card.classList.add('expanded'); card.scrollIntoView({behavior:'smooth',block:'center'}); }
+        });
+        popup.appendChild(el);
     });
 }
 
@@ -789,29 +1006,54 @@ function renderOrders() {
         if (el) el.textContent = counts[s] || 0;
     });
 
-    // Filter
+    // Filter + sort
     const filtered = Object.entries(ordersCache)
         .filter(([, o]) => currentFilter === 'all' || o.state === currentFilter)
         .sort(([a], [b]) => {
             const na = parseInt(a.split('_')[1]) || 0;
             const nb = parseInt(b.split('_')[1]) || 0;
-            return nb - na; // newest first
+            return nb - na;
         });
 
-    // Clear old cards (keep empties)
-    container.querySelectorAll('.drv-order').forEach(el => el.remove());
     if (document.getElementById('drv-loading'))
         document.getElementById('drv-loading').style.display = 'none';
 
     if (filtered.length === 0) {
+        container.querySelectorAll('.drv-order').forEach(el => el.remove());
         emptyEl.classList.add('visible');
         return;
     }
     emptyEl.classList.remove('visible');
 
+    // ── Smart diff: preserve expanded state, only rebuild changed cards ──
+    const newKeys = new Set(filtered.map(([k]) => k));
+
+    // Remove cards no longer in filtered list
+    container.querySelectorAll('.drv-order[data-id]').forEach(el => {
+        if (!newKeys.has(el.dataset.id)) el.remove();
+    });
+
     filtered.forEach(([key, order]) => {
-        const card = buildOrderCard(key, order);
-        container.appendChild(card);
+        const existing    = container.querySelector(`.drv-order[data-id="${key}"]`);
+        const wasExpanded = existing ? existing.classList.contains('expanded') : false;
+
+        // Rebuild card with latest data, restore expanded state
+        const newCard = buildOrderCard(key, order);
+        if (wasExpanded) newCard.classList.add('expanded');
+
+        if (existing) {
+            existing.replaceWith(newCard);
+        } else {
+            // New card — insert at correct sorted position
+            const allCards = [...container.querySelectorAll('.drv-order[data-id]')];
+            const nextCard = allCards.find(el => {
+                const n = parseInt(el.dataset.id.split('_')[1]) || 0;
+                const m = parseInt(key.split('_')[1]) || 0;
+                return n < m;
+            });
+            if (nextCard) container.insertBefore(newCard, nextCard);
+            else container.appendChild(newCard);
+        }
     });
 }
 
@@ -820,6 +1062,12 @@ function buildOrderCard(key, order) {
     const state     = order.state || '0';
     const stateInfo = STATE_MAP[state] || STATE_MAP["0"];
     const tracking  = order.trackorder === '1' || order.trackorder === 1;
+    const compDone  = isCompanyDone(order);           // state === '8'
+    const drvActok  = isDriverActionable(order);      // state 0 or 3
+    const isCompState = STATE_MAP[state]?.company;    // company-managed state (6,7,8)
+    const isFinalState = ['1','2','5'].includes(state); // delivered / cancelled
+    const etaMs     = order.standbyUntil ? (order.standbyUntil - Date.now()) : null;
+    const etaMins   = etaMs !== null ? Math.ceil(etaMs / 60000) : null;
 
     // Parse cart items: "qty:name:price:store,..."
     const items = [];
@@ -909,21 +1157,54 @@ function buildOrderCard(key, order) {
                 </a>` : ''}
             </div>
 
-            <!-- State buttons -->
+            <!-- Prep countdown banner (shown for company states 6,7,8) -->
+            ${isCompState ? `
+            <div class="drv-prep-banner ${compDone ? 'ready' : ''}" id="prep-${key}">
+                ${compDone
+                    ? '✅ الطلب جاهز — يمكنك الانطلاق لاستلامه'
+                    : state === '7' && etaMins !== null
+                        ? `⏳ الشركة تحضّر الطلب — متبقي: <span class="drv-prep-countdown" data-until="${order.standbyUntil}">
+                             ${etaMins > 0 ? etaMins + ' د' : 'انتهى وقت التحضير'}</span>`
+                        : '📋 تم استلام الطلب من العميل — جارٍ التحضير'
+                }
+            </div>` : ''}
+
+            <!-- State buttons:
+                 - Locked ONLY during active company states (6,7) — company is processing
+                 - Always available for driver states (0,1,2,3,5) and when ready (8) -->
+            ${isCompState && !compDone ? `
+            <div class="drv-locked-note">
+                🔒 بانتظار إنهاء الشركة تحضير الطلب
+            </div>
+            <div class="drv-order__actions" style="opacity:.3;pointer-events:none;">
+                ${['0','1','3','2','5'].map(s => `
+                    <button class="drv-state-btn ${state === s ? 'active' : ''}" disabled data-s="${s}">
+                        ${STATE_MAP[s].label}
+                    </button>`).join('')}
+            </div>` : `
             <div class="drv-order__actions">
                 ${['0','1','3','2','5'].map(s => `
                     <button class="drv-state-btn ${state === s ? 'active' : ''}"
                             data-id="${key}" data-uid="${order.delivryplusid || ''}" data-s="${s}">
                         ${STATE_MAP[s].label}
-                    </button>
-                `).join('')}
-            </div>
+                    </button>`).join('')}
+            </div>`}
 
-            <!-- Tracking toggle -->
+            <!-- Tracking toggle:
+                 - Available when order is ready (state 8) OR active driver state (0,3)
+                 - Locked during company processing (6,7)
+                 - Disabled on final states (1,2,5) — shown greyed out so driver knows why -->
+            ${isCompState && !compDone ? `
+            <div class="drv-locked-note" style="margin-top:0;">
+                📍 التتبع متاح فقط بعد جاهزية الطلب
+            </div>` : isFinalState ? `
+            <div class="drv-locked-note" style="margin-top:0;">
+                📍 الطلب منتهٍ — التتبع غير متاح
+            </div>` : `
             <button class="drv-track-btn ${tracking ? 'tracking' : ''}"
                     data-id="${key}" data-uid="${order.delivryplusid || ''}">
                 🛵 ${tracking ? 'إيقاف التتبع المباشر' : 'تفعيل التتبع المباشر للزبون'}
-            </button>
+            </button>`}
         </div>
     `;
 
@@ -958,6 +1239,52 @@ function buildOrderCard(key, order) {
             try {
                 await db.ref().update(updates);
                 showToast(`✅ تم تحديث الحالة: ${STATE_MAP[newState].label}`);
+
+                // Auto-disable tracking on final states (delivered/cancelled)
+                // Keep tracking alive for state 8 (ready) and re-allow for state 0 (new/reset)
+                if (['1','2','5'].includes(newState)) {
+                    const curTrack = ordersCache[id]?.trackorder;
+                    if (curTrack === '1' || curTrack === 1) {
+                        const tUpdates = {};
+                        tUpdates[`/requests/${id}/trackorder`] = '0';
+                        tUpdates[`/requests/${id}/driverid`]   = null;
+                        const tuid = ordersCache[id]?.delivryplusid || '';
+                        if (tuid && tuid !== 'undefined' && tuid !== '') {
+                            tUpdates[`/historyRequests/${tuid}/${id}/trackorder`] = '0';
+                            tUpdates[`/historyRequests/${tuid}/${id}/driverid`]   = null;
+                        }
+                        await db.ref().update(tUpdates);
+                        if (ordersCache[id]) ordersCache[id].trackorder = '0';
+                        const tBtn = card.querySelector('.drv-track-btn');
+                        if (tBtn) {
+                            tBtn.classList.remove('tracking');
+                            tBtn.textContent = '🛵 تفعيل التتبع المباشر للزبون';
+                        }
+                        showToast('📍 تم إيقاف التتبع تلقائياً');
+                    }
+                }
+                // When state resets to 0 (new), swap locked-note back to track button if needed
+                if (newState === '0') {
+                    const lockedNote = card.querySelector('.drv-locked-note');
+                    if (lockedNote && lockedNote.style.marginTop === '0px') {
+                        lockedNote.outerHTML = `<button class="drv-track-btn" data-id="${id}" data-uid="${card.querySelector('[data-uid]')?.dataset.uid || ''}">🛵 تفعيل التتبع المباشر للزبون</button>`;
+                        card.querySelector('.drv-track-btn')?.addEventListener('click', async (e) => {
+                            e.stopPropagation();
+                            const btn2 = e.currentTarget;
+                            const ord2 = ordersCache[btn2.dataset.id] || {};
+                            const s2 = ord2.state || '0';
+                            if (['1','2','5'].includes(s2)) { showToast('⏹ الطلب منتهٍ'); return; }
+                            if (['6','7'].includes(s2))     { showToast('🔒 لم يجهّز المتجر بعد'); return; }
+                            const newT = (ord2.trackorder === '1' || ord2.trackorder === 1) ? '0' : '1';
+                            const upd  = { [`/requests/${btn2.dataset.id}/trackorder`]: newT, [`/requests/${btn2.dataset.id}/driverid`]: newT === '1' ? driverData.id : null };
+                            await db.ref().update(upd);
+                            btn2.classList.toggle('tracking', newT === '1');
+                            btn2.textContent = newT === '1' ? '🛵 إيقاف التتبع المباشر' : '🛵 تفعيل التتبع المباشر للزبون';
+                            showToast(newT === '1' ? '📍 التتبع المباشر مفعّل' : '⏹ التتبع موقوف');
+                            if (ordersCache[btn2.dataset.id]) ordersCache[btn2.dataset.id].trackorder = newT;
+                        });
+                    }
+                }
             } catch(err) {
                 showToast('❌ خطأ في التحديث');
             }
@@ -965,12 +1292,18 @@ function buildOrderCard(key, order) {
     });
 
     // Track button
-    card.querySelector('.drv-track-btn').addEventListener('click', async (e) => {
+    card.querySelector('.drv-track-btn')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         const btn      = e.currentTarget;
+        if (btn.disabled) return;
         const id       = btn.dataset.id;
         const uid      = btn.dataset.uid;
-        const current  = ordersCache[id]?.trackorder;
+        const ord      = ordersCache[id] || {};
+        // Guard: block tracking only on final states (delivered/cancelled) or mid-company-processing
+        const ordState = ord.state || '0';
+        if (['1','2','5'].includes(ordState)) { showToast('⏹ الطلب منتهٍ — التتبع غير متاح'); return; }
+        if (['6','7'].includes(ordState))     { showToast('🔒 الطلب لم يجهّزه المتجر بعد'); return; }
+        const current  = ord.trackorder;
         const newTrack = (current === '1' || current === 1) ? '0' : '1';
 
         const updates = {};
@@ -1020,6 +1353,22 @@ function setupHistoryToggle() {
         if (driverData) listenOrders();
     });
 }
+
+// ── Prep countdown ticker (state 7 cards) ───────────────────
+setInterval(() => {
+    document.querySelectorAll('.drv-prep-countdown[data-until]').forEach(el => {
+        const until   = parseInt(el.dataset.until);
+        const diffSec = Math.ceil((until - Date.now()) / 1000);
+        if (diffSec <= 0) {
+            el.textContent = 'انتهى وقت التحضير';
+            el.closest('.drv-prep-banner')?.classList.add('ready');
+        } else {
+            const m = Math.floor(diffSec / 60);
+            const s = diffSec % 60;
+            el.textContent = m + ':' + String(s).padStart(2,'0') + ' دقيقة';
+        }
+    });
+}, 1000);
 
 // ── Toast ─────────────────────────────────────────────────────
 let _toastTimer = null;

@@ -303,7 +303,7 @@ input, select, textarea { font-family: var(--font); }
 
 /* ── Content area ───────────────────────────────────────────── */
 .content { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); }
-.panel { display: none; flex: 1; overflow: hidden; }
+.panel { display: none; flex: 1; overflow: hidden; min-height: 0; }
 .panel.active { display: flex; flex-direction: column; }
 
 /* ── Panel header ───────────────────────────────────────────── */
@@ -467,6 +467,336 @@ input, select, textarea { font-family: var(--font); }
 .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--gray); }
 .empty-state svg { opacity: 0.3; }
 .empty-state p { font-size: 0.88rem; font-weight: 700; }
+
+
+
+
+/* ─── COMPANY ORDER CARD — PROFESSIONAL ──────────────────────── */
+.coc { border-radius:14px; }
+.coc-head {
+    padding:12px 16px; gap:10px; cursor:pointer;
+    background: linear-gradient(135deg, var(--surface2) 0%, rgba(255,92,0,0.06) 100%);
+    user-select:none;
+}
+.coc-head:hover { background: linear-gradient(135deg, var(--surface3) 0%, rgba(255,92,0,0.10) 100%); }
+.coc-num { font-size:1.05rem; }
+.coc-chevron {
+    margin-right:auto; color:var(--gray); transition:transform .25s;
+    display:flex; align-items:center;
+}
+.coc.expanded .coc-chevron { transform:rotate(180deg); }
+.coc-collapsible {
+    display:none; flex-direction:column;
+    /* No overflow:hidden — content must grow freely in height */
+}
+.coc.expanded .coc-collapsible { display:flex; flex-direction:column; }
+
+/* Order meta strip */
+.coc-meta-strip {
+    display:flex; gap:0; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.coc-meta-cell {
+    flex:1; padding:8px 14px; display:flex; flex-direction:column; gap:2px;
+    border-left:1px solid var(--border);
+}
+.coc-meta-cell:last-child { border-left:none; }
+.coc-meta-label { font-size:0.6rem; font-weight:800; color:var(--gray); letter-spacing:.6px; text-transform:uppercase; }
+.coc-meta-val   { font-size:0.8rem; font-weight:800; color:var(--white); }
+.coc-meta-val.orange { color:var(--orange); font-family:var(--mono); }
+.coc-meta-val.green  { color:var(--green); }
+.coc-meta-val.gray   { color:var(--gray); font-style:italic; }
+
+/* Items section */
+.coc-items-section { padding:14px 16px 0; }
+.coc-items-header {
+    font-size:0.65rem; font-weight:900; color:var(--gray); letter-spacing:.8px;
+    text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;
+}
+.coc-items-header::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Item row */
+.coc-item-card {
+    display:flex; align-items:center; gap:12px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    transition: border-color .15s;
+}
+.coc-item-card:hover { border-color:var(--border-bright); }
+.coc-item-img {
+    width:52px; height:52px; border-radius:8px; object-fit:cover; flex-shrink:0;
+    background:var(--surface3); border:1px solid var(--border);
+}
+.coc-item-img-placeholder {
+    width:52px; height:52px; border-radius:8px; flex-shrink:0;
+    background:var(--surface3); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.4rem;
+}
+.coc-item-info { flex:1; min-width:0; }
+.coc-item-name-big { font-size:0.88rem; font-weight:800; color:var(--white); margin-bottom:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.coc-item-sub { font-size:0.68rem; color:var(--gray); font-weight:600; }
+.coc-item-qty-badge {
+    width:36px; height:36px; border-radius:50%; flex-shrink:0;
+    background:var(--orange-faint); border:2px solid rgba(255,92,0,.35);
+    display:flex; align-items:center; justify-content:center;
+    font-size:0.9rem; font-weight:900; color:var(--orange); font-family:var(--mono);
+}
+
+/* Special note */
+.coc-xnote {
+    display:flex; align-items:flex-start; gap:8px; margin:0 16px 14px;
+    background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
+    border-radius:8px; padding:9px 12px; font-size:0.78rem; color:var(--yellow);
+    font-weight:700; line-height:1.4;
+}
+
+/* ETA banner */
+.coc-eta {
+    margin:0 16px 14px; border-radius:8px;
+    display:flex; align-items:center; gap:8px;
+    font-size:0.8rem; font-weight:800;
+}
+
+/* Loading shimmer for items */
+.coc-item-shimmer {
+    height:72px; border-radius:10px; margin-bottom:8px;
+    background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);
+    background-size:200% 100%; animation:shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ─── COMPANY PORTAL ─────────────────────────────────────────── */
+#company-portal {
+    display:none; position:fixed; inset:0; z-index:2000;
+    width:100%; height:100%;          /* explicit size so children can flex */
+    background:var(--bg); flex-direction:column;
+    font-family:var(--font);
+    overflow:hidden;                  /* portal itself never scrolls */
+}
+#company-portal.visible { display:flex; }
+.cp-topbar {
+    height:56px; background:var(--surface); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px; padding:0 20px;
+    flex-shrink:0; flex-grow:0;       /* never grow/shrink — fixed height */
+}
+.cp-logo { font-size:1.1rem; font-weight:900; color:var(--white); }
+.cp-logo span { color:var(--orange); }
+.cp-store-name { font-size:0.9rem; font-weight:800; color:var(--gray-light); margin-right:4px; }
+.cp-badge { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,.3);
+    border-radius:50px; font-size:0.62rem; font-weight:900; padding:2px 9px; }
+.cp-badge.orange { background:var(--orange-faint); color:var(--orange); border-color:rgba(255,92,0,.3); }
+.cp-logout { margin-right:auto; background:none; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--gray-light); font-family:var(--font); font-size:var(--fs-xs); font-weight:800;
+    padding:5px 12px; cursor:pointer; transition:border-color .15s,color .15s; }
+.cp-logout:hover { border-color:var(--red); color:var(--red); }
+.cp-toolbar {
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+    padding:10px 16px; border-bottom:1px solid var(--border);
+    flex-shrink:0; flex-grow:0;       /* fixed toolbar — never grows */
+}
+.cp-refresh { background:var(--surface2); border:1.5px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--gray-light); font-family:var(--font); font-size:var(--fs-xs); font-weight:800;
+    padding:5px 12px; cursor:pointer; transition:border-color .15s; }
+.cp-refresh:hover { border-color:var(--orange); color:var(--orange); }
+.cp-count { font-size:var(--fs-xs); color:var(--gray); margin-right:auto; }
+.cp-grid {
+    flex:1 1 0;          /* grow to fill, shrink to zero — never pushes parent */
+    overflow-y:scroll;   /* always-on scrollbar avoids layout shifts */
+    overflow-x:hidden;
+    padding:14px 16px;
+    display:flex; flex-direction:column; gap:10px;
+    min-height:0;        /* flex child must be able to shrink below content */
+    height:0;            /* combined with flex:1 this forces correct measurement */
+}
+.cp-grid::-webkit-scrollbar { width:5px; }
+.cp-grid::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+/* Company order card */
+.coc {
+    background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius);
+    display:flex; flex-direction:column; gap:0;
+    transition:border-color .2s, box-shadow .2s;
+}
+.coc:hover { border-color:var(--border-bright); box-shadow:0 4px 20px rgba(0,0,0,.4); }
+.coc-head {
+    display:flex; align-items:center; gap:8px; padding:10px 14px;
+    background:var(--surface2); border-bottom:1px solid var(--border);
+}
+.coc-num { font-family:var(--mono); font-weight:900; font-size:0.9rem; color:var(--orange); }
+.coc-date { font-size:0.65rem; color:var(--gray); font-family:var(--mono); margin-right:auto; }
+.coc-state-badge {
+    display:inline-flex; align-items:center; gap:3px;
+    border-radius:50px; padding:2px 9px; font-size:0.65rem; font-weight:900;
+    white-space:nowrap; border:1px solid transparent;
+}
+.cs-0 { background:var(--orange-faint); color:var(--orange); border-color:rgba(255,92,0,.25); }
+.cs-6 { background:rgba(59,130,246,.12); color:var(--blue);   border-color:rgba(59,130,246,.3); }
+.cs-7 { background:rgba(245,158,11,.12); color:var(--yellow); border-color:rgba(245,158,11,.3); }
+.cs-8 { background:var(--green-glow);   color:var(--green);  border-color:rgba(34,197,94,.3); }
+.cs-1 { background:rgba(34,197,94,.08); color:var(--green);  border-color:rgba(34,197,94,.2); opacity:.7; }
+.cs-2,.cs-5 { background:var(--red-glow); color:var(--red);  border-color:rgba(239,68,68,.3); opacity:.7; }
+.coc-body { padding:12px 14px; display:flex; flex-direction:column; gap:6px; }
+.coc-row { display:flex; align-items:flex-start; gap:6px; font-size:0.8rem; }
+.coc-label { color:var(--gray); font-size:0.68rem; font-weight:800; min-width:62px; flex-shrink:0; }
+.coc-val { color:var(--gray-light); font-weight:700; }
+.coc-price { color:var(--orange); font-family:var(--mono); font-weight:900; }
+.coc-driver { color:var(--green); font-weight:800; }
+.coc-driver.none { color:var(--gray); font-style:italic; }
+.coc-eta {
+    display:flex; align-items:center; gap:5px; background:rgba(245,158,11,.08);
+    border:1px solid rgba(245,158,11,.25); border-radius:var(--radius-sm);
+    padding:5px 10px; margin:4px 0; font-size:0.78rem; color:var(--yellow); font-weight:800;
+}
+.coc-actions { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; border-top:1px solid var(--border); }
+.coc-btn {
+    flex:1; min-width:80px; background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:var(--radius-sm); color:var(--gray-light); font-family:var(--font);
+    font-size:0.72rem; font-weight:800; padding:7px 10px; cursor:pointer;
+    transition:background .15s, border-color .15s, color .15s; white-space:nowrap;
+}
+.coc-btn:hover { border-color:var(--border-bright); color:var(--white); }
+.coc-btn.pick   { border-color:rgba(59,130,246,.4); color:var(--blue); }
+.coc-btn.pick:hover { background:rgba(59,130,246,.1); border-color:var(--blue); }
+.coc-btn.standby { border-color:rgba(245,158,11,.4); color:var(--yellow); }
+.coc-btn.standby:hover { background:rgba(245,158,11,.1); border-color:var(--yellow); }
+.coc-btn.ready  { border-color:rgba(34,197,94,.4); color:var(--green); }
+.coc-btn.ready:hover { background:rgba(34,197,94,.1); border-color:var(--green); }
+.coc-btn.active-s { opacity:.4; cursor:default; pointer-events:none; }
+.coc-new-dot {
+    width:8px; height:8px; border-radius:50%; background:var(--orange);
+    flex-shrink:0; box-shadow:0 0 6px var(--orange); animation:cpPulse 1.4s infinite;
+}
+@keyframes cpPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.7)} }
+/* Standby modal */
+#modal-standby { z-index:3000; }
+.standby-time-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+.standby-time-row input[type=number] {
+    background:var(--surface2); border:1.5px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--white); font-family:var(--font); font-size:var(--fs-md); font-weight:800;
+    padding:8px 12px; width:90px; outline:none; text-align:center;
+}
+.standby-time-row input[type=number]:focus { border-color:var(--orange); }
+.standby-time-row span { color:var(--gray-light); font-size:var(--fs-sm); font-weight:700; }
+/* Employee card — company tag */
+.role-company { background:rgba(34,197,94,.15); color:var(--green); }
+.ec-linked-store { display:inline-flex; align-items:center; gap:4px; margin-top:6px;
+    background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm);
+    padding:3px 8px; font-size:0.65rem; font-weight:800; color:var(--gray-light); }
+/* linked-store field in emp modal */
+#emp-store-row { display:none; margin-top:0; }
+
+/* ─── ONLINE REQUESTS PANEL ─────────────────────────────────── */
+.or-toolbar { display:flex; gap:var(--gap-sm); flex-wrap:wrap; align-items:center; padding:var(--pad-sm) var(--pad-lg); border-bottom:1px solid var(--border); flex-shrink:0; }
+.or-table-wrap { flex:1; overflow:auto; padding:var(--pad-md) var(--pad-lg); }
+.or-table-wrap::-webkit-scrollbar { width:5px; height:5px; }
+.or-table-wrap::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.or-table {
+    width:100%; border-collapse:collapse; font-size:var(--fs-sm);
+    min-width:860px;
+}
+.or-table th {
+    background:var(--surface2); color:var(--gray); font-size:var(--fs-xs);
+    font-weight:800; letter-spacing:.6px; text-transform:uppercase;
+    padding:var(--pad-xs) var(--pad-sm); border-bottom:2px solid var(--border);
+    white-space:nowrap; position:sticky; top:0; z-index:1;
+}
+.or-table td {
+    padding:var(--pad-xs) var(--pad-sm); border-bottom:1px solid var(--border);
+    vertical-align:middle; color:var(--white);
+}
+.or-table tr:hover td { background:var(--surface2); }
+.or-table tr.or-unread td { background:rgba(255,92,0,0.04); }
+.or-table tr.or-unread td:first-child { border-right:3px solid var(--orange); }
+/* Synchronized (same-date) request group highlighting */
+.or-table tr.or-sync-a td { background: rgba(59,130,246,0.06); }
+.or-table tr.or-sync-a td:first-child { border-right: 3px solid var(--blue); }
+.or-table tr.or-sync-b td { background: rgba(255,92,0,0.07); }
+.or-table tr.or-sync-b td:first-child { border-right: 3px solid var(--orange); }
+/* sync group badge shown in first row of a group */
+.or-sync-label {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:0.6rem; font-weight:800; letter-spacing:.5px;
+    border-radius:50px; padding:2px 7px; margin-top:3px;
+    white-space:nowrap;
+}
+.or-sync-label-a { background:rgba(59,130,246,0.15); color:var(--blue);   border:1px solid rgba(59,130,246,0.3); }
+.or-sync-label-b { background:rgba(255,92,0,0.15); color:var(--orange); border:1px solid rgba(255,92,0,0.3); }
+.or-shipnum {
+    font-family:var(--mono); font-size:var(--fs-sm); font-weight:700;
+    color:var(--orange); white-space:nowrap;
+}
+.or-remove-btn {
+    background:none; border:1.5px solid rgba(239,68,68,0.35); border-radius:var(--radius-sm);
+    color:var(--red); font-size:var(--fs-xs); padding:3px 9px; cursor:pointer;
+    white-space:nowrap; transition:background .15s,border-color .15s;
+    font-family:var(--font); font-weight:700;
+}
+.or-remove-btn:hover { background:var(--red-glow); border-color:var(--red); }
+.or-driver-wrap { display:flex; align-items:center; gap:5px; }
+.or-driver-sel {
+    background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:var(--radius-sm); color:var(--white); font-family:var(--font);
+    font-size:var(--fs-xs); padding:4px 7px; outline:none; max-width:130px; cursor:pointer;
+    transition:border-color .2s;
+}
+.or-driver-sel:focus { border-color:var(--orange); }
+.or-assign-btn {
+    background:var(--orange-faint); border:1.5px solid rgba(255,92,0,.35);
+    border-radius:var(--radius-sm); color:var(--orange); font-size:var(--fs-xs);
+    padding:4px 9px; cursor:pointer; white-space:nowrap; font-family:var(--font);
+    font-weight:800; transition:background .15s;
+}
+.or-assign-btn:hover { background:rgba(255,92,0,0.18); }
+.or-price { font-family:var(--mono); font-size:var(--fs-sm); color:var(--white); white-space:nowrap; }
+.or-profit { font-family:var(--mono); font-size:var(--fs-xs); color:var(--green); white-space:nowrap; }
+.or-drivercost { font-family:var(--mono); font-size:var(--fs-xs); color:var(--yellow); white-space:nowrap; }
+.or-profit-loading { color:var(--gray); font-size:var(--fs-xs); font-style:italic; }
+.or-state-badge {
+    display:inline-flex; align-items:center; gap:3px;
+    border-radius:50px; padding:2px 8px; font-size:var(--fs-xs); font-weight:800;
+    white-space:nowrap;
+}
+.or-state-0 { background:var(--orange-faint); color:var(--orange); border:1px solid rgba(255,92,0,.25); }
+.or-state-1 { background:var(--green-glow);   color:var(--green);  border:1px solid rgba(34,197,94,.3); }
+.or-state-2 { background:var(--red-glow);     color:var(--red);    border:1px solid rgba(239,68,68,.3); }
+.or-state-3 { background:rgba(245,158,11,.12);color:var(--yellow); border:1px solid rgba(245,158,11,.3); }
+.or-state-5 { background:var(--red-glow);     color:var(--red);    border:1px solid rgba(239,68,68,.3); }
+.or-state-6 { background:rgba(59,130,246,.12);  color:var(--blue);   border:1px solid rgba(59,130,246,.3); }
+.or-state-7 { background:rgba(245,158,11,.12);  color:var(--yellow); border:1px solid rgba(245,158,11,.3); }
+.or-countdown {
+    display:inline-flex; align-items:center; gap:3px; margin-right:5px;
+    font-family:var(--mono); font-size:0.65rem; font-weight:900;
+    color:var(--yellow); background:rgba(245,158,11,.1);
+    border:1px solid rgba(245,158,11,.25); border-radius:50px;
+    padding:1px 7px; white-space:nowrap; vertical-align:middle;
+}
+.or-countdown.urgent { color:var(--red); background:var(--red-glow); border-color:rgba(239,68,68,.35); animation:cdPulse .8s infinite; }
+@keyframes cdPulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+.or-state-8 { background:var(--green-glow);     color:var(--green);  border:1px solid rgba(34,197,94,.3); }
+.or-store { font-weight:700; color:var(--white); }
+.or-customer { color:var(--gray-light); font-size:var(--fs-xs); }
+.or-phone { font-family:var(--mono); font-size:var(--fs-xs); color:var(--gray); direction:ltr; white-space:nowrap; }
+.or-city { color:var(--gray-light); font-size:var(--fs-xs); }
+.or-date { font-size:var(--fs-xs); color:var(--gray); font-family:var(--mono); white-space:nowrap; }
+.or-empty { flex:1; display:flex; align-items:center; justify-content:center; color:var(--gray); font-size:var(--fs-md); flex-direction:column; gap:10px; }
+.or-summary-bar {
+    display:flex; gap:var(--gap-md); flex-wrap:wrap; align-items:center;
+    padding:var(--pad-xs) var(--pad-lg); border-bottom:1px solid var(--border);
+    flex-shrink:0;
+}
+.or-sum-chip {
+    display:flex; align-items:center; gap:5px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:50px; padding:3px 10px; font-size:var(--fs-xs); font-weight:700;
+}
+.or-sum-chip span { font-family:var(--mono); font-size:var(--fs-sm); }
+.or-sum-chip.orange span { color:var(--orange); }
+.or-sum-chip.green  span { color:var(--green); }
+.or-sum-chip.yellow span { color:var(--yellow); }
+@media (max-width:640px) {
+    .or-table-wrap { padding:var(--pad-sm); }
+    .or-toolbar { padding:var(--pad-sm); }
+}
 
 /* ─── DRIVERS PANEL ─────────────────────────────────────────── */
 .drivers-grid { padding: var(--pad-md) var(--pad-lg); display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr)); gap: var(--gap-md); overflow-y: auto; }
@@ -1132,6 +1462,60 @@ input, select, textarea { font-family: var(--font); }
                 <div class="emp-grid" id="emp-grid"></div>
             </div>
 
+
+            <!-- ONLINE REQUESTS panel -->
+            <div class="panel" id="panel-online-req">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M2 20c0-4 4-7 10-7s10 3 10 7"/><polyline points="16 12 18 14 22 10"/></svg>
+                    <h2>طلبات أونلاين</h2>
+                    <span class="panel-header-sub" id="or-count-label">—</span>
+                    <button class="ph-btn" id="or-refresh-btn">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        تحديث
+                    </button>
+                </div>
+                <!-- Summary bar -->
+                <div class="or-summary-bar" id="or-summary-bar">
+                    <div class="or-sum-chip orange">طلبات جديدة <span id="or-sum-new">0</span></div>
+                    <div class="or-sum-chip green">إجمالي الإيرادات <span id="or-sum-revenue">$0</span></div>
+                    <div class="or-sum-chip yellow">ربح التوصيل <span id="or-sum-profit">—</span></div>
+                </div>
+                <!-- Toolbar -->
+                <div class="or-toolbar">
+                    <button class="filter-pill active" data-or-filter="active">🟠 جارية</button>
+                    <button class="filter-pill" data-or-filter="delivered">✅ مُوصَّلة</button>
+                    <button class="filter-pill" data-or-filter="cancelled">✕ ملغاة</button>
+                    <button class="filter-pill" data-or-filter="all">الكل</button>
+                    <input type="text" class="search-box" id="or-search" placeholder="بحث برقم الشحنة أو العميل أو المتجر…" style="margin-right:auto;max-width:240px;">
+                </div>
+                <!-- Table -->
+                <div class="or-table-wrap" id="or-table-wrap">
+                    <div class="or-empty" id="or-empty" style="display:none;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray)" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M2 20c0-4 4-7 10-7s10 3 10 7"/></svg>
+                        لا توجد طلبات
+                    </div>
+                    <table class="or-table" id="or-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الشحنة</th>
+                                <th>الحالة</th>
+                                <th>المتجر</th>
+                                <th>العميل</th>
+                                <th>الهاتف</th>
+                                <th>المدينة</th>
+                                <th>سعر الطلب</th>
+                                <th>ربح التوصيل</th>
+                                <th>كلفة السائق</th>
+                                <th>السائق</th>
+                                <th>التاريخ</th>
+                                <th>إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody id="or-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- SETTINGS panel -->
             <div class="panel" id="panel-settings">
                 <div class="panel-header">
@@ -1141,20 +1525,120 @@ input, select, textarea { font-family: var(--font); }
                 <div class="settings-scroll" id="settings-content"></div>
             </div>
 
+            <!-- ══ CATALOG PANEL ══════════════════════════════════════ -->
+            <div class="panel" id="panel-catalog">
+                <div class="panel-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <h2>المنتجات</h2>
+                    <span class="panel-header-sub" id="catalog-count-label">اختر متجراً</span>
+                    <a href="items/manage.html" target="_blank"
+                       style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
+                              border-radius:8px;background:var(--surface3);color:var(--gray-light);
+                              font-size:0.75rem;font-weight:700;text-decoration:none;border:1px solid var(--border);
+                              transition:color .15s,border-color .15s;"
+                       onmouseover="this.style.color='var(--white)';this.style.borderColor='var(--orange)'"
+                       onmouseout="this.style.color='var(--gray-light)';this.style.borderColor='var(--border)'">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                        مدير الصور
+                    </a>
+                    <button class="action-btn" id="cat-add-item-btn" onclick="openCatalogItemModal(null)" style="display:none;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        إضافة منتج
+                    </button>
+                    <button class="action-btn" id="cat-back-btn" onclick="catalogBackToStores()" style="display:none;background:var(--surface3);color:var(--gray-light);">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                        رجوع
+                    </button>
+                </div>
+
+                <!-- Store picker -->
+                <div id="catalog-stores-view" style="flex:1;min-height:0;overflow-y:auto;padding:16px;">
+                    <p style="color:var(--gray);font-size:0.8rem;margin-bottom:14px;">اختر متجراً لعرض وإدارة منتجاته:</p>
+                    <div id="catalog-stores-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;"></div>
+                </div>
+
+                <!-- Items view (hidden until store selected) -->
+                <div id="catalog-items-view" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;">
+                    <div id="catalog-cats-bar" style="display:flex;gap:6px;padding:10px 16px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--surface3);align-items:center;min-height:46px;"></div>
+                    <div id="catalog-items-grid" style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;align-content:start;"></div>
+                </div>
+            </div>
+
         </div><!-- /content -->
     </div><!-- /main -->
 </div><!-- /app -->
 
+
+<!-- ══ COMPANY PORTAL ══════════════════════════════════════════ -->
+<div id="company-portal">
+    <div class="cp-topbar">
+        <div class="cp-logo">Deli<span>vo</span></div>
+        <span class="cp-store-name" id="cp-store-name"></span>
+        <span class="cp-badge orange" id="cp-new-badge" style="display:none;"></span>
+        <span style="margin-right:auto;display:flex;align-items:center;gap:8px;">
+            <span style="width:28px;height:28px;border-radius:50%;background:var(--orange);
+                         display:flex;align-items:center;justify-content:center;
+                         font-size:0.72rem;font-weight:900;color:#fff;" id="cp-avatar"></span>
+            <span style="font-size:0.78rem;font-weight:700;color:var(--gray-light);" id="cp-username"></span>
+        </span>
+        <button class="cp-logout" id="cp-logout-btn">خروج</button>
+    </div>
+    <div class="cp-toolbar">
+        <button class="filter-pill active" data-cp-filter="active">🟠 نشطة</button>
+        <button class="filter-pill" data-cp-filter="ready">✅ جاهزة</button>
+        <button class="filter-pill" data-cp-filter="done">📦 مكتملة</button>
+        <button class="filter-pill" data-cp-filter="all">الكل</button>
+        <input type="text" id="cp-search" class="search-box"
+               placeholder="🔍 رقم الطلب…"
+               style="width:130px;padding:5px 10px;font-size:var(--fs-xs);">
+        <button class="cp-refresh" id="cp-refresh-btn">🔄 تحديث</button>
+        <span class="cp-count" id="cp-count-label" style="margin-right:auto;"></span>
+    </div>
+    <div class="cp-grid" id="cp-grid"></div>
+</div>
+
+<!-- ══ STANDBY TIME MODAL ═══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-standby">
+    <div class="modal-box" style="max-width:380px;">
+        <div class="modal-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            وقت التحضير المتوقع
+        </div>
+        <p style="font-size:0.82rem;color:var(--gray-light);margin-bottom:12px;">
+            أدخل الوقت التقديري لتجهيز الطلب. سيتم إبلاغ السائق المعيَّن فوراً.
+        </p>
+        <div class="standby-time-row">
+            <input type="number" id="standby-minutes" min="1" max="180" value="20" placeholder="20">
+            <span>دقيقة</span>
+        </div>
+        <div id="standby-driver-note" style="margin-top:10px;font-size:0.75rem;color:var(--gray);display:none;"></div>
+        <div class="modal-actions">
+            <button class="modal-btn" id="standby-cancel-btn">إلغاء</button>
+            <button class="modal-btn primary" id="standby-confirm-btn">تأكيد وإبلاغ السائق</button>
+        </div>
+    </div>
+</div>
+
 <!-- Add employee modal -->
 <div class="modal-overlay" id="modal-emp">
     <div class="modal-box">
-        <div class="modal-title">
+        <div class="modal-title" id="emp-modal-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
             إضافة موظف جديد
         </div>
+        <p id="emp-modal-error" style="color:var(--red);font-size:0.78rem;margin-bottom:10px;display:none;"></p>
+        <input type="hidden" id="emp-edit-key">
         <div class="modal-field"><label>الاسم الكامل</label><input type="text" id="emp-fullname" placeholder="مثال: أحمد محمد"></div>
         <div class="modal-field"><label>اسم المستخدم</label><input type="text" id="emp-username" placeholder="admin_user"></div>
-        <div class="modal-field"><label>كلمة المرور</label><input type="password" id="emp-password" placeholder="8 أحرف على الأقل"></div>
+        <div class="modal-field">
+            <label id="emp-password-label">كلمة المرور <span id="emp-pass-hint" style="color:var(--gray);font-weight:400;">(اتركها فارغة للإبقاء على الحالية)</span></label>
+            <div style="position:relative;">
+                <input type="password" id="emp-password" placeholder="8 أحرف على الأقل" style="width:100%;padding-left:40px;">
+                <button type="button" id="emp-pwd-toggle" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gray);cursor:pointer;padding:4px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+        </div>
         <div class="modal-field">
             <label>الدور الوظيفي</label>
             <select id="emp-role">
@@ -1162,6 +1646,13 @@ input, select, textarea { font-family: var(--font); }
                 <option value="viewer">Viewer — استعراض فقط</option>
                 <option value="store">Store Manager — إدارة متجر</option>
                 <option value="superadmin">Super Admin — صلاحيات كاملة</option>
+                <option value="company">Company User — مستخدم شركة/متجر</option>
+            </select>
+        </div>
+        <div class="modal-field" id="emp-store-row">
+            <label>🏪 ربط بمتجر / شركة</label>
+            <select id="emp-linked-store" style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--white);font-family:var(--font);font-size:var(--fs-sm);padding:8px 10px;width:100%;outline:none;">
+                <option value="">— اختر متجراً —</option>
             </select>
         </div>
         <div class="modal-field">
@@ -1172,6 +1663,7 @@ input, select, textarea { font-family: var(--font); }
                 <label class="perm-check"><input type="checkbox" value="drivers"> <span>🛵 السائقون</span></label>
                 <label class="perm-check"><input type="checkbox" value="customers"> <span>👤 العملاء</span></label>
                 <label class="perm-check"><input type="checkbox" value="stores"> <span>🏪 المتاجر</span></label>
+                <label class="perm-check"><input type="checkbox" value="catalog"> <span>📦 المنتجات</span></label>
                 <label class="perm-check"><input type="checkbox" value="employees"> <span>🔐 الموظفون</span></label>
                 <label class="perm-check"><input type="checkbox" value="settings"> <span>⚙️ الإعدادات</span></label>
             </div>
@@ -1209,13 +1701,14 @@ input, select, textarea { font-family: var(--font); }
             </div>
         </div>
         <div class="modal-field">
-            <label>كلمة المرور الجديدة <span style="color:var(--gray);font-weight:400;">(اتركها فارغة للإبقاء على الحالية)</span></label>
+            <label>كلمة المرور الحالية <span id="driver-pwd-current-wrap" style="color:var(--gray);font-weight:400;font-size:0.72rem;"></span></label>
             <div style="position:relative;">
-                <input type="password" id="driver-edit-password" placeholder="8 أحرف على الأقل" autocomplete="new-password" style="width:100%;padding-left:40px;">
+                <input type="password" id="driver-edit-password" placeholder="اتركها فارغة للإبقاء على الحالية" autocomplete="new-password" style="width:100%;padding-left:40px;">
                 <button type="button" id="driver-pwd-toggle" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--gray);cursor:pointer;padding:4px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
             </div>
+            <small style="color:var(--gray);font-size:0.68rem;">اتركها فارغة للإبقاء على كلمة المرور الحالية</small>
         </div>
 
         <input type="hidden" id="driver-edit-key">
@@ -1339,7 +1832,7 @@ const SEED_SUPERADMIN = {
     password:    'delivo2025',
     fullname:    'Super Admin',
     role:        'superadmin',
-    permissions: ['map','orders','drivers','customers','stores','employees','settings'],
+    permissions: ['map','orders','online-req','drivers','customers','stores','catalog','employees','settings'],
 };
 
 
@@ -1372,9 +1865,11 @@ let sidebarCollapsed = false;
 const NAV_ITEMS = [
     { id: 'map',       label: 'الخريطة المباشرة',  icon: mapIcon(),    perm: 'map'       },
     { id: 'orders',    label: 'الطلبات',            icon: ordersIcon(), perm: 'orders'    },
+    { id: 'online-req', label: 'طلبات أونلاين',      icon: onlineReqIcon(), perm: 'orders'    },
     { id: 'drivers',   label: 'السائقون',           icon: driverIcon(), perm: 'drivers'   },
     { id: 'customers', label: 'العملاء',            icon: usersIcon(),  perm: 'customers' },
     { id: 'stores',    label: 'المتاجر',            icon: storeIcon(),  perm: 'stores'    },
+    { id: 'catalog',   label: 'المنتجات',            icon: catalogIcon(), perm: 'stores'   },
     { id: 'employees', label: 'الموظفون',           icon: empIcon(),    perm: 'employees' },
     { id: 'settings',  label: 'الإعدادات',          icon: settingsIcon(),perm: 'settings' },
 ];
@@ -1385,7 +1880,9 @@ function driverIcon()  { return `<svg width="15" height="15" viewBox="0 0 24 24"
 function usersIcon()   { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>`; }
 function storeIcon()   { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`; }
 function empIcon()     { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`; }
+function onlineReqIcon(){ return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M2 20c0-4 4-7 10-7s10 3 10 7"/><polyline points="16 12 18 14 22 10"/></svg>`; }
 function settingsIcon(){ return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`; }
+function catalogIcon() { return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`; }
 
 // ── Toast ─────────────────────────────────────────────────────
 /* ================================================================
@@ -1567,6 +2064,7 @@ async function doLogin() {
             for (const [key, adm] of Object.entries(admins)) {
                 if (adm && adm.username === username && adm.password === password) {
                     currentAdmin = { ...adm, _key: key };
+                    if (adm.role === 'company') { startCompanyPortal(); return; }
                     startApp();
                     return;
                 }
@@ -1600,6 +2098,7 @@ function roleLabel(role) {
         support:     'دعم فني',
         driver:      'سائق',
         store:       'متجر',
+        company:     'مستخدم متجر',
     };
     return labels[role] || role || '—';
 }
@@ -1619,7 +2118,21 @@ function startApp() {
     sessionStorage.setItem('delivoAdmin', JSON.stringify(currentAdmin));
 
     buildSidebar();
-    loadAllData();
+    // Load data then do the initial render of the active panel
+    loadAllData().then(() => {
+        const ap = document.querySelector('.panel.active');
+        if (!ap) return;
+        const id = ap.id.replace('panel-', '');
+        if (id === 'map')        renderMap();
+        if (id === 'orders')     renderOrders();
+        if (id === 'online-req') renderOnlineRequests();
+        if (id === 'drivers')    renderDrivers();
+        if (id === 'customers')  renderCustomers();
+        if (id === 'stores')     renderStores();
+        if (id === 'employees')  renderEmployees();
+        if (id === 'settings')   renderSettings();
+        if (id === 'catalog')    renderCatalog();
+    });
     startAutoRefresh();
 }
 
@@ -1680,20 +2193,449 @@ function switchPanel(id) {
     const btn = document.querySelector(`[data-panel="${id}"]`);
     if (btn) btn.classList.add('active');
 
-    const labels = { map:'الخريطة', orders:'الطلبات', drivers:'السائقون', customers:'العملاء', stores:'المتاجر', employees:'الموظفون', settings:'الإعدادات' };
+    const labels = { map:'الخريطة', orders:'الطلبات', drivers:'السائقون', customers:'العملاء', stores:'المتاجر', employees:'الموظفون', settings:'الإعدادات', catalog:'المنتجات' };
     document.getElementById('topbar-panel-name').textContent = labels[id] || '';
 
     if (id === 'map' && adminMap) setTimeout(() => adminMap.invalidateSize(), 100);
     if (id === 'map')       renderMap();
     if (id === 'orders')    renderOrders();
+    if (id === 'online-req') renderOnlineRequests();
     if (id === 'drivers')   renderDrivers();
     if (id === 'customers') renderCustomers();
     if (id === 'stores')    renderStores();
     if (id === 'employees') renderEmployees();
     if (id === 'settings')  renderSettings();
+    if (id === 'catalog')   renderCatalog();
 
 
 }
+
+/* ================================================================
+   CATALOG — Store item management
+   Firebase RTDB paths:
+     pattern/{StoreType}           → store list (companyname, rank, soon)
+     items/{companyname}/{itemID}  → items { name, price, sale, catmain, cat, catar, unitdesc, pngExist, ID }
+   Images: ./items/{ID}.png  (served as static files)
+================================================================ */
+
+let _catCurrentStore  = null;  // { name, type }
+let _catAllItems      = {};    // raw items from RTDB
+let _catActiveFilter  = null;  // current catmain tab
+
+// ── Entry point ───────────────────────────────────────────────
+async function renderCatalog() {
+    catalogBackToStores();   // always start at store picker
+    const grid = document.getElementById('catalog-stores-grid');
+    grid.innerHTML = _catSkeletonStores(8);
+    try {
+        const patternAll = await fbGet('pattern');
+        if (!patternAll) { grid.innerHTML = `<div style="color:var(--gray);grid-column:1/-1;">لا توجد بيانات</div>`; return; }
+        const stores = [];
+        Object.entries(patternAll).forEach(([type, storesObj]) => {
+            if (!storesObj || typeof storesObj !== 'object') return;
+            Object.values(storesObj).forEach(s => {
+                if (s && s.companyname) stores.push({ name: s.companyname, type, rank: s.rank });
+            });
+        });
+        stores.sort((a,b) => a.name.localeCompare(b.name, 'ar'));
+        grid.innerHTML = stores.map(s => `
+            <div onclick="catalogOpenStore('${s.name.replace(/'/g,"\\'")}','${s.type}')"
+                 style="background:var(--surface);border-radius:12px;padding:14px;cursor:pointer;
+                        display:flex;flex-direction:column;align-items:center;gap:8px;
+                        border:1.5px solid var(--surface3);transition:border-color .2s;"
+                 onmouseover="this.style.borderColor='var(--orange)'"
+                 onmouseout="this.style.borderColor='var(--surface3)'">
+                <div style="width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--surface3);flex-shrink:0;">
+                    <img src="assets/${s.name.toLowerCase()}.png" alt="${s.name}"
+                         style="width:100%;height:100%;object-fit:cover;"
+                         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                    ><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:1.4rem;">🏪</div>
+                </div>
+                <div style="font-size:0.78rem;font-weight:700;color:var(--white);text-align:center;line-height:1.3;">${s.name}</div>
+                <div style="font-size:0.68rem;color:var(--gray);">${_catTypeLabel(s.type)}</div>
+            </div>`).join('');
+    } catch(e) {
+        grid.innerHTML = `<div style="color:var(--red,#ef4444);grid-column:1/-1;">⚠️ ${e.message}</div>`;
+    }
+}
+
+async function catalogOpenStore(storeName, storeType) {
+    _catCurrentStore = { name: storeName, type: storeType };
+    document.getElementById('catalog-stores-view').style.display = 'none';
+    const itemsView = document.getElementById('catalog-items-view');
+    itemsView.style.display = 'flex';
+    document.getElementById('cat-add-item-btn').style.display = '';
+    document.getElementById('cat-back-btn').style.display = '';
+    document.getElementById('catalog-count-label').textContent = storeName;
+    document.getElementById('catalog-items-grid').innerHTML = _catSkeletonItems(6);
+    document.getElementById('catalog-cats-bar').innerHTML = '';
+    try {
+        const raw = await fbGet(`items/${storeName}`);
+        _catAllItems = raw || {};
+        _renderCatalogItems();
+    } catch(e) {
+        document.getElementById('catalog-items-grid').innerHTML = `<div style="color:var(--red,#ef4444);grid-column:1/-1;">⚠️ ${e.message}</div>`;
+    }
+}
+
+function catalogBackToStores() {
+    _catCurrentStore = null;
+    _catAllItems = {};
+    _catActiveFilter = null;
+    document.getElementById('catalog-stores-view').style.display = '';
+    document.getElementById('catalog-items-view').style.display = 'none';
+    document.getElementById('cat-add-item-btn').style.display = 'none';
+    document.getElementById('cat-back-btn').style.display = 'none';
+    document.getElementById('catalog-count-label').textContent = 'اختر متجراً';
+}
+
+function _renderCatalogItems() {
+    const items = Object.values(_catAllItems).filter(Boolean);
+    const grid  = document.getElementById('catalog-items-grid');
+    const bar   = document.getElementById('catalog-cats-bar');
+
+    if (!items.length) {
+        bar.innerHTML = '';
+        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px 0;color:var(--gray);">
+            <div style="font-size:2.5rem;margin-bottom:8px;">🛍️</div>
+            <div style="font-weight:700;margin-bottom:4px;">لا توجد منتجات</div>
+            <div style="font-size:0.75rem;">اضغط "إضافة منتج" لإضافة أول منتج لهذا المتجر</div>
+        </div>`;
+        return;
+    }
+
+    // Build catmain tabs
+    const mains = [...new Set(items.map(i => i.catmain || 'عام'))].sort();
+    if (!_catActiveFilter || !mains.includes(_catActiveFilter)) _catActiveFilter = mains[0];
+
+    bar.innerHTML = `
+        <button onclick="_catSetFilter(null)"
+                style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;font-size:0.72rem;font-weight:700;
+                       background:${_catActiveFilter===null?'var(--orange)':'var(--surface3)'};
+                       color:${_catActiveFilter===null?'#fff':'var(--gray-light)'};">
+            الكل (${items.length})
+        </button>
+        ${mains.map(m => `
+        <button onclick="_catSetFilter('${m.replace(/'/g,"\\'")}')"
+                style="flex-shrink:0;padding:5px 12px;border-radius:20px;border:none;cursor:pointer;font-size:0.72rem;font-weight:700;
+                       background:${ _catActiveFilter===m ? 'var(--orange)' : 'var(--surface3)' };
+                       color:${ _catActiveFilter===m ? '#fff' : 'var(--gray-light)' };">
+            ${m}
+        </button>`).join('')}`;
+
+    const filtered = _catActiveFilter ? items.filter(i => (i.catmain||'عام') === _catActiveFilter) : items;
+
+    grid.innerHTML = filtered.map(item => {
+        const id      = item.ID || item.id || '';
+        const price   = parseFloat(item.price) || 0;
+        const sale    = parseFloat(item.sale)  || 0;
+        const hasSale = sale > 0 && sale < price;
+        const png     = item.pngExist === '1' || item.pngExist === 1;
+        const imgSrc  = png ? `items/${String(id).toLowerCase()}.png` : '';
+        return `
+        <div style="background:var(--surface);border-radius:12px;overflow:hidden;border:1.5px solid var(--surface3);display:flex;flex-direction:column;min-height:220px;">
+            <!-- image -->
+            <div style="height:120px;background:var(--surface3);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+                ${png
+                    ? `<img src="${imgSrc}" alt="${item.name||''}"
+                           style="width:100%;height:100%;object-fit:cover;"
+                           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                       ><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;background:var(--surface3);">${_catTypeEmoji(_catCurrentStore?.type)}</div>`
+                    : `<div style="font-size:2.5rem;">${_catTypeEmoji(_catCurrentStore?.type)}</div>`
+                }
+                ${hasSale ? `<div style="position:absolute;top:6px;right:6px;background:var(--orange);color:#fff;font-size:0.62rem;font-weight:900;padding:2px 6px;border-radius:8px;">خصم</div>` : ''}
+                ${!png ? `<div style="position:absolute;bottom:4px;left:4px;background:rgba(239,68,68,0.85);color:#fff;font-size:0.58rem;padding:2px 5px;border-radius:6px;">بدون صورة</div>` : ''}
+            </div>
+            <!-- info -->
+            <div style="padding:10px;flex:1;display:flex;flex-direction:column;gap:4px;">
+                <div style="font-size:0.78rem;font-weight:700;color:var(--white);line-height:1.3;">${item.name||'—'}</div>
+                <div style="font-size:0.65rem;color:var(--gray);">${item.catmain||''}${item.cat && item.cat!==item.catmain ? ' › '+item.cat : ''}</div>
+                <div style="margin-top:auto;display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:0.78rem;font-weight:800;color:var(--orange);">${_catFmtPrice(hasSale?sale:price)}</span>
+                    ${hasSale ? `<span style="font-size:0.68rem;color:var(--gray);text-decoration:line-through;">${_catFmtPrice(price)}</span>` : ''}
+                </div>
+                <div style="font-size:0.6rem;color:var(--gray);font-family:monospace;">ID: ${id}</div>
+            </div>
+            <!-- actions -->
+            <div style="display:flex;gap:0;border-top:1px solid var(--surface3);">
+                <button onclick="openCatalogItemModal(${JSON.stringify(item).replace(/"/g,'&quot;')})"
+                        style="flex:1;padding:7px;background:none;border:none;cursor:pointer;color:var(--orange);font-size:0.72rem;font-weight:700;border-right:1px solid var(--surface3);">
+                    ✏️ تعديل
+                </button>
+                <button onclick="deleteCatalogItem('${String(id)}')"
+                        style="flex:1;padding:7px;background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.72rem;font-weight:700;">
+                    🗑️ حذف
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function _catSetFilter(main) {
+    _catActiveFilter = main;
+    _renderCatalogItems();
+}
+
+// ── Category select helpers ───────────────────────────────────
+function _cimGetMains() {
+    return [...new Set(Object.values(_catAllItems).filter(Boolean).map(i=>i.catmain).filter(Boolean))].sort();
+}
+function _cimGetCats(catmain) {
+    return [...new Set(Object.values(_catAllItems).filter(Boolean)
+        .filter(i => !catmain || i.catmain === catmain)
+        .map(i=>i.cat).filter(Boolean))].sort();
+}
+function _cimCatOptions(catmain, selectedCat) {
+    const cats = _cimGetCats(catmain);
+    const opts = cats.map(c=>`<option value="${c}" ${selectedCat===c?'selected':''}>${c}</option>`).join('');
+    return opts + `<option value="__new__">➕ إضافة جديد…</option>`;
+}
+function cimCatmainChanged() {
+    const sel   = document.getElementById('cim-catmain-sel');
+    const input = document.getElementById('cim-catmain');
+    const catSel= document.getElementById('cim-cat-sel');
+    if (sel.value === '__new__') {
+        input.style.display = 'block';
+        input.value = '';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = sel.value;
+        // Refresh cat options for the chosen catmain
+        if (catSel) {
+            catSel.innerHTML = _cimCatOptions(sel.value, '');
+            document.getElementById('cim-cat').style.display = 'none';
+            document.getElementById('cim-cat').value = '';
+        }
+    }
+}
+function cimCatChanged() {
+    const sel   = document.getElementById('cim-cat-sel');
+    const input = document.getElementById('cim-cat');
+    if (sel.value === '__new__') {
+        input.style.display = 'block';
+        input.value = '';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = sel.value;
+    }
+}
+
+// ── Item modal ────────────────────────────────────────────────
+function openCatalogItemModal(item) {
+    // Remove old modal if any
+    document.getElementById('cat-item-modal')?.remove();
+
+    const isNew = !item;
+    const id    = item ? (item.ID || item.id || '') : '';
+
+    const modal = document.createElement('div');
+    modal.id = 'cat-item-modal';
+    modal.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px;`;
+    modal.innerHTML = `
+    <div style="background:var(--surface);border-radius:16px;width:100%;max-width:460px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column;">
+        <div style="padding:16px 20px;border-bottom:1px solid var(--surface3);display:flex;align-items:center;gap:10px;">
+            <span style="font-size:0.88rem;font-weight:800;color:var(--white);">${isNew?'إضافة منتج':'تعديل منتج'}</span>
+            <button onclick="document.getElementById('cat-item-modal').remove()"
+                    style="margin-right:auto;background:none;border:none;cursor:pointer;color:var(--gray);font-size:1.1rem;">✕</button>
+        </div>
+        <div style="padding:18px 20px;display:flex;flex-direction:column;gap:12px;">
+
+            <!-- Image preview + upload instruction -->
+            <div style="text-align:center;margin-bottom:4px;">
+                <div style="width:80px;height:80px;border-radius:12px;overflow:hidden;background:var(--surface3);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;" id="cat-modal-img-wrap">
+                    ${(!isNew && (item.pngExist==='1'||item.pngExist===1))
+                        ? `<img src="items/${String(id).toLowerCase()}.png" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div style="display:none;font-size:2rem;width:100%;height:100%;align-items:center;justify-content:center;">📷</div>`
+                        : `<span style="font-size:2rem;">📷</span>`
+                    }
+                </div>
+                <div style="font-size:0.68rem;color:var(--gray);line-height:1.4;">
+                    ضع صورة المنتج في مجلد <code style="color:var(--orange)">items/</code><br>
+                    باسم: <code style="color:var(--orange)" id="cat-modal-img-name">${id ? id.toLowerCase()+'.png' : 'ID.png'}</code>
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>اسم المنتج <span style="color:var(--orange)">*</span></label>
+                <input type="text" id="cim-name" value="${item?.name||''}" placeholder="مثال: شاورما دجاج" style="width:100%;">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="modal-field">
+                    <label>السعر (ل.ل أو $)</label>
+                    <input type="number" id="cim-price" value="${item?.price||''}" placeholder="75000" step="any" style="width:100%;">
+                </div>
+                <div class="modal-field">
+                    <label>سعر بعد الخصم</label>
+                    <input type="number" id="cim-sale" value="${item?.sale||''}" placeholder="0 = بدون خصم" step="any" style="width:100%;">
+                </div>
+            </div>
+            <div class="modal-field">
+                <label>القسم الرئيسي (catmain) <span style="color:var(--orange)">*</span></label>
+                <div style="display:flex;gap:6px;">
+                    <select id="cim-catmain-sel" onchange="cimCatmainChanged()"
+                            style="flex:1;background:var(--surface3);border:1px solid #3a3a3a;border-radius:8px;color:var(--white);padding:7px 10px;font-size:0.8rem;outline:none;cursor:pointer;">
+                        ${[...new Set(Object.values(_catAllItems).filter(Boolean).map(i=>i.catmain).filter(Boolean))].sort()
+                            .map(c=>`<option value="${c}" ${(item?.catmain||'')=== c ?'selected':''}>${c}</option>`).join('')}
+                        <option value="__new__">➕ إضافة جديد…</option>
+                    </select>
+                </div>
+                <input type="text" id="cim-catmain" value="${item?.catmain||''}"
+                       placeholder="اكتب قسم رئيسي جديد…" style="width:100%;margin-top:6px;display:${
+                           (!item?.catmain || Object.values(_catAllItems).filter(Boolean).some(i=>i.catmain===item?.catmain)) ? 'none' : 'block'
+                       };">
+            </div>
+            <div class="modal-field">
+                <label>القسم الفرعي (cat)</label>
+                <div style="display:flex;gap:6px;">
+                    <select id="cim-cat-sel" onchange="cimCatChanged()"
+                            style="flex:1;background:var(--surface3);border:1px solid #3a3a3a;border-radius:8px;color:var(--white);padding:7px 10px;font-size:0.8rem;outline:none;cursor:pointer;">
+                        ${_cimCatOptions(item?.catmain, item?.cat)}
+                    </select>
+                </div>
+                <input type="text" id="cim-cat" value="${item?.cat||''}"
+                       placeholder="اكتب قسم فرعي جديد…" style="width:100%;margin-top:6px;display:none;">
+            </div>
+            <div class="modal-field">
+                <label>الوصف (unitdesc)</label>
+                <textarea id="cim-desc" rows="2" placeholder="وصف اختياري للمنتج" style="width:100%;resize:vertical;">${item?.unitdesc||''}</textarea>
+            </div>
+            <div class="modal-field">
+                <label>الـ ID <span style="color:var(--orange)">*</span> <small style="color:var(--gray)">(اسم ملف الصورة = ID.png)</small></label>
+                <input type="text" id="cim-id" value="${id}" placeholder="مثال: sha001" dir="ltr" style="width:100%;font-family:monospace;"
+                       oninput="document.getElementById('cat-modal-img-name').textContent=this.value.toLowerCase()+'.png'">
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:var(--surface3);padding:10px 12px;border-radius:8px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;">
+                    <input type="checkbox" id="cim-pngexist" ${(item?.pngExist==='1'||item?.pngExist===1)?'checked':''}>
+                    <span style="font-size:0.78rem;color:var(--gray-light);">صورة موجودة (pngExist = 1)</span>
+                </label>
+            </div>
+        </div>
+        <div style="padding:12px 20px;border-top:1px solid var(--surface3);display:flex;gap:8px;">
+            <button onclick="saveCatalogItem(${isNew})" id="cim-save-btn"
+                    style="flex:1;padding:10px;background:var(--orange);color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:800;">
+                ${isNew ? '✅ إضافة' : '💾 حفظ التغييرات'}
+            </button>
+            <button onclick="document.getElementById('cat-item-modal').remove()"
+                    style="padding:10px 16px;background:var(--surface3);color:var(--gray-light);border:none;border-radius:10px;cursor:pointer;font-size:0.82rem;">
+                إلغاء
+            </button>
+        </div>
+    </div>`;
+
+    // Store original item key for updates
+    modal._itemKey = isNew ? null : (item._fbKey || id);
+    modal._origItem = item;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.getElementById('cim-name').focus();
+
+    // Sync hidden text inputs with select initial values
+    const cmSel = document.getElementById('cim-catmain-sel');
+    const cSel  = document.getElementById('cim-cat-sel');
+    const cmIn  = document.getElementById('cim-catmain');
+    const cIn   = document.getElementById('cim-cat');
+    if (cmSel && cmSel.value !== '__new__' && cmIn) cmIn.value = cmSel.value;
+    if (cSel  && cSel.value  !== '__new__' && cIn)  cIn.value  = cSel.value;
+}
+
+async function saveCatalogItem(isNew) {
+    if (!_catCurrentStore) return;
+    const name     = document.getElementById('cim-name').value.trim();
+    const price    = document.getElementById('cim-price').value.trim();
+    const sale     = document.getElementById('cim-sale').value.trim();
+    const catmain  = document.getElementById('cim-catmain').value.trim();
+    const cat      = document.getElementById('cim-cat').value.trim();
+    const desc     = document.getElementById('cim-desc').value.trim();
+    const itemId   = document.getElementById('cim-id').value.trim();
+    const pngExist = document.getElementById('cim-pngexist').checked ? '1' : '0';
+
+    if (!name || !itemId) { showNotif('بيانات ناقصة', 'الاسم والـ ID إلزاميان', 'error'); return; }
+
+    const payload = {
+        ID:       itemId,
+        name,
+        price:    price || '0',
+        sale:     sale  || '0',
+        catmain:  catmain || 'عام',
+        cat:      cat    || catmain || 'عام',
+        unitdesc: desc,
+        pngExist,
+        companytype: _catCurrentStore.type,
+    };
+
+    const btn = document.getElementById('cim-save-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ جاري الحفظ…';
+
+    try {
+        const path = `items/${_catCurrentStore.name}/${itemId}`;
+        await fbSet(path, payload);
+
+        // Update local cache
+        _catAllItems[itemId] = payload;
+
+        showNotif(isNew ? 'تمت الإضافة' : 'تم الحفظ', name, 'success');
+        document.getElementById('cat-item-modal').remove();
+        _renderCatalogItems();
+    } catch(e) {
+        showNotif('خطأ في الحفظ', e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = isNew ? '✅ إضافة' : '💾 حفظ التغييرات';
+    }
+}
+
+async function deleteCatalogItem(itemId) {
+    if (!_catCurrentStore) return;
+    const item = _catAllItems[itemId];
+    const name = item?.name || itemId;
+    const confirmed = await showConfirm({
+        title: 'حذف المنتج',
+        msg: `هل تريد حذف "${name}" نهائياً؟`,
+        type: 'error',
+        okLabel: 'حذف',
+        icon: '🗑️'
+    });
+    if (!confirmed) return;
+    try {
+        await fbSet(`items/${_catCurrentStore.name}/${itemId}`, null);
+        delete _catAllItems[itemId];
+        showNotif('تم الحذف', name, 'success');
+        _renderCatalogItems();
+    } catch(e) {
+        showNotif('خطأ', e.message, 'error');
+    }
+}
+
+// ── Catalog helpers ───────────────────────────────────────────
+function _catFmtPrice(p) {
+    const n = parseFloat(p);
+    if (isNaN(n) || n === 0) return '—';
+    if (n < 1000) return '$' + n.toFixed(n%1===0?0:2);
+    return (n/1000).toFixed(n%1000===0?0:1) + ' ألف ل.ل';
+}
+function _catTypeLabel(t) {
+    return { Restaurants:'مطاعم', CoffeeShops:'قهوة', Markets:'سوبرماركت', SweetsShops:'حلويات',
+             ButcherShops:'ملاحم', FishShops:'أسماك', BakeryShops:'مخابز', ChickenShops:'دجاج',
+             DairyShops:'ألبان', GroceryShops:'بقالة', FlowerShops:'زهور', Taxi:'تاكسي',
+             TobaccoShops:'تبغ', ToysShops:'ألعاب' }[t] || t;
+}
+function _catTypeEmoji(t) {
+    return { Restaurants:'🍔', CoffeeShops:'☕', Markets:'🛒', SweetsShops:'🍰',
+             ButcherShops:'🥩', FishShops:'🐟', BakeryShops:'🥖', ChickenShops:'🍗',
+             DairyShops:'🥛', GroceryShops:'🧺', FlowerShops:'💐', Taxi:'🚕',
+             TobaccoShops:'🚬', ToysShops:'🧸' }[t] || '🏪';
+}
+function _catSkeletonStores(n) {
+    return Array(n).fill(0).map(()=>`
+        <div style="background:var(--surface);border-radius:12px;height:120px;animation:pulse 1.4s infinite;"></div>`).join('');
+}
+function _catSkeletonItems(n) {
+    return Array(n).fill(0).map(()=>`
+        <div style="background:var(--surface);border-radius:12px;height:200px;animation:pulse 1.4s infinite;grid-column:span 1;"></div>`).join('');
+}
+
 
 function doLogout() {
     sessionStorage.removeItem('delivoAdmin');
@@ -1711,17 +2653,16 @@ async function loadAllData() {
         const [orders, drivers, users, devices, pattern, admins, blacklist] = await Promise.all([
             fbGet('requests'),
             fbGet('drivers'),
-            fsGetCollection('users'),          // ← Firestore
-            fsGetCollection('devices').catch(() => ({})),  // ← device groups
+            fsGetCollection('users'),
+            fsGetCollection('devices').catch(() => ({})),
             fbGet('pattern'),
-            fbGet('adminUsers').catch(() => null),
-            fbGet('blacklist').catch(() => null),
+            fbGet('adminUsers').catch(()  => null),
+            fbGet('blacklist').catch(()   => null),
         ]);
 
-        allOrders    = orders     || {};
-        allBlacklist = blacklist  || {};
-        // Normalize drivers: old format = array, new format = auto-keyed object, possibly mixed.
-        // Always produce allDrivers as [{...fields, _key, _isNumeric}], filtering null slots.
+        allOrders    = orders    || {};
+        allBlacklist = blacklist || {};
+
         if (drivers) {
             const _raw = Array.isArray(drivers)
                 ? drivers.reduce((acc, v, i) => { acc[String(i)] = v; return acc; }, {})
@@ -1732,10 +2673,10 @@ async function loadAllData() {
         } else {
             allDrivers = [];
         }
+
         allUsers   = users   || {};
         adminUsers = admins  || {};
 
-        // Group users by deviceUUID
         allDeviceGroups = {};
         Object.values(allUsers).forEach(u => {
             const uuid = u.deviceUUID;
@@ -1744,8 +2685,6 @@ async function loadAllData() {
             allDeviceGroups[uuid].push(u);
         });
 
-
-        // Build stores from pattern
         allStores = {};
         if (pattern) {
             Object.entries(pattern).forEach(([type, list]) => {
@@ -1759,17 +2698,6 @@ async function loadAllData() {
         updateTopbarStats();
         updateNavBadge();
 
-        // Render whichever panel is currently active — initial load only
-        const activePanel = document.querySelector('.panel.active');
-        if (activePanel) {
-            const id = activePanel.id.replace('panel-', '');
-            if (id === 'map')       renderMap();
-            if (id === 'orders')    renderOrders();
-            if (id === 'drivers')   renderDrivers();
-            if (id === 'customers') renderCustomers();
-            if (id === 'stores')    renderStores();
-            if (id === 'employees') renderEmployees();
-        }
     } catch(e) {
         console.error('[Admin] loadAllData:', e);
         toast('خطأ في تحميل البيانات', true);
@@ -1794,11 +2722,35 @@ function updateNavBadge() {
 }
 
 function startAutoRefresh() {
-    refreshTimer = setInterval(async () => {
-        // 1. Always fetch fresh data
-        await loadAllData();
 
-        // 2. Always update stats & badge (non-destructive text changes)
+    // ── Real-time driver listener ──────────────────────────────
+    // Uses the already-initialised `db` reference (not `firebase.database()`)
+    // so it works regardless of when the SDK fully loads.
+    if (typeof db !== 'undefined' && db) {
+        db.ref('drivers').on('value', snap => {
+            if (!snap.exists()) { allDrivers = []; }
+            else {
+                const raw  = snap.val();
+                const _raw = Array.isArray(raw)
+                    ? raw.reduce((acc, v, i) => { acc[String(i)] = v; return acc; }, {})
+                    : raw;
+                allDrivers = Object.entries(_raw)
+                    .map(([k, v]) => (v && typeof v === 'object') ? { ...v, _key: k, _isNumeric: /^\d+$/.test(k) } : null)
+                    .filter(Boolean);
+            }
+            updateTopbarStats();
+            updateNavBadge();
+            const ap = document.querySelector('.panel.active');
+            if (!ap) return;
+            const pid = ap.id.replace('panel-', '');
+            if (pid === 'map')     renderMap();
+            if (pid === 'drivers') _refreshDrivers();
+        });
+    }
+
+    // ── Polling interval — full data refresh every 12s ────────
+    refreshTimer = setInterval(async () => {
+        await loadAllData();
         updateTopbarStats();
         updateNavBadge();
 
@@ -1806,64 +2758,97 @@ function startAutoRefresh() {
         if (!activePanel) return;
         const id = activePanel.id.replace('panel-', '');
 
+        // ── Map ──────────────────────────────────────────────
         if (id === 'map') {
             const lu = document.getElementById('map-last-update');
             if (lu) lu.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar');
 
-            const openPopup = document.querySelector('.leaflet-popup');
-            if (openPopup) {
-                // ── Popup is open: update markers AND refresh popup content ──
-
-                // Find which order's popup is open by matching the popup HTML
-                // Leaflet stores the source marker; we search via data attribute we set
-                const popupContent = openPopup.querySelector('[data-order-popup-id]');
-                const openOrderId  = popupContent ? popupContent.dataset.orderPopupId : null;
-
-                // Re-render markers without closing popup
-                // We do a full renderMap but immediately re-open the same popup after
-                if (openOrderId && allOrders[openOrderId]) {
-                    // Rebuild markers
-                    renderMap();
-                    // After renderMap, find the marker for this order and re-open its popup
-                    // with fresh data. We stored marker refs in mapMarkers.orders.
-                    // Find by iterating markers and matching popup content.
-                    setTimeout(() => {
-                        for (const m of mapMarkers.orders) {
-                            const pc = m.getPopup()?.getContent();
-                            if (pc && pc.includes(`data-order-popup-id="${openOrderId}"`)) {
-                                m.openPopup();
-                                break;
-                            }
+            // Snapshot any open popup position BEFORE wiping markers
+            let openLat = null, openLng = null, openOrderId = null;
+            if (adminMap) {
+                adminMap.eachLayer(layer => {
+                    if (layer.getPopup && layer.getPopup() && layer.isPopupOpen()) {
+                        const ll = layer.getLatLng ? layer.getLatLng() : null;
+                        if (ll) { openLat = ll.lat; openLng = ll.lng; }
+                        // Also grab single-order ID if present
+                        const el = layer.getPopup().getElement();
+                        if (el) {
+                            const pd = el.querySelector('[data-order-popup-id]');
+                            if (pd) openOrderId = pd.dataset.orderPopupId;
                         }
-                    }, 100);
-                } else {
-                    renderMap();
-                }
-            } else {
-                renderMap();
+                    }
+                });
             }
 
+            renderMap();
+
+            // Re-open the popup on the nearest marker to where it was
+            if (openLat !== null) {
+                setTimeout(() => {
+                    let best = null, bestDist = Infinity;
+                    for (const m of [...mapMarkers.orders, ...mapMarkers.drivers, ...mapMarkers.stores]) {
+                        if (!m.getLatLng) continue;
+                        const ll   = m.getLatLng();
+                        const dist = Math.hypot(ll.lat - openLat, ll.lng - openLng);
+                        if (dist < bestDist) { bestDist = dist; best = m; }
+                    }
+                    // Only re-open if the marker is very close (same position)
+                    if (best && bestDist < 0.0001) best.openPopup();
+                }, 120);
+            }
+
+        // ── Orders ───────────────────────────────────────────
         } else if (id === 'orders') {
-            const expanded = new Set([...document.querySelectorAll('.order-card.expanded')].map(c => c.dataset.id));
-            renderOrders();
-            expanded.forEach(eid => {
-                const c = document.querySelector(`.order-card[data-id="${eid}"]`);
-                if (c) c.classList.add('expanded');
-            });
+            const list      = document.getElementById('orders-list');
+            const scrollTop = list ? list.scrollTop : 0;
+            renderOrders(); // smart diff — preserves expanded state internally
+            if (list) requestAnimationFrame(() => { list.scrollTop = scrollTop; });
 
+        // ── Online requests ──────────────────────────────────
+        } else if (id === 'online-req') {
+            const wrap      = document.getElementById('or-table-wrap');
+            const scrollTop = wrap ? wrap.scrollTop : 0;
+            await renderOnlineRequests();
+            if (wrap) requestAnimationFrame(() => { wrap.scrollTop = scrollTop; });
+
+        // ── Drivers ──────────────────────────────────────────
         } else if (id === 'drivers') {
-            renderDrivers();
+            _refreshDrivers();
 
+        // ── Customers ────────────────────────────────────────
         } else if (id === 'customers') {
+            const wrap      = document.querySelector('.users-table-wrap');
+            const scrollTop = wrap ? wrap.scrollTop : 0;
+            // Snapshot expanded UUID groups
+            const expandedUUIDs = new Set(
+                [...document.querySelectorAll('tr[data-sub]')]
+                    .filter(r => r.style.display !== 'none')
+                    .map(r => r.dataset.sub)
+            );
             renderCustomers();
+            // Restore expanded groups
+            expandedUUIDs.forEach(uuid => {
+                document.querySelectorAll(`tr[data-sub="${uuid}"]`).forEach(r => r.style.display = '');
+            });
+            if (wrap) requestAnimationFrame(() => { wrap.scrollTop = scrollTop; });
         }
 
     }, 12000);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MAP PANEL
-// ═══════════════════════════════════════════════════════════════
+// Smart drivers refresh — skips re-render if a modal is open to avoid
+// closing the edit form mid-edit; otherwise renders and restores scroll
+function _refreshDrivers() {
+    if (document.querySelector('.modal-overlay.open')) return;
+    const grid = document.getElementById('drivers-grid');
+    const scrollTop = grid ? grid.scrollTop : 0;
+    renderDrivers();
+    if (grid) grid.scrollTop = scrollTop;
+}
+
+
+
+
 function initMap() {
     if (adminMap) return;
     adminMap = L.map('admin-map', { zoomControl: true }).setView([34.003, 36.212], 14);
@@ -1920,7 +2905,9 @@ function renderMap() {
         allDrivers.forEach(d => {
             if (!d || !d.location?.lat) return;
             const online  = d.status === 'online';
-            const name    = d.owner || d.username || '—';
+            // When online, use _activeUser (the owner name written at login) — guarantees
+            // the label matches exactly who is logged in on that device right now.
+            const name    = (online && d._activeUser) ? d._activeUser : (d.owner || d.username || '—');
             const bgColor = online ? '#22c55e' : '#4b5563';
             const shadow  = online ? 'rgba(34,197,94,0.5)' : 'rgba(0,0,0,0.4)';
             const icon = mkDiv(
@@ -2199,26 +3186,17 @@ function renderMap() {
 const STATE_LABELS = { '0':'جديد','1':'تم التوصيل','2':'ملغي','3':'متأخر','5':'ملغي/مدفوع' };
 
 function renderOrders() {
-    const list     = document.getElementById('orders-list');
-    const emptyEl  = document.getElementById('orders-empty');
-    const countEl  = document.getElementById('orders-count-label');
-
-    // ── Remember which cards are expanded before re-render ────
-    const expandedIds = new Set();
-    list.querySelectorAll('.order-card.expanded').forEach(c => expandedIds.add(c.dataset.id));
-
-    // Remove old cards (keep empty state)
-    list.querySelectorAll('.order-card').forEach(c => c.remove());
+    const list    = document.getElementById('orders-list');
+    const emptyEl = document.getElementById('orders-empty');
+    const countEl = document.getElementById('orders-count-label');
 
     const entries = Object.entries(allOrders)
         .sort(([a],[b]) => (parseInt(b.replace('id_',''))||0) - (parseInt(a.replace('id_',''))||0))
         .filter(([,o]) => {
             const isClosed = (o.vault == 1);
             if (orderFilter === 'archived') {
-                // Show ONLY archived
                 if (!isClosed) return false;
             } else {
-                // Hide archived from all other views
                 if (isClosed) return false;
                 if (orderFilter !== 'all' && (o.state||'0') !== orderFilter) return false;
             }
@@ -2234,13 +3212,35 @@ function renderOrders() {
     countEl.textContent = `${entries.length} طلب`;
     emptyEl.style.display = entries.length === 0 ? 'flex' : 'none';
 
+    // ── Smart diff: preserve expanded state & scroll position ──
+    const newKeys = new Set(entries.map(([k]) => k));
+
+    // Remove cards that are no longer in the filtered list
+    list.querySelectorAll('.order-card[data-id]').forEach(c => {
+        if (!newKeys.has(c.dataset.id)) c.remove();
+    });
+
     entries.forEach(([key, order]) => {
-        const card = buildOrderCard(key, order);
-        // ── Restore expanded state without animation flash ────
-        if (expandedIds.has(key)) {
-            card.classList.add('expanded');
+        const existing    = list.querySelector(`.order-card[data-id="${key}"]`);
+        const wasExpanded = existing ? existing.classList.contains('expanded') : false;
+
+        const newCard = buildOrderCard(key, order);
+        if (wasExpanded) newCard.classList.add('expanded');
+
+        if (existing) {
+            // Replace in-place — keeps position and doesn't affect scroll
+            existing.replaceWith(newCard);
+        } else {
+            // New card — insert at correct sorted position
+            const allCards = [...list.querySelectorAll('.order-card[data-id]')];
+            const nextCard = allCards.find(el => {
+                const n = parseInt(el.dataset.id.replace('id_','')) || 0;
+                const m = parseInt(key.replace('id_','')) || 0;
+                return n < m;
+            });
+            if (nextCard) list.insertBefore(newCard, nextCard);
+            else list.appendChild(newCard);
         }
-        list.appendChild(card);
     });
 }
 
@@ -2302,7 +3302,12 @@ function buildOrderCard(key, order) {
                 <button class="oc-action-btn btn-cancelled ${state==='2'||state==='5'?'btn-cancelled--active':''}" data-state="${key}" data-val="2">✕ إلغاء</button>
                 <button class="oc-action-btn btn-late ${state==='3'?'btn-late--active':''}" data-state="${key}" data-val="3">⏳ متأخر</button>
                 ${order.lat && order.lat !== '0' ? `<button class="oc-action-btn" data-locate="${order.lat},${order.lng}">🗺 الخريطة</button>` : ''}
-                <button class="oc-action-btn btn-track ${order.trackorder==1?'btn-track--active':''}" data-trackorder="${key}">📡 ${order.trackorder==1?'إيقاف التتبع':'تفعيل التتبع'}</button>
+                ${ (['1','2','5'].includes(state))
+                    ? `<button class="oc-action-btn btn-track" disabled title="الطلب منتهٍ — التتبع غير متاح" style="opacity:.4;cursor:not-allowed;">📡 التتبع</button>`
+                    : (['6','7'].includes(state))
+                    ? `<button class="oc-action-btn btn-track" disabled title="بانتظار المتجر" style="opacity:.4;cursor:not-allowed;">📡 التتبع</button>`
+                    : `<button class="oc-action-btn btn-track ${order.trackorder==1?'btn-track--active':''}" data-trackorder="${key}">📡 ${order.trackorder==1?'إيقاف التتبع':'تفعيل التتبع'}</button>`
+                }
                 ${order.vault==1
                     ? `<button class="oc-action-btn" data-unarchive="${key}" style="border-color:rgba(156,163,175,0.4);color:#9ca3af;">↩ استعادة</button>`
                     : `<button class="oc-action-btn" data-archive="${key}" style="border-color:rgba(156,163,175,0.4);color:#9ca3af;">📦 أرشفة</button>`
@@ -2336,13 +3341,17 @@ function buildOrderCard(key, order) {
         });
     });
 
-    // Toggle trackorder
+    // Toggle trackorder — same state rules as driver app
     card.querySelectorAll('[data-trackorder]').forEach(btn => {
         btn.addEventListener('click', async () => {
-            const oid  = btn.dataset.trackorder;
-            const cur  = allOrders[oid]?.trackorder;
+            const oid   = btn.dataset.trackorder;
+            const order = allOrders[oid] || {};
+            const st    = order.state || '0';
+            if (['1','2','5'].includes(st)) { toast('الطلب منتهٍ — التتبع غير متاح', true); return; }
+            if (['6','7'].includes(st))     { toast('بانتظار المتجر — التتبع غير متاح بعد', true); return; }
+            const cur    = order.trackorder;
             const newVal = (cur == 1) ? '0' : '1';
-            const uid  = allOrders[oid]?.delivryplusid;
+            const uid    = order.delivryplusid;
             const updates = {};
             updates[`/requests/${oid}/trackorder`] = newVal;
             if (uid) updates[`/historyRequests/${uid}/${oid}/trackorder`] = newVal;
@@ -2362,7 +3371,17 @@ function buildOrderCard(key, order) {
             const upd = {};
             upd[`/requests/${oid}/vault`] = '1';
             if (uid) upd[`/historyRequests/${uid}/${oid}/vault`] = '1';
+            // Stop tracking if active
+            if (allOrders[oid]?.trackorder == 1) {
+                upd[`/requests/${oid}/trackorder`] = '0';
+                upd[`/requests/${oid}/driverid`]   = null;
+                if (uid) {
+                    upd[`/historyRequests/${uid}/${oid}/trackorder`] = '0';
+                    upd[`/historyRequests/${uid}/${oid}/driverid`]   = null;
+                }
+            }
             allOrders[oid].vault = '1';
+            allOrders[oid].trackorder = '0';
             await fbUpdate('', upd);
             toast('📦 تم أرشفة الطلب');
             const c2 = document.querySelector(`.order-card[data-id="${oid}"]`);
@@ -2486,24 +3505,35 @@ async function changeState(orderId, newState) {
                 }
 
                 // Track button — always last, fixed position
+                const newSt   = allOrders[orderId]?.state || '0';
                 const trackBtn = document.createElement('button');
                 const isTracked = allOrders[orderId]?.trackorder == 1;
-                trackBtn.className = 'oc-action-btn btn-track' + (isTracked ? ' btn-track--active' : '');
-                trackBtn.dataset.trackorder = orderId;
-                trackBtn.textContent = '📡 ' + (isTracked ? 'إيقاف التتبع' : 'تفعيل التتبع');
-                trackBtn.addEventListener('click', async () => {
-                    const cur    = allOrders[orderId]?.trackorder;
-                    const newVal = (cur == 1) ? '0' : '1';
-                    const uid2   = allOrders[orderId]?.delivryplusid;
-                    const upd    = {};
-                    upd[`/requests/${orderId}/trackorder`] = newVal;
-                    if (uid2) upd[`/historyRequests/${uid2}/${orderId}/trackorder`] = newVal;
-                    allOrders[orderId].trackorder = newVal;
-                    await fbUpdate('', upd);
-                    toast(newVal === '1' ? '📡 تم تفعيل التتبع' : '🔴 تم إيقاف التتبع');
-                    const c2 = document.querySelector(`.order-card[data-id="${orderId}"]`);
-                    if (c2) { const exp = c2.classList.contains('expanded'); c2.replaceWith(buildOrderCard(orderId, allOrders[orderId])); if (exp) document.querySelector(`.order-card[data-id="${orderId}"]`)?.classList.add('expanded'); }
-                });
+                const trackDisabled = ['1','2','5','6','7'].includes(newSt);
+                trackBtn.className = 'oc-action-btn btn-track' + (isTracked && !trackDisabled ? ' btn-track--active' : '');
+                trackBtn.textContent = '📡 ' + (isTracked && !trackDisabled ? 'إيقاف التتبع' : 'تفعيل التتبع');
+                if (trackDisabled) {
+                    trackBtn.disabled = true;
+                    trackBtn.style.cssText = 'opacity:.4;cursor:not-allowed;';
+                    trackBtn.title = ['1','2','5'].includes(newSt) ? 'الطلب منتهٍ' : 'بانتظار المتجر';
+                } else {
+                    trackBtn.dataset.trackorder = orderId;
+                    trackBtn.addEventListener('click', async () => {
+                        const cur    = allOrders[orderId]?.trackorder;
+                        const curSt  = allOrders[orderId]?.state || '0';
+                        if (['1','2','5'].includes(curSt)) { toast('الطلب منتهٍ', true); return; }
+                        if (['6','7'].includes(curSt))     { toast('بانتظار المتجر', true); return; }
+                        const newVal = (cur == 1) ? '0' : '1';
+                        const uid2   = allOrders[orderId]?.delivryplusid;
+                        const upd    = {};
+                        upd[`/requests/${orderId}/trackorder`] = newVal;
+                        if (uid2) upd[`/historyRequests/${uid2}/${orderId}/trackorder`] = newVal;
+                        allOrders[orderId].trackorder = newVal;
+                        await fbUpdate('', upd);
+                        toast(newVal === '1' ? '📡 تم تفعيل التتبع' : '🔴 تم إيقاف التتبع');
+                        const c2 = document.querySelector(`.order-card[data-id="${orderId}"]`);
+                        if (c2) { const exp = c2.classList.contains('expanded'); c2.replaceWith(buildOrderCard(orderId, allOrders[orderId])); if (exp) document.querySelector(`.order-card[data-id="${orderId}"]`)?.classList.add('expanded'); }
+                    });
+                }
                 actionsDiv.appendChild(trackBtn);
 
                 // Archive/Unarchive button — always last
@@ -2661,8 +3691,16 @@ function openDriverEditModal(driver) {
     document.getElementById('driver-edit-username').value = driver?.username || '';
     document.getElementById('driver-edit-phone').value    = (driver?.phone || '').replace(/^\+?961/, '');
     document.getElementById('driver-edit-password').value = '';
+    document.getElementById('driver-edit-password').type  = 'password';
     document.getElementById('driver-edit-key').value      = driver?._key ?? 'NEW';
     document.getElementById('driver-modal-error').style.display = 'none';
+    // Show current password hint
+    const pwdWrap = document.getElementById('driver-pwd-current-wrap');
+    if (pwdWrap) {
+        pwdWrap.innerHTML = driver?.password
+            ? `— كلمة المرور الحالية: <code style="color:var(--orange);background:var(--surface3);padding:1px 5px;border-radius:4px;font-family:monospace;">${driver.password}</code>`
+            : '';
+    }
     document.getElementById('modal-driver-edit').classList.add('open');
 }
 
@@ -3157,7 +4195,7 @@ function renderStores() {
 // ═══════════════════════════════════════════════════════════════
 // EMPLOYEES PANEL
 // ═══════════════════════════════════════════════════════════════
-const ROLE_COLORS = { superadmin:'role-superadmin', dispatcher:'role-dispatcher', viewer:'role-viewer', store:'role-store' };
+const ROLE_COLORS = { superadmin:'role-superadmin', dispatcher:'role-dispatcher', viewer:'role-viewer', store:'role-store', company:'role-company' };
 const AVATAR_COLORS = ['#FF5C00','#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444'];
 const ALL_PERMS = ['map','orders','drivers','customers','stores','employees','settings'];
 const PERM_LABELS = { map:'🗺 خريطة', orders:'📦 طلبات', drivers:'🛵 سائقون', customers:'👤 عملاء', stores:'🏪 متاجر', employees:'🔐 موظفون', settings:'⚙️ إعدادات' };
@@ -3202,6 +4240,9 @@ function renderEmployees() {
                 <button class="ec-btn danger" data-delete="${emp._key}">🗑 حذف</button>
             </div>` : ''}`;
 
+        card.querySelectorAll('[data-edit]').forEach(btn => {
+            btn.addEventListener('click', () => openEmpModal(emp));
+        });
         card.querySelectorAll('[data-delete]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const _confirmEmp = await showConfirm({
@@ -3221,33 +4262,108 @@ function renderEmployees() {
     });
 }
 
-// ── Add employee modal ────────────────────────────────────────
-document.getElementById('add-emp-btn').addEventListener('click', () => {
-    document.getElementById('emp-fullname').value = '';
-    document.getElementById('emp-username').value = '';
+// ── Employee modal open helper ────────────────────────────────
+function openEmpModal(emp) {
+    const isNew = !emp;
+    document.getElementById('emp-edit-key').value  = emp?._key || '';
+    document.getElementById('emp-modal-title').lastChild.textContent = isNew ? ' إضافة موظف جديد' : ' تعديل بيانات الموظف';
+    document.getElementById('emp-save-btn').textContent = isNew ? 'إضافة الموظف' : '💾 حفظ التغييرات';
+    document.getElementById('emp-pass-hint').style.display = isNew ? 'none' : 'inline';
+    document.getElementById('emp-modal-error').style.display = 'none';
+
+    document.getElementById('emp-fullname').value = emp?.fullname || '';
+    document.getElementById('emp-username').value = emp?.username || '';
     document.getElementById('emp-password').value = '';
-    document.getElementById('emp-role').value = 'dispatcher';
-    document.querySelectorAll('#perm-checks input').forEach(c => c.checked = false);
+    document.getElementById('emp-password').type  = 'password';
+
+    // Show current password
+    const passLabel = document.getElementById('emp-password-label');
+    const existingHint = passLabel.querySelector('.emp-existing-pwd');
+    if (existingHint) existingHint.remove();
+    if (!isNew && emp?.password) {
+        const hint = document.createElement('span');
+        hint.className = 'emp-existing-pwd';
+        hint.style.cssText = 'display:block;margin-top:4px;font-size:0.68rem;color:var(--gray);font-weight:400;';
+        hint.innerHTML = `كلمة المرور الحالية: <code style="color:var(--orange);background:var(--surface3);padding:1px 5px;border-radius:4px;font-family:monospace;">${emp.password}</code>`;
+        passLabel.appendChild(hint);
+    }
+
+    const role = emp?.role || 'dispatcher';
+    document.getElementById('emp-role').value = role;
+
+    // Permissions
+    const perms = emp?.permissions || [];
+    document.querySelectorAll('#perm-checks input').forEach(c => {
+        c.checked = role === 'superadmin' || perms.includes(c.value);
+    });
+
+    // Store row
+    const storeRow = document.getElementById('emp-store-row');
+    const permRow  = storeRow?.nextElementSibling;
+    if (role === 'company') {
+        storeRow.style.display = 'block';
+        if (permRow) permRow.style.display = 'none';
+        const sel = document.getElementById('emp-linked-store');
+        sel.innerHTML = '<option value="">— اختر متجراً —</option>';
+        Object.keys(allStores).sort().forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            if (emp?.linkedStore === name) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    } else {
+        storeRow.style.display = 'none';
+        if (permRow) permRow.style.display = 'block';
+    }
+
     document.getElementById('modal-emp').classList.add('open');
-});
+}
+
+// ── Add button ────────────────────────────────────────────────
+document.getElementById('add-emp-btn').addEventListener('click', () => openEmpModal(null));
 document.getElementById('emp-cancel-btn').addEventListener('click', () => document.getElementById('modal-emp').classList.remove('open'));
+
+// ── Password toggle ───────────────────────────────────────────
+document.getElementById('emp-pwd-toggle').addEventListener('click', () => {
+    const inp = document.getElementById('emp-password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+});
+
+// ── Save (add + edit) ─────────────────────────────────────────
 document.getElementById('emp-save-btn').addEventListener('click', async () => {
+    const key      = document.getElementById('emp-edit-key').value.trim();
+    const isNew    = !key;
     const fullname = document.getElementById('emp-fullname').value.trim();
     const username = document.getElementById('emp-username').value.trim().toLowerCase();
     const password = document.getElementById('emp-password').value.trim();
     const role     = document.getElementById('emp-role').value;
     const perms    = [...document.querySelectorAll('#perm-checks input:checked')].map(c => c.value);
+    const linkedStore = document.getElementById('emp-linked-store')?.value || '';
+    const errorEl  = document.getElementById('emp-modal-error');
 
-    if (!username || !password) { toast('أدخل اسم المستخدم وكلمة المرور', true); return; }
-    if (password.length < 6)    { toast('كلمة المرور قصيرة جداً', true); return; }
+    errorEl.style.display = 'none';
+    if (!username)              { errorEl.textContent = '⚠️ اسم المستخدم مطلوب';              errorEl.style.display = 'block'; return; }
+    if (isNew && !password)     { errorEl.textContent = '⚠️ كلمة المرور مطلوبة';              errorEl.style.display = 'block'; return; }
+    if (password && password.length < 6) { errorEl.textContent = '⚠️ كلمة المرور قصيرة جداً'; errorEl.style.display = 'block'; return; }
+    if (role === 'company' && !linkedStore) { errorEl.textContent = '⚠️ اختر متجراً لهذا المستخدم'; errorEl.style.display = 'block'; return; }
 
     try {
-        await fbPush('adminUsers', { fullname, username, password, role, permissions: perms, createdAt: Date.now() });
+        if (isNew) {
+            const payload = { fullname, username, password, role, permissions: perms, createdAt: Date.now() };
+            if (linkedStore) payload.linkedStore = linkedStore;
+            await fbPush('adminUsers', payload);
+            toast('✅ تم إضافة الموظف');
+        } else {
+            const updates = { fullname, username, role, permissions: perms };
+            if (password) updates.password = password;
+            if (linkedStore) updates.linkedStore = linkedStore;
+            await fbUpdate(`adminUsers/${key}`, updates);
+            toast('✅ تم حفظ التغييرات');
+        }
         document.getElementById('modal-emp').classList.remove('open');
-        toast('✅ تم إضافة الموظف');
         await loadAllData();
         renderEmployees();
-    } catch(e) { toast('خطأ في الحفظ', true); }
+    } catch(e) { errorEl.textContent = '⚠️ خطأ: ' + e.message; errorEl.style.display = 'block'; }
 });
 
 // Auto-select permissions by role
@@ -3257,9 +4373,28 @@ document.getElementById('emp-role').addEventListener('change', function() {
         dispatcher: ['map','orders','drivers'],
         viewer:     ['map','orders'],
         store:      ['orders','stores'],
+        company:    [],
     };
     const preset = presets[this.value] || [];
     document.querySelectorAll('#perm-checks input').forEach(c => { c.checked = preset.includes(c.value); });
+    // Show/hide store link row
+    const storeRow = document.getElementById('emp-store-row');
+    const permRow  = storeRow?.nextElementSibling;
+    if (this.value === 'company') {
+        storeRow.style.display = 'block';
+        if (permRow) permRow.style.display = 'none';
+        // Populate store dropdown from allStores
+        const sel = document.getElementById('emp-linked-store');
+        sel.innerHTML = '<option value="">— اختر متجراً —</option>';
+        Object.keys(allStores).sort().forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            sel.appendChild(opt);
+        });
+    } else {
+        storeRow.style.display = 'none';
+        if (permRow) permRow.style.display = 'block';
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -3524,16 +4659,765 @@ document.getElementById('collapse-btn').addEventListener('click', () => {
 
 
 
+
+// ═══════════════════════════════════════════════════════════════
+// COMPANY PORTAL
+// ═══════════════════════════════════════════════════════════════
+let cpFilter    = 'active';
+let cpSearch    = '';
+let cpOrdersCache = {};
+let cpRefreshTimer = null;
+let standbyPending = null; // { orderId, driverName }
+
+const CP_STATES = {
+    '0': { label:'جديد',           cls:'cs-0' },
+    '6': { label:'استُلم',         cls:'cs-6' },
+    '7': { label:'قيد التحضير',    cls:'cs-7' },
+    '8': { label:'جاهز للتسليم',   cls:'cs-8' },
+    '1': { label:'وُصِّل',          cls:'cs-1' },
+    '2': { label:'ملغى',           cls:'cs-2' },
+    '5': { label:'ملغى/مدفوع',    cls:'cs-5' },
+};
+
+async function startCompanyPortal() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('company-portal').classList.add('visible');
+    sessionStorage.setItem('delivoAdmin', JSON.stringify(currentAdmin));
+
+    const store    = currentAdmin.linkedStore || '';
+    const uname    = currentAdmin.fullname || currentAdmin.username || '';
+    const initial  = uname[0]?.toUpperCase() || '?';
+
+    // FIX 5 — page title
+    document.title = store ? store + ' — Delivo' : 'Delivo';
+
+    // FIX 4 — username in topbar
+    document.getElementById('cp-store-name').textContent = store;
+    document.getElementById('cp-username').textContent   = uname;
+    document.getElementById('cp-avatar').textContent     = initial;
+
+    // Wire search (FIX 3)
+    document.getElementById('cp-search')?.addEventListener('input', e => {
+        cpSearch = e.target.value.trim();
+        cpRender();
+    });
+
+    await cpLoadOrders();
+    cpRefreshTimer = setInterval(cpLoadOrders, 20000);
+}
+
+async function cpLoadOrders() {
+    try {
+        const raw = await fbGet('requests');
+        cpOrdersCache = raw || {};
+    } catch(e) {}
+    cpRender();
+}
+
+// ── Product catalog cache: storeName → { prodId: {name, imageUrl, ...} }
+const cpProdCache = {};
+
+async function cpGetStoreProducts(storeName) {
+    if (cpProdCache[storeName]) return cpProdCache[storeName];
+    // The store object is already in allStores — check if it has products sub-key
+    const storeObj = allStores[storeName];
+    let prodMap = {};
+
+    // 1. Try products already embedded in the allStores record
+    const embedded = storeObj?.products || storeObj?.items || storeObj?.menu || null;
+    if (embedded && typeof embedded === 'object') {
+        const list = Array.isArray(embedded) ? embedded : Object.values(embedded);
+        list.filter(Boolean).forEach((p, idx) => {
+            const key = p.id || p.prodId || `prod${idx}`;
+            prodMap[key] = p;
+        });
+    }
+
+    // 2. If not embedded, try fetching from Firebase pattern path
+    if (!Object.keys(prodMap).length && storeObj) {
+        try {
+            // Find which type/index this store lives at in pattern
+            const type = storeObj.type;
+            const raw  = await fbGet('pattern/' + type);
+            if (raw) {
+                const arr = Array.isArray(raw) ? raw : Object.values(raw);
+                const match = arr.find(s => s && s.companyname === storeName);
+                if (match) {
+                    const prods = match.products || match.items || match.menu || {};
+                    const plist = Array.isArray(prods) ? prods : Object.values(prods);
+                    plist.filter(Boolean).forEach((p, idx) => {
+                        const key = p.id || p.prodId || `prod${idx}`;
+                        prodMap[key] = p;
+                    });
+                }
+            }
+        } catch(e) {}
+    }
+
+    cpProdCache[storeName] = prodMap;
+    return prodMap;
+}
+
+// Parse cart string into segments
+function cpParseCart(cartStr) {
+    return (cartStr || '').split(',').filter(Boolean).map(seg => {
+        const p = seg.trim().split(':');
+        return { qty: p[0] || '1', prodId: p[1] || '', rawPrice: p[2] || '', storePart: p[3] || '' };
+    });
+}
+
+// Render item cards into a container div (async, fills in after products load)
+async function cpLoadItemsIntoEl(el, o) {
+    const segments = cpParseCart(o.cart);
+    if (!segments.length) {
+        el.innerHTML = '<div style="color:var(--gray);font-size:0.78rem;padding:8px 0;">لا توجد عناصر في السلة</div>';
+        return;
+    }
+
+    const storeName = o.store || currentAdmin.linkedStore || '';
+    const prodMap   = await cpGetStoreProducts(storeName);
+    const typeEmoji = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', Groceries:'🏪', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕' };
+    const fallbackEmoji = typeEmoji[(allStores[storeName]?.type)] || '📦';
+
+    el.innerHTML = '';
+    segments.forEach(({ qty, prodId }) => {
+        const prod = prodMap[prodId] || {};
+        const name = prod.name || prod.productName || prod.title || prodId;
+        const imgUrl = prod.imageUrl || prod.image || prod.photo || prod.img || prod.imageurl || null;
+
+        const itemEl = document.createElement('div');
+        itemEl.className = 'coc-item-card';
+        itemEl.innerHTML = `
+            ${imgUrl
+                ? `<img class="coc-item-img" src="${imgUrl}" alt="${name}"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                   ><div class="coc-item-img-placeholder" style="display:none;">${fallbackEmoji}</div>`
+                : `<div class="coc-item-img-placeholder">${fallbackEmoji}</div>`
+            }
+            <div class="coc-item-info">
+                <div class="coc-item-name-big">${name}</div>
+                ${prod.description || prod.desc ? `<div class="coc-item-sub">${prod.description||prod.desc}</div>` : ''}
+            </div>
+            <div class="coc-item-qty-badge">${qty}</div>
+        `;
+        el.appendChild(itemEl);
+    });
+}
+
+function cpRender() {
+    const grid   = document.getElementById('cp-grid');
+    const countEl= document.getElementById('cp-count-label');
+    const badge  = document.getElementById('cp-new-badge');
+    if (!grid) return;
+
+    const store = currentAdmin.linkedStore || '';
+    let entries = Object.entries(cpOrdersCache)
+        .filter(([,o]) => (o.store||'') === store && o.vault != 1)
+        .sort(([a],[b]) => (parseInt(b.replace('id_',''))||0)-(parseInt(a.replace('id_',''))||0));
+
+    // Filter
+    const filtered = entries.filter(([key,o]) => {
+        const s = o.state||'0';
+        let tabOk = true;
+        if (cpFilter === 'active') tabOk = ['0','6','7'].includes(s);
+        else if (cpFilter === 'ready')  tabOk = s === '8';
+        else if (cpFilter === 'done')   tabOk = ['1','2','5','8'].includes(s);
+        if (!tabOk) return false;
+        if (cpSearch) {
+            const q = cpSearch.toLowerCase();
+            const num = (o.shipnumber || key.replace('id_','')).toLowerCase();
+            if (!num.includes(q)) return false;
+        }
+        return true;
+    });
+
+    const newCount = entries.filter(([,o]) => (o.state||'0') === '0').length;
+    badge.textContent = newCount + ' جديد';
+    badge.style.display = newCount > 0 ? '' : 'none';
+    countEl.textContent = filtered.length + ' طلب';
+
+    // ── Snapshot expanded keys BEFORE any DOM changes ──────────
+    const expandedKeys = new Set(
+        [...grid.querySelectorAll('.coc.expanded')].map(el => el.dataset.key)
+    );
+
+    // ── Determine which keys are currently rendered ────────────
+    const renderedKeys = new Set(
+        [...grid.querySelectorAll('.coc[data-key]')].map(el => el.dataset.key)
+    );
+    const filteredKeys = new Set(filtered.map(([k]) => k));
+
+    // Remove cards that are no longer in the filtered list
+    grid.querySelectorAll('.coc[data-key]').forEach(el => {
+        if (!filteredKeys.has(el.dataset.key)) el.remove();
+    });
+
+    if (!filtered.length) {
+        if (!grid.querySelector('.cp-empty-msg')) {
+            grid.innerHTML = '<div class="cp-empty-msg" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:var(--gray);padding:60px;"><svg width=40 height=40 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.5 stroke-linecap=round><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg><span>لا توجد طلبات</span></div>';
+        }
+        return;
+    }
+    // Remove empty msg if orders exist
+    grid.querySelector('.cp-empty-msg')?.remove();
+
+    // ── Build / patch each card in sorted order ────────────────
+    filtered.forEach(([key, o], sortIdx) => {
+        const s         = o.state || '0';
+        const si        = CP_STATES[s] || CP_STATES['0'];
+        const isNew     = s === '0';
+        const shipNum   = o.shipnumber || key.replace('id_','');
+        const price     = parseFloat(o.orderprice || o.total || 0);
+        const hasDriver = o.driver && o.driver !== '0';
+        const etaMs     = o.standbyUntil ? (o.standbyUntil - Date.now()) : null;
+        const etaMins   = etaMs ? Math.ceil(etaMs / 60000) : null;
+        const itemCount = cpParseCart(o.cart).length;
+
+        let card = grid.querySelector(`.coc[data-key="${key}"]`);
+
+        if (card) {
+            // ── Card exists — patch only what changed, preserve expand state ──
+            // Update state badge
+            const badge = card.querySelector('.coc-state-badge');
+            if (badge) { badge.className = `coc-state-badge ${si.cls}`; badge.textContent = si.label; }
+            // Update new-dot
+            const headEl = card.querySelector('.coc-head');
+            const dotEl  = card.querySelector('.coc-new-dot');
+            if (isNew && !dotEl && headEl) {
+                const dot = document.createElement('div');
+                dot.className = 'coc-new-dot';
+                headEl.insertBefore(dot, headEl.firstChild);
+            } else if (!isNew && dotEl) {
+                dotEl.remove();
+            }
+            // Update driver cell
+            const driverCell = card.querySelector('.coc-meta-val.green, .coc-meta-val.gray');
+            if (driverCell) {
+                driverCell.className = `coc-meta-val ${hasDriver?'green':'gray'}`;
+                driverCell.textContent = hasDriver ? '🛵 '+o.driver : 'غير معيَّن';
+            }
+            // Update ETA banner
+            const etaBanner = card.querySelector('.coc-eta');
+            if (etaMins && etaMins > 0) {
+                if (etaBanner) etaBanner.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> متبقي للتجهيز: ${etaMins} دقيقة`;
+            } else if (etaBanner) {
+                etaBanner.remove();
+            }
+            // Update action buttons
+            const actionsEl = card.querySelector(`#coc-actions-${key}`);
+            if (actionsEl) actionsEl.innerHTML = cpActionsHTML(key, s);
+            // Re-wire action buttons
+            card.querySelectorAll('[data-cp-action]').forEach(btn => {
+                btn.addEventListener('click', e => { e.stopPropagation(); cpHandleAction(key, btn.dataset.cpAction, o); });
+            });
+
+        } else {
+            // ── New card — build from scratch ──────────────────────────
+            card = document.createElement('div');
+            card.className = 'coc';
+            card.dataset.key = key;
+
+            // Expand if: was expanded before refresh OR is a brand-new order
+            if (expandedKeys.has(key) || (isNew && !renderedKeys.has(key))) {
+                card.classList.add('expanded');
+            }
+
+            card.innerHTML = `
+                <div class="coc-head">
+                    ${isNew ? '<div class="coc-new-dot"></div>' : ''}
+                    <span class="coc-num">#${shipNum}</span>
+                    <span class="coc-state-badge ${si.cls}">${si.label}</span>
+                    <span class="coc-date">${o.date||'—'}</span>
+                    <span class="coc-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                </div>
+                <div class="coc-collapsible">
+                <div class="coc-meta-strip">
+                    <div class="coc-meta-cell">
+                        <span class="coc-meta-label">عدد العناصر</span>
+                        <span class="coc-meta-val orange">${itemCount} صنف</span>
+                    </div>
+                    <div class="coc-meta-cell">
+                        <span class="coc-meta-label">المتجر</span>
+                        <span class="coc-meta-val">${o.store||'—'}</span>
+                    </div>
+                    <div class="coc-meta-cell">
+                        <span class="coc-meta-label">السائق</span>
+                        <span class="coc-meta-val ${hasDriver?'green':'gray'}">${hasDriver ? '🛵 '+o.driver : 'غير معيَّن'}</span>
+                    </div>
+                </div>
+                ${etaMins && etaMins > 0 ? `
+                <div class="coc-eta" style="margin:12px 16px 0;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    متبقي للتجهيز: ${etaMins} دقيقة
+                </div>` : ''}
+                <div class="coc-items-section">
+                    <div class="coc-items-header">تفاصيل الطلب</div>
+                    <div class="coc-items-body" id="coc-items-${key}">
+                        <div class="coc-item-shimmer"></div>
+                        <div class="coc-item-shimmer" style="opacity:.6;"></div>
+                    </div>
+                </div>
+                ${o.xnote || o.note ? `
+                <div class="coc-xnote">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    ${o.xnote||o.note}
+                </div>` : ''}
+                <div class="coc-actions" id="coc-actions-${key}">
+                    ${cpActionsHTML(key, s)}
+                </div>
+                </div><!-- /coc-collapsible -->
+            `;
+
+            card.querySelector('.coc-head').addEventListener('click', () => {
+                card.classList.toggle('expanded');
+            });
+            card.querySelectorAll('[data-cp-action]').forEach(btn => {
+                btn.addEventListener('click', e => { e.stopPropagation(); cpHandleAction(key, btn.dataset.cpAction, o); });
+            });
+
+            // Insert at correct sort position
+            const allCards = [...grid.querySelectorAll('.coc[data-key]')];
+            const nextCard = allCards[sortIdx];
+            if (nextCard && nextCard !== card) {
+                grid.insertBefore(card, nextCard);
+            } else {
+                grid.appendChild(card);
+            }
+
+            // Load product images
+            const itemsBody = card.querySelector(`#coc-items-${key}`);
+            if (itemsBody) cpLoadItemsIntoEl(itemsBody, o);
+        }
+    });
+}
+
+function cpActionsHTML(key, s) {
+    if (['1','2','5'].includes(s)) return '<span style="font-size:0.72rem;color:var(--gray);padding:4px 0;">✔ الطلب مكتمل</span>';
+    if (s === '8') return '<span style="font-size:0.72rem;color:var(--green);padding:4px 0;font-weight:800;">🛵 سُلِّم للسائق — بانتظار التوصيل</span>';
+    return `
+        <button class="coc-btn pick ${s==='6'||s==='7'||s==='8'?'active-s':''}"  data-cp-action="pick"    title="تم استلام الطلب">📋 استلام</button>
+        <button class="coc-btn standby ${s==='7'?'active-s':''}" data-cp-action="standby" title="قيد التحضير — حدد وقت التجهيز">⏳ قيد التحضير</button>
+        <button class="coc-btn ready ${['0','6'].includes(s)?'active-s':''}"  data-cp-action="ready"  title="جاهز للتسليم للسائق">✅ جاهز</button>
+    `;
+}
+
+async function cpHandleAction(orderId, action, o) {
+    if (action === 'pick') {
+        await cpSetState(orderId, '6');
+    } else if (action === 'standby') {
+        // Open standby time modal
+        standbyPending = { orderId, driverName: o.driver };
+        const dNote = document.getElementById('standby-driver-note');
+        if (o.driver && o.driver !== '0') {
+            dNote.textContent = '🛵 سيتم إبلاغ السائق ' + o.driver + ' بوقت التجهيز فوراً.';
+            dNote.style.display = '';
+        } else {
+            dNote.style.display = 'none';
+        }
+        document.getElementById('standby-minutes').value = 20;
+        document.getElementById('modal-standby').classList.add('open');
+    } else if (action === 'ready') {
+        await cpSetState(orderId, '8');
+        // Notify driver that order is ready for pickup
+        if (o.driver && o.driver !== '0') {
+            await cpNotifyDriver(orderId, o.driver, 'ready', 0);
+        }
+        toast('✅ الطلب جاهز — تم إبلاغ السائق');
+    }
+}
+
+async function cpSetState(orderId, newState) {
+    try {
+        await fbSet('requests/' + orderId + '/state', newState);
+        if (cpOrdersCache[orderId]) cpOrdersCache[orderId].state = newState;
+        cpRender();
+    } catch(e) { toast('خطأ في تحديث الحالة', true); }
+}
+
+// Write a driver notification into Firebase under /driverNotifications/{driver}/{orderId}
+async function cpNotifyDriver(orderId, driverName, type, prepMins) {
+    try {
+        const payload = {
+            orderId,
+            store: currentAdmin.linkedStore || '',
+            type,          // 'standby' | 'ready'
+            prepMins,
+            readyAt: type === 'standby' ? Date.now() + prepMins * 60000 : Date.now(),
+            sentAt: Date.now(),
+            read: '0',
+        };
+        await fbSet('driverNotifications/' + driverName + '/' + orderId, payload);
+    } catch(e) {}
+}
+
+// Standby modal confirm
+document.getElementById('standby-confirm-btn')?.addEventListener('click', async () => {
+    if (!standbyPending) return;
+    const mins = parseInt(document.getElementById('standby-minutes').value) || 20;
+    const { orderId, driverName } = standbyPending;
+    document.getElementById('modal-standby').classList.remove('open');
+    try {
+        const readyAt = Date.now() + mins * 60000;
+        await fbSet('requests/' + orderId + '/state', '7');
+        await fbSet('requests/' + orderId + '/standbyMinutes', mins);
+        await fbSet('requests/' + orderId + '/standbyUntil', readyAt);
+        if (cpOrdersCache[orderId]) {
+            cpOrdersCache[orderId].state = '7';
+            cpOrdersCache[orderId].standbyMinutes = mins;
+            cpOrdersCache[orderId].standbyUntil = readyAt;
+        }
+        if (driverName && driverName !== '0') {
+            await cpNotifyDriver(orderId, driverName, 'standby', mins);
+            toast('⏳ وقت التحضير: ' + mins + ' د — تم إبلاغ السائق ' + driverName);
+        } else {
+            toast('⏳ وقت التحضير: ' + mins + ' دقيقة');
+        }
+        cpRender();
+    } catch(e) { toast('خطأ في الحفظ', true); }
+    standbyPending = null;
+});
+document.getElementById('standby-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('modal-standby').classList.remove('open');
+    standbyPending = null;
+});
+
+// Filter pills inside company portal
+document.addEventListener('click', e => {
+    const pill = e.target.closest('[data-cp-filter]');
+    if (!pill) return;
+    document.querySelectorAll('[data-cp-filter]').forEach(b => b.classList.remove('active'));
+    pill.classList.add('active');
+    cpFilter = pill.dataset.cpFilter;
+    cpRender();
+});
+
+document.getElementById('cp-refresh-btn')?.addEventListener('click', cpLoadOrders);
+document.getElementById('cp-logout-btn')?.addEventListener('click', () => {
+    clearInterval(cpRefreshTimer);
+    currentAdmin = null;
+    sessionStorage.removeItem('delivoAdmin');
+    document.getElementById('company-portal').classList.remove('visible');
+    document.getElementById('login-screen').style.display = 'flex';
+});
+
+// Session restore for company user
+
 // Restore session
 const savedSession = sessionStorage.getItem('delivoAdmin');
 if (savedSession) {
     try {
         currentAdmin = JSON.parse(savedSession);
-        startApp();
+        if (currentAdmin.role === 'company') { startCompanyPortal(); }
+        else { startApp(); }
     } catch(e) { sessionStorage.removeItem('delivoAdmin'); }
 }
 
+// ── Online-requests countdown ticker (state 7) ───────────────
+(function startOrCountdown() {
+    function tick() {
+        document.querySelectorAll('.or-countdown[data-until]').forEach(el => {
+            const until = parseInt(el.dataset.until);
+            if (!until) return;
+            const diffMs   = until - Date.now();
+            const diffSec  = Math.ceil(diffMs / 1000);
+            if (diffSec <= 0) {
+                el.textContent = '⏱ انتهى';
+                el.classList.add('urgent');
+                return;
+            }
+            const m = Math.floor(diffSec / 60);
+            const s = diffSec % 60;
+            el.textContent = '⏱ ' + m + ':' + String(s).padStart(2,'0');
+            el.classList.toggle('urgent', diffSec <= 120); // red in last 2 min
+        });
+    }
+    tick();
+    setInterval(tick, 1000);
+})();
+
 // Responsive: sidebar is always visible as icon rail on narrow screens
+
+
+// ═══════════════════════════════════════════════════════════════
+// ONLINE REQUESTS PANEL
+// ═══════════════════════════════════════════════════════════════
+let orFilter = 'active';
+let orSearch = '';
+let companyVars  = null;  // cached from Firebase /companydatas
+let driversData  = null;  // cached drivers array for cost lookup
+
+async function fetchCompanyVars() {
+    if (companyVars) return companyVars;
+    try {
+        const data = await fbGet('companydatas');
+        companyVars = data || {};
+    } catch(e) { companyVars = {}; }
+    return companyVars;
+}
+
+async function fetchDriversData() {
+    if (driversData) return driversData;
+    driversData = allDrivers.filter(d => d);
+    return driversData;
+}
+
+// Delivery profit = orderPrice * (companyVars.deliveryProfitPercent / 100)
+// or a flat fee from companyVars.deliveryProfitFlat
+// Driver cost fetched from driver record: driver.deliveryCost or companyVars.defaultDriverCost
+function calcDeliveryProfit(orderPrice, cv) {
+    if (!cv) return null;
+    if (cv.deliveryProfitFlat)    return parseFloat(cv.deliveryProfitFlat);
+    if (cv.deliveryProfitPercent) return (parseFloat(orderPrice) * parseFloat(cv.deliveryProfitPercent) / 100);
+    if (cv.deliveryProfit)        return parseFloat(cv.deliveryProfit);
+    return null;
+}
+
+function calcDriverCost(driverName, cv) {
+    if (!driverName || driverName === '0') return null;
+    const d = allDrivers.find(dr => dr && (dr.owner === driverName || dr.username === driverName));
+    if (d?.deliveryCost) return parseFloat(d.deliveryCost);
+    if (d?.driverCost)   return parseFloat(d.driverCost);
+    if (cv?.defaultDriverCost) return parseFloat(cv.defaultDriverCost);
+    if (cv?.driverDeliveryCost) return parseFloat(cv.driverDeliveryCost);
+    return null;
+}
+
+function formatMoney(val) {
+    if (val === null || val === undefined || isNaN(val)) return '—';
+    return val >= 1000 ? (val/1000).toFixed(2) + 'k ل.ل' : '$' + parseFloat(val).toFixed(2);
+}
+
+function orStateLabel(state) {
+    const map = { '0':'جديد', '1':'وُصِّل', '2':'ملغى', '3':'متأخر', '5':'مرفوض', '6':'استُلم', '7':'قيد التحضير', '8':'جاهز للتسليم' };
+    return map[state] || state;
+}
+
+async function renderOnlineRequests() {
+    const tbody   = document.getElementById('or-tbody');
+    const emptyEl = document.getElementById('or-empty');
+    const countEl = document.getElementById('or-count-label');
+    const table   = document.getElementById('or-table');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray);padding:24px;font-size:var(--fs-xs);">جارٍ التحميل…</td></tr>';
+
+    const cv = await fetchCompanyVars();
+
+    // Build entries from allOrders
+    let entries = Object.entries(allOrders)
+        .sort(([a],[b]) => (parseInt(b.replace('id_',''))||0) - (parseInt(a.replace('id_',''))||0));
+
+    // Filter by active tab
+    entries = entries.filter(([,o]) => {
+        const s = o.state || '0';
+        const archived = o.vault == 1;
+        if (orFilter === 'active')    return !archived && ['0','3','6','7','8'].includes(s);
+        if (orFilter === 'delivered') return !archived && s === '1';
+        if (orFilter === 'cancelled') return !archived && (s === '2' || s === '5');
+        return !archived; // 'all'
+    });
+
+    // Search filter
+    if (orSearch) {
+        const q = orSearch.toLowerCase();
+        entries = entries.filter(([key, o]) =>
+            key.replace('id_','').includes(q) ||
+            (o.fullname  || '').toLowerCase().includes(q) ||
+            (o.username  || '').toLowerCase().includes(q) ||
+            (o.store     || '').toLowerCase().includes(q) ||
+            (o.shipnumber|| key).toLowerCase().includes(q)
+        );
+    }
+
+    countEl.textContent = entries.length + ' طلب';
+    emptyEl.style.display = entries.length === 0 ? 'flex' : 'none';
+    table.style.display   = entries.length === 0 ? 'none' : '';
+
+    // Summary totals
+    let totalRevenue = 0, totalProfit = 0, newCount = 0;
+    entries.forEach(([,o]) => {
+        const price = parseFloat(o.orderprice || o.total || 0);
+        totalRevenue += price;
+        const p = calcDeliveryProfit(price, cv);
+        if (p !== null) totalProfit += p;
+        if ((o.state||'0') === '0') newCount++;
+    });
+    document.getElementById('or-sum-new').textContent     = newCount;
+    document.getElementById('or-sum-revenue').textContent = formatMoney(totalRevenue);
+    document.getElementById('or-sum-profit').textContent  = totalProfit > 0 ? formatMoney(totalProfit) : '—';
+
+    tbody.innerHTML = '';
+
+    // ── Detect synchronized groups (same date = placed together) ──
+    // A "sync group" = 2+ consecutive entries sharing the exact same o.date.
+    // We alternate between two palette classes (or-sync-a / or-sync-b) each
+    // time a NEW sync group appears, so adjacent groups are always distinct.
+    const dateOf = ([, o]) => (o.date || '').trim();
+    // Build a groupId per entry: entries with the same date that are
+    // contiguous get the same groupId; a lone entry has groupId = null.
+    const groupIds = [];
+    {
+        // First pass: mark contiguous runs of same-date
+        const runIds = [];
+        let runStart = 0;
+        for (let i = 0; i <= entries.length; i++) {
+            const cur  = i < entries.length ? dateOf(entries[i]) : null;
+            const prev = i > 0 ? dateOf(entries[i - 1]) : null;
+            if (i === entries.length || (i > 0 && cur !== prev)) {
+                const runLen = i - runStart;
+                const isSync = runLen >= 2 && prev !== '';
+                for (let j = runStart; j < i; j++) {
+                    runIds.push(isSync ? prev : null); // null = singleton
+                }
+                runStart = i;
+            }
+        }
+        // Second pass: assign alternating palette index per sync group
+        const seenGroups = new Map(); // dateKey → paletteIndex (0 or 1)
+        let nextPalette = 0;
+        runIds.forEach(gid => {
+            if (gid === null) { groupIds.push(null); return; }
+            if (!seenGroups.has(gid)) {
+                seenGroups.set(gid, nextPalette);
+                nextPalette = 1 - nextPalette;
+            }
+            groupIds.push(seenGroups.get(gid)); // 0 → 'a', 1 → 'b'
+        });
+    }
+
+    entries.forEach(([key, o], idx) => {
+        const shipNum    = o.shipnumber || key.replace('id_','');
+        const state      = o.state || '0';
+        const isUnread   = o.read !== '1';
+        const orderPrice = parseFloat(o.orderprice || o.total || 0);
+        const profit     = calcDeliveryProfit(orderPrice, cv);
+        const driverCost = calcDriverCost(o.driver, cv);
+        const assigned   = o.driver && o.driver !== '0';
+
+        const syncPalette = groupIds[idx]; // null | 0 | 1
+        const syncClass   = syncPalette === 0 ? 'or-sync-a' : syncPalette === 1 ? 'or-sync-b' : '';
+        // Is this the first row of its sync group? → show the badge
+        const isFirstInGroup = syncPalette !== null &&
+            (idx === 0 || groupIds[idx - 1] !== syncPalette ||
+             dateOf(entries[idx]) !== dateOf(entries[idx - 1]));
+        const syncBadgeClass  = syncPalette === 0 ? 'or-sync-label-a' : 'or-sync-label-b';
+        const syncBadgeColor  = syncPalette === 0 ? '🔵' : '🟠';
+        const syncBadge = isFirstInGroup
+            ? `<div class="or-sync-label ${syncBadgeClass}">${syncBadgeColor} متزامن</div>` : '';
+
+        const tr = document.createElement('tr');
+        tr.dataset.key = key;
+        if (isUnread) tr.classList.add('or-unread');
+        if (syncClass) tr.classList.add(syncClass);
+
+        tr.innerHTML = `
+            <td><span class="or-shipnum">${shipNum}</span>${syncBadge}</td>
+            <td>
+                <span class="or-state-badge or-state-${state}">${orStateLabel(state)}</span>
+                ${state === '7' && o.standbyUntil ? `<span class="or-countdown" data-until="${o.standbyUntil}">⏱ …</span>` : ''}
+            </td>
+            <td><span class="or-store">${o.store || '—'}</span></td>
+            <td>
+                <div style="font-weight:700;">${o.fullname || o.username || '—'}</div>
+                ${o.username && o.fullname ? `<div class="or-customer">@${o.username}</div>` : ''}
+            </td>
+            <td><span class="or-phone">${o.phone || '—'}</span></td>
+            <td><span class="or-city">${o.city || '—'}${o.street ? ' · '+o.street : ''}</span></td>
+            <td><span class="or-price">${formatMoney(orderPrice)}</span></td>
+            <td><span class="${profit !== null ? 'or-profit' : 'or-profit-loading'}">${profit !== null ? formatMoney(profit) : '—'}</span></td>
+            <td><span class="${driverCost !== null ? 'or-drivercost' : 'or-profit-loading'}">${driverCost !== null ? formatMoney(driverCost) : (assigned ? '—' : '—')}</span></td>
+            <td>
+                <div class="or-driver-wrap">
+                    <select class="or-driver-sel" data-orkey="${key}">
+                        <option value="">— سائق —</option>
+                        ${allDrivers.filter(d=>d).map(d => {
+                            const dname = d.owner||d.username;
+                            const sel = o.driver === dname ? 'selected' : '';
+                            return `<option value="${dname}" ${sel}>${dname} ${d.status==='online'?'🟢':'⚫'}</option>`;
+                        }).join('')}
+                    </select>
+                    <button class="or-assign-btn" data-orassign="${key}">✔</button>
+                </div>
+            </td>
+            <td><span class="or-date">${o.date || '—'}</span></td>
+            <td>
+                <button class="or-remove-btn" data-orremove="${key}" title="حذف رقم الشحنة من قاعدة البيانات">🗑 حذف الشحنة</button>
+            </td>
+        `;
+
+        // Assign driver
+        tr.querySelector('[data-orassign]').addEventListener('click', async () => {
+            const sel = tr.querySelector('.or-driver-sel');
+            const dname = sel ? sel.value : '';
+            if (!dname) { toast('اختر سائقاً أولاً', true); return; }
+            await orAssignDriver(key, dname);
+        });
+
+        // Remove shipnumber from Firebase
+        tr.querySelector('[data-orremove]').addEventListener('click', async () => {
+            const confirmed = await showConfirm({
+                title: 'حذف رقم الشحنة',
+                msg: `هل تريد حذف رقم الشحنة (${shipNum}) من سجلات الطلب؟ لن يُحذف الطلب نفسه.`,
+                type: 'warning',
+                icon: '🗑',
+                okLabel: 'نعم، احذف',
+                cancelLabel: 'إلغاء'
+            });
+            if (!confirmed) return;
+            await orRemoveShipNumber(key);
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+async function orAssignDriver(orderId, driverName) {
+    try {
+        const uid = allOrders[orderId]?.delivryplusid;
+        const updates = {};
+        updates['/requests/' + orderId + '/driver'] = driverName;
+        if (uid) updates['/historyRequests/' + uid + '/' + orderId + '/driver'] = driverName;
+        await fbUpdate('', updates);
+        allOrders[orderId].driver = driverName;
+        driversData = null; // reset cache so driver cost recalculates
+        toast('✅ تم تعيين ' + driverName + ' للشحنة');
+        renderOnlineRequests();
+    } catch(e) { toast('خطأ في التعيين', true); }
+}
+
+async function orRemoveShipNumber(orderId) {
+    try {
+        const uid = allOrders[orderId]?.delivryplusid;
+        const updates = {};
+        updates['/requests/' + orderId + '/shipnumber'] = null;
+        if (uid) updates['/historyRequests/' + uid + '/' + orderId + '/shipnumber'] = null;
+        await fbUpdate('', updates);
+        if (allOrders[orderId]) delete allOrders[orderId].shipnumber;
+        toast('🗑 تم حذف رقم الشحنة');
+        renderOnlineRequests();
+    } catch(e) { toast('خطأ في الحذف', true); }
+}
+
+// ── Toolbar events (Online Requests) ──────────────────────────
+document.addEventListener('click', e => {
+    const pill = e.target.closest('[data-or-filter]');
+    if (!pill) return;
+    document.querySelectorAll('[data-or-filter]').forEach(b => b.classList.remove('active'));
+    pill.classList.add('active');
+    orFilter = pill.dataset.orFilter;
+    renderOnlineRequests();
+});
+
+document.getElementById('or-search')?.addEventListener('input', e => {
+    orSearch = e.target.value.trim();
+    renderOnlineRequests();
+});
+
+document.getElementById('or-refresh-btn')?.addEventListener('click', () => {
+    companyVars = null; driversData = null;
+    loadData();
+});
+
 
 </script>
 </body>
