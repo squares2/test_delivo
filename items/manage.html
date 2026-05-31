@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivo — مدير صور المنتجات</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --orange: #FF5C00;
+    --orange-light: #ff7a2e;
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --surface3: #2e2e2e;
+    --white: #f0f0f0;
+    --gray: #6b6b6b;
+    --gray-light: #a0a0a0;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Tahoma', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--white);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--surface3);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+  .header__logo {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--orange);
+    letter-spacing: -0.5px;
+  }
+  .header__title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--gray-light);
+  }
+  .header__badge {
+    margin-right: auto;
+    background: var(--surface3);
+    color: var(--gray-light);
+    font-size: 0.72rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--surface3);
+    padding: 10px 24px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .toolbar input[type="text"] {
+    background: var(--surface3);
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    color: var(--white);
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    width: 220px;
+    outline: none;
+  }
+  .toolbar input[type="text"]:focus { border-color: var(--orange); }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 700;
+    transition: opacity .15s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn--orange { background: var(--orange); color: #fff; }
+  .btn--ghost { background: var(--surface3); color: var(--gray-light); }
+  .filter-pill {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: var(--surface3);
+    color: var(--gray-light);
+    transition: all .15s;
+  }
+  .filter-pill.active { background: var(--orange); color: #fff; }
+
+  /* ── Drop zone ── */
+  .drop-zone {
+    margin: 16px 24px;
+    border: 2px dashed var(--surface3);
+    border-radius: 14px;
+    padding: 22px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    flex-shrink: 0;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--orange);
+    background: rgba(255,92,0,.05);
+  }
+  .drop-zone__icon { font-size: 2rem; margin-bottom: 8px; }
+  .drop-zone__text { font-size: 0.82rem; color: var(--gray-light); }
+  .drop-zone__sub  { font-size: 0.7rem; color: var(--gray); margin-top: 4px; }
+  #file-input { display: none; }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    margin: 0 24px 12px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .stat-chip {
+    background: var(--surface);
+    border: 1px solid var(--surface3);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .stat-chip__num { font-size: 0.9rem; }
+  .stat-chip--green .stat-chip__num { color: var(--green); }
+  .stat-chip--red   .stat-chip__num { color: var(--red); }
+  .stat-chip--orange .stat-chip__num { color: var(--orange); }
+
+  /* ── Grid ── */
+  .grid-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 24px;
+  }
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+
+  .item-card {
+    background: var(--surface);
+    border: 1.5px solid var(--surface3);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color .2s;
+    position: relative;
+  }
+  .item-card:hover { border-color: var(--orange); }
+  .item-card.has-img { border-color: var(--green); }
+  .item-card.has-img:hover { border-color: var(--green); }
+
+  .item-card__img {
+    height: 110px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .item-card__img:hover::after {
+    content: '📷 تغيير الصورة';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.3px;
+  }
+  .item-card.uploading .item-card__img::after {
+    content: '⏳ جاري الحفظ…';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,92,0,0.75);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .item-card__img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .item-card__img .placeholder {
+    font-size: 2rem;
+    opacity: .4;
+  }
+  .item-card__status {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    font-size: 0.62rem;
+    font-weight: 900;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .status-ok  { background: rgba(34,197,94,.85); color: #fff; }
+  .status-miss{ background: rgba(239,68,68,.85);  color: #fff; }
+
+  .item-card__body {
+    padding: 8px 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .item-card__name { font-size: 0.75rem; font-weight: 700; color: var(--white); line-height: 1.3; }
+  .item-card__id   { font-size: 0.62rem; color: var(--gray); font-family: monospace; }
+  .item-card__cat  { font-size: 0.63rem; color: var(--gray); }
+  .item-card__price{ font-size: 0.7rem; font-weight: 800; color: var(--orange); }
+
+  .item-card__actions {
+    border-top: 1px solid var(--surface3);
+    display: flex;
+  }
+  .item-card__actions button {
+    flex: 1;
+    padding: 6px 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--gray-light);
+    transition: color .15s;
+  }
+  .item-card__actions button:hover { color: var(--white); }
+  .item-card__actions button:first-child { border-left: 1px solid var(--surface3); }
+
+  /* upload target highlight */
+  .item-card.upload-target {
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(255,92,0,.25);
+  }
+
+  /* ── Upload panel ── */
+  .upload-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    border: 1.5px solid var(--orange);
+    border-radius: 14px;
+    padding: 14px 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+    display: none;
+    gap: 10px;
+    align-items: center;
+    z-index: 200;
+    max-width: 400px;
+    width: 90%;
+  }
+  .upload-panel.visible { display: flex; }
+  .upload-panel__text { flex: 1; font-size: 0.78rem; color: var(--white); }
+  .upload-panel__sub  { font-size: 0.68rem; color: var(--gray); margin-top: 2px; }
+
+  /* ── Toast ── */
+  #toast-stack {
+    position: fixed;
+    bottom: 20px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 500;
+  }
+  .toast {
+    background: var(--surface);
+    border: 1.5px solid var(--surface3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    color: var(--white);
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+    animation: slideIn .25s ease;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast--green { border-color: var(--green); }
+  .toast--red   { border-color: var(--red); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  /* ── Empty state ── */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--gray);
+  }
+  .empty-state__icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state__title { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; color: var(--gray-light); }
+
+  /* ── Instructions panel ── */
+  .instructions {
+    background: rgba(255,92,0,.08);
+    border: 1px solid rgba(255,92,0,.25);
+    border-radius: 10px;
+    margin: 0 24px 12px;
+    padding: 12px 16px;
+    font-size: 0.72rem;
+    color: var(--gray-light);
+    line-height: 1.6;
+    flex-shrink: 0;
+  }
+  .instructions strong { color: var(--orange); }
+
+  code {
+    background: var(--surface3);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: monospace;
+    color: var(--orange);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header__logo">Delivo</div>
+  <div class="header__title">مدير صور المنتجات</div>
+  <div class="header__badge" id="header-badge">جاري التحميل…</div>
+</div>
+
+<div class="toolbar">
+  <input type="text" id="search-input" placeholder="🔍 بحث باسم المنتج أو ID…" oninput="applyFilter()">
+  <button class="filter-pill active" data-filter="all"    onclick="setFilter('all',this)">الكل</button>
+  <button class="filter-pill"        data-filter="hasimg" onclick="setFilter('hasimg',this)">✅ مع صورة</button>
+  <button class="filter-pill"        data-filter="noimg"  onclick="setFilter('noimg',this)">❌ بدون صورة</button>
+  <div style="margin-right:auto;display:flex;gap:8px;align-items:center;">
+    <!-- GitHub token — stored in memory only, never persisted -->
+    <div style="display:flex;align-items:center;gap:6px;background:var(--surface3);border-radius:8px;padding:4px 10px;border:1px solid #3a3a3a;" id="gh-token-wrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gray-light)" stroke-width="2" stroke-linecap="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      <input type="password" id="gh-token" placeholder="GitHub Token (ghp_…)" dir="ltr"
+             style="background:none;border:none;outline:none;color:var(--white);font-size:0.75rem;width:160px;"
+             oninput="onTokenInput(this.value)">
+      <span id="gh-token-status" style="font-size:0.7rem;color:var(--gray);">غير متصل</span>
+    </div>
+    <select id="store-select" onchange="loadStore()"
+            style="background:var(--surface3);border:1px solid #3a3a3a;border-radius:8px;
+                   color:var(--white);padding:6px 10px;font-size:0.78rem;outline:none;cursor:pointer;">
+      <option value="">← اختر متجر</option>
+    </select>
+    <button class="btn btn--orange" onclick="document.getElementById('file-input').click()">
+      📁 رفع صور
+    </button>
+  </div>
+</div>
+
+<div class="instructions">
+  <strong>كيفية إضافة صور المنتجات:</strong>
+  ضع صور المنتجات في مجلد <code>items/</code> بجانب هذا الملف.
+  اسم الصورة يجب أن يكون <strong>ID المنتج بالأحرف الصغيرة</strong> + امتداد <code>.png</code>
+  مثال: إذا كان <code>ID = sha001</code> → اسم الملف: <code>items/sha001.png</code>
+  <br>يمكنك سحب الصور وإفلاتها مباشرةً على بطاقة المنتج لتجهيز المسار الصحيح.
+</div>
+
+<div class="stats-bar" id="stats-bar" style="display:none;">
+  <div class="stat-chip stat-chip--orange">
+    <span class="stat-chip__num" id="stat-total">0</span> منتج
+  </div>
+  <div class="stat-chip stat-chip--green">
+    <span class="stat-chip__num" id="stat-with">0</span> ✅ مع صورة
+  </div>
+  <div class="stat-chip stat-chip--red">
+    <span class="stat-chip__num" id="stat-without">0</span> ❌ بدون صورة
+  </div>
+</div>
+
+<!-- Drop zone -->
+<div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+  <div class="drop-zone__icon">📂</div>
+  <div class="drop-zone__text">اسحب الصور هنا أو انقر للاختيار</div>
+  <div class="drop-zone__sub">PNG فقط • اسم الملف = ID المنتج (مثال: sha001.png)</div>
+</div>
+
+<input type="file" id="file-input" multiple accept="image/png,image/jpeg,image/webp">
+
+<div class="grid-wrap">
+  <div class="items-grid" id="items-grid">
+    <div class="empty-state">
+      <div class="empty-state__icon">🏪</div>
+      <div class="empty-state__title">اختر متجراً من القائمة أعلاه</div>
+      <div style="font-size:0.72rem;margin-top:4px;">سيتم جلب بيانات المنتجات من Firebase</div>
+    </div>
+  </div>
+</div>
+
+<!-- upload panel (floating confirm) -->
+<div class="upload-panel" id="upload-panel">
+  <div>📷</div>
+  <div style="flex:1;">
+    <div class="upload-panel__text" id="upload-panel-text">تم رفع الصورة</div>
+    <div class="upload-panel__sub" id="upload-panel-sub">ضع الملف في المسار الصحيح</div>
+  </div>
+  <button class="btn btn--ghost" onclick="document.getElementById('upload-panel').classList.remove('visible')">✕</button>
+</div>
+
+<div id="toast-stack"></div>
+
+<script>
+const RTDB = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+
+let _allItems    = [];   // { id, name, price, catmain, cat, pngExist, ... }
+let _filtered    = [];
+let _filter      = 'all';
+let _search      = '';
+let _currentStore= null;
+let _imgCache    = {};   // id → bool (has image)
+
+// ── Init ─────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadStoreList();
+  setupDrop();
+  setupFileInput();
+});
+
+// ── Load store list ───────────────────────────────────────────
+async function loadStoreList() {
+  try {
+    const data = await fbGet('pattern');
+    const sel  = document.getElementById('store-select');
+    if (!data) return;
+    const stores = [];
+    Object.entries(data).forEach(([type, storesObj]) => {
+      if (!storesObj || typeof storesObj !== 'object') return;
+      Object.values(storesObj).forEach(s => {
+        if (s && s.companyname) stores.push({ name: s.companyname, type });
+      });
+    });
+    stores.sort((a,b) => a.name.localeCompare(b.name,'ar'));
+    sel.innerHTML = `<option value="">← اختر متجر</option>` +
+      stores.map(s => `<option value="${s.name}" data-type="${s.type}">${s.name}</option>`).join('');
+    document.getElementById('header-badge').textContent = stores.length + ' متجر';
+  } catch(e) {
+    document.getElementById('header-badge').textContent = '⚠️ خطأ';
+    toast('تعذّر تحميل المتاجر: ' + e.message, true);
+  }
+}
+
+async function loadStore() {
+  const sel  = document.getElementById('store-select');
+  const name = sel.value;
+  if (!name) return;
+  _currentStore = name;
+
+  const grid = document.getElementById('items-grid');
+  grid.innerHTML = skeleton(12);
+  document.getElementById('stats-bar').style.display = 'none';
+
+  try {
+    const raw = await fbGet(`items/${name}`);
+    if (!raw) {
+      _allItems = [];
+      grid.innerHTML = `<div class="empty-state">
+        <div class="empty-state__icon">🛍️</div>
+        <div class="empty-state__title">لا توجد منتجات لهذا المتجر</div>
+        <div style="font-size:.72rem;margin-top:4px;">أضف منتجات من لوحة الإدارة أولاً</div>
+      </div>`;
+      return;
+    }
+    _allItems = Object.values(raw).filter(Boolean).map(item => ({
+      ...item,
+      _id: item.ID || item.id || '',
+    }));
+
+    // Check images
+    await checkImages(_allItems);
+
+    applyFilter();
+    document.getElementById('stats-bar').style.display = 'flex';
+  } catch(e) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state__icon">⚠️</div><div>${e.message}</div></div>`;
+  }
+}
+
+// ── Check if images exist ─────────────────────────────────────
+async function checkImages(items) {
+  await Promise.all(items.map(item => {
+    const id = item._id;
+    if (!id) { _imgCache[id] = false; return; }
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload  = () => { _imgCache[id] = true;  resolve(); };
+      img.onerror = () => { _imgCache[id] = false; resolve(); };
+      img.src = `${id.toLowerCase()}.png?_=${Date.now()}`;
+    });
+  }));
+}
+
+// ── Filter + render ───────────────────────────────────────────
+function setFilter(f, btn) {
+  _filter = f;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+
+function applyFilter() {
+  _search = document.getElementById('search-input').value.toLowerCase();
+  _filtered = _allItems.filter(item => {
+    const hasImg  = _imgCache[item._id] || false;
+    const matchF  = _filter === 'all' || (_filter === 'hasimg' && hasImg) || (_filter === 'noimg' && !hasImg);
+    const matchS  = !_search || item.name?.toLowerCase().includes(_search) || item._id?.toLowerCase().includes(_search);
+    return matchF && matchS;
+  });
+  render();
+}
+
+function render() {
+  const grid = document.getElementById('items-grid');
+  if (!_filtered.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state__icon">🔍</div><div class="empty-state__title">لا توجد نتائج</div></div>`;
+    updateStats();
+    return;
+  }
+  grid.innerHTML = _filtered.map(item => {
+    const id    = item._id;
+    const hasImg= _imgCache[id] || false;
+    const price = parseFloat(item.price);
+    const sale  = parseFloat(item.sale);
+    const disp  = (sale > 0 && sale < price) ? sale : price;
+    return `
+    <div class="item-card ${hasImg ? 'has-img' : ''}" id="card-${id}" data-id="${id}">
+      <div class="item-card__img" onclick="clickUploadImg('${id}')" title="انقر لتغيير الصورة">
+        ${hasImg
+          ? `<img src="${id.toLowerCase()}.png?_t=${Date.now()}" alt="${item.name||''}"
+                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+             ><div class="placeholder" style="display:none;">📷</div>`
+          : `<div class="placeholder">📷</div>`
+        }
+        <div class="item-card__status ${hasImg ? 'status-ok' : 'status-miss'}">${hasImg ? '✓ صورة' : '✗ لا صورة'}</div>
+      </div>
+      <div class="item-card__body">
+        <div class="item-card__name">${item.name || '—'}</div>
+        <div class="item-card__id">ID: ${id || '—'}</div>
+        <div class="item-card__cat">${item.catmain || ''}${item.cat && item.cat !== item.catmain ? ' › ' + item.cat : ''}</div>
+        ${disp ? `<div class="item-card__price">${fmtPrice(disp)}</div>` : ''}
+      </div>
+      <div class="item-card__actions">
+        <button onclick="copyPath('${id}')">📋 نسخ المسار</button>
+        <button onclick="recheckImg('${id}')">🔄 تحديث</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateStats();
+  setupCardDrop();
+}
+
+function updateStats() {
+  const total  = _allItems.length;
+  const withImg= _allItems.filter(i => _imgCache[i._id]).length;
+  document.getElementById('stat-total').textContent   = total;
+  document.getElementById('stat-with').textContent    = withImg;
+  document.getElementById('stat-without').textContent = total - withImg;
+}
+
+// ── Drop zone (global) ────────────────────────────────────────
+function setupDrop() {
+  const dz = document.getElementById('drop-zone');
+  ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('dragover'); }));
+  dz.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
+}
+
+// ── Card-level drop ───────────────────────────────────────────
+function setupCardDrop() {
+  document.querySelectorAll('.item-card').forEach(card => {
+    card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('upload-target'); });
+    card.addEventListener('dragleave', () => card.classList.remove('upload-target'));
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      card.classList.remove('upload-target');
+      const itemId = card.dataset.id;
+      handleFilesForItem(e.dataTransfer.files, itemId);
+    });
+  });
+}
+
+function setupFileInput() {
+  document.getElementById('file-input').addEventListener('change', e => handleFiles(e.target.files));
+}
+
+// ── File handling ─────────────────────────────────────────────
+function handleFiles(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(file => {
+    const expectedId = file.name.replace(/\.[^.]+$/, '').toLowerCase();
+    showUploadInfo(file.name, expectedId);
+  });
+}
+
+function handleFilesForItem(files, itemId) {
+  if (!files || !files.length) return;
+  const file = files[0];
+  showUploadInfo(file.name, itemId, true);
+}
+
+function showUploadInfo(filename, itemId, isTargeted = false) {
+  const panel    = document.getElementById('upload-panel');
+  const textEl   = document.getElementById('upload-panel-text');
+  const subEl    = document.getElementById('upload-panel-sub');
+
+  const expectedName = itemId.toLowerCase() + '.png';
+  const correct      = filename.toLowerCase().replace(/\.[^.]+$/, '') + '.png';
+
+  if (isTargeted) {
+    textEl.textContent = `ضع الملف باسم: ${expectedName}`;
+    subEl.textContent  = `المسار: items/${expectedName}`;
+  } else {
+    textEl.textContent = `ملف: ${filename}`;
+    subEl.textContent  = `يجب أن يكون في: items/${correct}`;
+  }
+  panel.classList.add('visible');
+  setTimeout(() => panel.classList.remove('visible'), 6000);
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+async function recheckImg(id) {
+  _imgCache[id] = await testImage(id);
+  // Re-render just this card
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+  const hasImg = _imgCache[id];
+  card.classList.toggle('has-img', hasImg);
+  const imgWrap  = card.querySelector('.item-card__img');
+  const statusEl = card.querySelector('.item-card__status');
+  if (hasImg) {
+    imgWrap.innerHTML = `<img src="${id.toLowerCase()}.png?_t=${Date.now()}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="placeholder" style="display:none;">📷</div><div class="item-card__status status-ok">✓ صورة</div>`;
+  } else {
+    imgWrap.innerHTML = `<div class="placeholder">📷</div><div class="item-card__status status-miss">✗ لا صورة</div>`;
+  }
+  statusEl?.remove();
+  updateStats();
+  toast(hasImg ? `✅ صورة ${id} موجودة` : `❌ صورة ${id} غير موجودة`, !hasImg);
+}
+
+function testImage(id) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload  = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = `${id.toLowerCase()}.png?_=${Date.now()}`;
+  });
+}
+
+function copyPath(id) {
+  const path = `items/${id.toLowerCase()}.png`;
+  navigator.clipboard.writeText(path).then(() => toast(`📋 تم نسخ: ${path}`));
+}
+
+function fmtPrice(p) {
+  const n = parseFloat(p);
+  if (isNaN(n) || n === 0) return '';
+  if (n < 1000) return '$' + n.toFixed(n%1===0?0:2);
+  return (n/1000).toFixed(n%1000===0?0:1) + ' ألف ل.ل';
+}
+
+function skeleton(n) {
+  return Array(n).fill(0).map(()=>`
+    <div style="background:var(--surface);border-radius:12px;height:200px;animation:pulse 1.4s infinite;"></div>`).join('');
+}
+
+// ── Click-to-upload image ─────────────────────────────────────
+function clickUploadImg(id) {
+  const input = document.createElement('input');
+  input.type   = 'file';
+  input.accept = 'image/png,image/jpeg,image/webp';
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const card = document.getElementById(`card-${id}`);
+    if (card) card.classList.add('uploading');
+    try {
+      await saveImageForItem(file, id);
+      _imgCache[id] = await testImage(id);
+      if (card) {
+        card.classList.remove('uploading');
+        card.classList.toggle('has-img', _imgCache[id]);
+        const imgWrap = card.querySelector('.item-card__img');
+        if (imgWrap) {
+          imgWrap.innerHTML = _imgCache[id]
+            ? `<img src="${id.toLowerCase()}.png?_t=${Date.now()}" alt=""
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+               <div class="placeholder" style="display:none;">📷</div>
+               <div class="item-card__status status-ok">✓ صورة</div>`
+            : `<div class="placeholder">📷</div>
+               <div class="item-card__status status-miss">✗ لا صورة</div>`;
+          imgWrap.onclick = () => clickUploadImg(id);
+        }
+      }
+      updateStats();
+      toast(_imgCache[id] ? `✅ تم حفظ صورة ${id}` : `⚠️ تأكد من حفظ الملف في items/`, !_imgCache[id]);
+    } catch(e) {
+      if (card) card.classList.remove('uploading');
+      toast('❌ ' + (e.message || 'خطأ'), true);
+    }
+  };
+  input.click();
+}
+
+// ── GitHub config ─────────────────────────────────────────────
+const GH_OWNER  = 'squares2';
+const GH_REPO   = 'test_delivo';
+const GH_BRANCH = 'main';
+const GH_FOLDER = 'items';
+
+let _ghToken = '';
+
+function onTokenInput(val) {
+  _ghToken = val.trim();
+  const status = document.getElementById('gh-token-status');
+  const wrap   = document.getElementById('gh-token-wrap');
+  if (_ghToken.length > 10) {
+    status.textContent = '✓ جاهز';
+    status.style.color = 'var(--green)';
+    wrap.style.borderColor = 'var(--green)';
+  } else {
+    status.textContent = 'غير متصل';
+    status.style.color = 'var(--gray)';
+    wrap.style.borderColor = '#3a3a3a';
+  }
+}
+
+async function saveImageForItem(file, id) {
+  const targetName = id.toLowerCase() + '.png';
+  const path       = `${GH_FOLDER}/${targetName}`;
+
+  // ── GitHub API upload ──────────────────────────────────────
+  if (_ghToken) {
+    const blob    = await convertToPng(file);
+    const base64  = await blobToBase64(blob);
+    const apiUrl  = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+
+    // Check if file already exists (need its SHA to update)
+    let sha = null;
+    try {
+      const check = await fetch(apiUrl, {
+        headers: { Authorization: `Bearer ${_ghToken}`, Accept: 'application/vnd.github+json' }
+      });
+      if (check.ok) {
+        const data = await check.json();
+        sha = data.sha;
+      }
+    } catch(e) { /* new file — no SHA needed */ }
+
+    const body = {
+      message: `Upload item image: ${targetName}`,
+      content: base64,
+      branch:  GH_BRANCH,
+    };
+    if (sha) body.sha = sha;
+
+    const res = await fetch(apiUrl, {
+      method:  'PUT',
+      headers: {
+        Authorization:  `Bearer ${_ghToken}`,
+        Accept:         'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `GitHub error ${res.status}`);
+    }
+    return; // success
+  }
+
+  // ── Fallback: download with correct name ───────────────────
+  const blob = await convertToPng(file);
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = targetName; a.click();
+  URL.revokeObjectURL(url);
+  const panel = document.getElementById('upload-panel');
+  if (panel) {
+    document.getElementById('upload-panel-text').textContent = `لا يوجد token — احفظ الملف يدوياً في items/`;
+    document.getElementById('upload-panel-sub').textContent  = `اسم الملف: ${targetName}`;
+    panel.classList.add('visible');
+    setTimeout(() => panel.classList.remove('visible'), 8000);
+  }
+}
+
+async function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function convertToPng(file) {
+  if (file.type === 'image/png') return file;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? resolve(b) : reject(new Error('تعذّر التحويل')), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('تعذّر تحميل الصورة')); };
+    img.src = url;
+  });
+}
+
+// ── Firebase ──────────────────────────────────────────────────
+async function fbGet(path) {
+  const r = await fetch(`${RTDB}/${path}.json`);
+  if (!r.ok) throw new Error(`Firebase ${r.status}`);
+  return r.json();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, isErr = false) {
+  const stack = document.getElementById('toast-stack');
+  const el = document.createElement('div');
+  el.className = `toast ${isErr ? 'toast--red' : 'toast--green'}`;
+  el.innerHTML = `<span>${isErr?'⚠️':'✅'}</span><span>${msg}</span>`;
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+</body>
+</html>
