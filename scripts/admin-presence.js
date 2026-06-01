@@ -1,27 +1,33 @@
 /* ============================================================
    admin-presence.js — Admin real-time presence monitor
-   Uses Firebase SDK onValue for instant updates (no polling)
+
+   KEY FIX: STALE_MS raised to 45s so the admin never sweeps
+   a live user whose heartbeat (8s) hasn't arrived yet.
+   Old value was 15s which was shorter than the old 20s heartbeat
+   — that's what caused the constant leave/join bounce.
    ============================================================ */
 
 (function () {
     'use strict';
 
     const RTDB_BASE = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
-    const STALE_MS  = 15_000;
+    const STALE_MS  = 45_000;   // MUST be > client HEARTBEAT (8s) with large margin
     const TOAST_DUR = 6_000;
 
-    /* ── State ──────────────────────────────────────────────── */
+    // Ignore join/leave events within this window of page load
+    // (avoids toasts firing for every user already online when admin opens)
+    const BOOT_GRACE_MS = 4_000;
+    const bootTime = Date.now();
+
     let prevSessions = {};
     let modalOpen    = false;
 
-    /* ── Display name — UUID-based, smart identity ──────────── */
     function displayName(s) {
         if (s.username) return `@${s.username}`;
         if (s.uid)      return `uid·${s.uid.slice(0, 12)}`;
         return `uuid·${(s.uuid || s.sid || '?').slice(0, 13)}`;
     }
 
-    /* ── Short UUID for secondary display ───────────────────── */
     function shortUUID(s) {
         return (s.uuid || s.sid || '').slice(0, 18) + '…';
     }
@@ -36,7 +42,7 @@
         return `<span class="ps-tag ps-tag--guest">زائر</span>`;
     }
 
-    /* ── Stale sweep (REST DELETE) ──────────────────────────── */
+    /* ── Stale sweep ────────────────────────────────────────── */
     async function sweepStale(sessions) {
         const cutoff = Date.now() - STALE_MS;
         const stale  = Object.entries(sessions).filter(([, v]) => (v.lastSeen || 0) < cutoff);
@@ -48,6 +54,9 @@
 
     /* ── Toast ──────────────────────────────────────────────── */
     function showToast(session, type) {
+        // Suppress toasts during boot grace period (avoids flood on page load)
+        if (Date.now() - bootTime < BOOT_GRACE_MS) return;
+
         const box = document.getElementById('presence-toasts');
         if (!box) return;
 
@@ -55,8 +64,8 @@
         const name   = displayName(session);
         const icon   = deviceIcon(session);
         const color  = isJoin ? '#22c55e' : '#ef4444';
+        const uuid   = (session.uuid || session.sid || '').slice(0, 16);
 
-        const uuid    = (session.uuid || session.sid || '').slice(0, 16);
         const t = document.createElement('div');
         t.className = `presence-toast presence-toast--${type}`;
         t.innerHTML = `
@@ -85,9 +94,7 @@
             if (!prv.has(sid)) showToast(current[sid], 'join');
         }
         for (const sid of prv) {
-            if (!cur.has(sid)) {
-                showToast(prevSessions[sid], 'leave');
-            }
+            if (!cur.has(sid)) showToast(prevSessions[sid], 'leave');
         }
         prevSessions = { ...current };
     }
@@ -96,8 +103,7 @@
     function updateChip(count) {
         const el = document.getElementById('admin-online-count');
         if (el) {
-            /* Animate number change */
-            el.style.transform = 'scale(1.3)';
+            el.style.transform  = 'scale(1.3)';
             el.style.transition = 'transform 0.2s';
             setTimeout(() => { el.style.transform = 'scale(1)'; }, 200);
             el.textContent = count;
@@ -131,12 +137,12 @@
         }
 
         list.innerHTML = entries.map((s, i) => {
-            const name  = displayName(s);
-            const icon  = deviceIcon(s);
-            const ago   = timeAgo(s.connectedAt);
+            const name   = displayName(s);
+            const icon   = deviceIcon(s);
+            const ago    = timeAgo(s.connectedAt);
             const isUser = !!s.username;
-            const uuid = (s.uuid || s.sid || '');
-        return `
+            const uuid   = (s.uuid || s.sid || '');
+            return `
             <div class="pm-row ${isUser ? 'pm-row--user' : ''}" data-connected="${s.connectedAt || Date.now()}">
                 <div class="pm-rank">${i + 1}</div>
                 <div class="pm-live-dot"></div>
@@ -153,7 +159,7 @@
         }).join('');
     }
 
-    /* ── Live timer tick — updates ⏱ every second while modal open ── */
+    /* ── Live timer tick ────────────────────────────────────── */
     function startTimerTick() {
         setInterval(() => {
             if (!modalOpen) return;
@@ -178,14 +184,11 @@
         if (modalOpen) renderModal(prevSessions);
     };
 
-    /* ── Inject HTML (modal + toasts) ──────────────────────── */
+    /* ── Inject HTML ────────────────────────────────────────── */
     function injectHTML() {
-        /* Remove old panel if exists */
         document.getElementById('presence-panel')?.remove();
-
         document.body.insertAdjacentHTML('beforeend', `
         <div id="presence-toasts"></div>
-
         <div id="presence-modal" class="pm-overlay pm-overlay--hidden" onclick="if(event.target===this)togglePresencePanel()">
             <div class="pm-modal">
                 <div class="pm-header">
@@ -205,7 +208,6 @@
     function injectCSS() {
         const style = document.createElement('style');
         style.textContent = `
-        /* Topbar dot */
         .admin-online-dot {
             display:inline-block; width:7px; height:7px; border-radius:50%;
             background:#22c55e; flex-shrink:0;
@@ -217,8 +219,6 @@
             70% { box-shadow:0 0 0 6px rgba(34,197,94,0);  }
             100%{ box-shadow:0 0 0 0   rgba(34,197,94,0);  }
         }
-
-        /* Toast container */
         #presence-toasts {
             position:fixed; bottom:20px; left:20px; z-index:99999;
             display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none;
@@ -243,8 +243,6 @@
         .pt-action{ font-size:.65rem;font-weight:600;margin-top:2px; }
         .pt-close { background:none;border:none;color:var(--gray,#6b7280);
                     cursor:pointer;font-size:.8rem;padding:0;flex-shrink:0; }
-
-        /* Modal overlay */
         .pm-overlay {
             position:fixed;inset:0;z-index:88888;
             background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
@@ -252,24 +250,17 @@
             transition:opacity .25s;
         }
         .pm-overlay--hidden { opacity:0;pointer-events:none; }
-
         .pm-modal {
             background:var(--surface,#1e1e2e);
             border:1px solid var(--border,#2a2a3a);
-            border-radius:22px;
-            width:min(780px,95vw);
-            max-height:82vh;
+            border-radius:22px; width:min(780px,95vw); max-height:82vh;
             display:flex;flex-direction:column;
             box-shadow:0 12px 64px rgba(0,0,0,.6);
-            direction:rtl;
-            overflow:hidden;
+            direction:rtl; overflow:hidden;
         }
-
         .pm-header {
             display:flex;align-items:center;gap:14px;
-            padding:22px 28px;
-            border-bottom:1px solid var(--border,#2a2a3a);
-            flex-shrink:0;
+            padding:22px 28px; border-bottom:1px solid var(--border,#2a2a3a); flex-shrink:0;
         }
         .pm-header-dot {
             width:14px;height:14px;border-radius:50%;background:#22c55e;
@@ -290,19 +281,12 @@
             transition:background .2s;
         }
         .pm-close:hover { background:rgba(255,255,255,.08); }
-
-        .pm-list {
-            flex:1;overflow-y:auto;padding:14px;
-            display:flex;flex-direction:column;gap:10px;
-        }
-
+        .pm-list { flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px; }
         .pm-empty {
             text-align:center;color:var(--gray,#6b7280);
             font-size:1rem;padding:60px 0;display:flex;
             flex-direction:column;align-items:center;gap:12px;
         }
-        .pm-empty > div:first-child { font-size:3rem; }
-
         .pm-row {
             display:flex;align-items:center;gap:16px;
             background:var(--surface2,#252535);
@@ -312,41 +296,16 @@
         }
         .pm-row:hover { background:rgba(255,255,255,.03); }
         .pm-row--user { border-color:rgba(255,92,0,.3); }
-        .pm-rank {
-            font-size:.9rem;font-weight:900;color:var(--gray,#6b7280);
-            width:24px;text-align:center;flex-shrink:0;
-        }
-        .pm-live-dot {
-            width:12px;height:12px;border-radius:50%;background:#22c55e;
-            flex-shrink:0;box-shadow:0 0 8px rgba(34,197,94,.7);
-        }
+        .pm-rank { font-size:.9rem;font-weight:900;color:var(--gray,#6b7280);width:24px;text-align:center;flex-shrink:0; }
+        .pm-live-dot { width:12px;height:12px;border-radius:50%;background:#22c55e;flex-shrink:0;box-shadow:0 0 8px rgba(34,197,94,.7); }
         .pm-info { flex:1;min-width:0; }
-        .pm-name {
-            font-size:1rem;font-weight:700;
-            color:var(--gray-light,#e2e8f0);
-            display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-        }
-        .pm-meta {
-            font-size:.8rem;color:var(--gray,#6b7280);
-            margin-top:5px;display:flex;gap:14px;align-items:center;
-        }
-        .pm-uid { font-family:monospace;font-size:.75rem; }
-        .pm-device {
-            font-size:.78rem;font-weight:700;color:var(--gray,#6b7280);
-            background:rgba(255,255,255,.07);border-radius:8px;
-            padding:4px 12px;flex-shrink:0;
-        }
-
-        /* Tags */
-        .ps-tag {
-            font-size:.72rem;font-weight:800;border-radius:99px;
-            padding:2px 10px;border:1px solid;
-        }
+        .pm-name { font-size:1rem;font-weight:700;color:var(--gray-light,#e2e8f0);display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+        .pm-meta { font-size:.8rem;color:var(--gray,#6b7280);margin-top:5px;display:flex;gap:14px;align-items:center; }
+        .pm-device { font-size:.78rem;font-weight:700;color:var(--gray,#6b7280);background:rgba(255,255,255,.07);border-radius:8px;padding:4px 12px;flex-shrink:0; }
+        .ps-tag { font-size:.72rem;font-weight:800;border-radius:99px;padding:2px 10px;border:1px solid; }
         .ps-tag--user  { color:#f97316;border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.1); }
         .ps-tag--uid   { color:#818cf8;border-color:rgba(129,140,248,.4);background:rgba(129,140,248,.1); }
         .ps-tag--guest { color:#6b7280;border-color:rgba(107,114,128,.3);background:rgba(107,114,128,.08); }
-        .pm-uuid { font-family:monospace;font-size:.72rem;color:var(--gray,#6b7280);
-                   letter-spacing:.03em;cursor:default; }
         .pm-uuid-full {
             font-family:monospace;font-size:.74rem;color:#64748b;
             letter-spacing:.04em;margin-top:4px;word-break:break-all;
@@ -354,26 +313,20 @@
             padding:3px 8px;border:1px solid rgba(255,255,255,.06);
             user-select:all;cursor:text;
         }
-        .pm-uid-badge { font-family:monospace;font-size:.68rem;color:#818cf8;
-                        background:rgba(129,140,248,.1);border-radius:4px;padding:1px 6px; }
-        .pt-uuid { font-family:monospace;font-size:.58rem;color:var(--gray,#6b7280);
-                   margin-top:1px;letter-spacing:.02em; }
+        .pm-uid-badge { font-family:monospace;font-size:.68rem;color:#818cf8;background:rgba(129,140,248,.1);border-radius:4px;padding:1px 6px; }
+        .pt-uuid { font-family:monospace;font-size:.58rem;color:var(--gray,#6b7280);margin-top:1px;letter-spacing:.02em; }
         .pm-timer { font-variant-numeric:tabular-nums; }
         `;
         document.head.appendChild(style);
     }
 
-    /* ── Firebase SDK onValue listener ─────────────────────── */
+    /* ── Firebase SDK listener ──────────────────────────────── */
     function initWithSDK(db) {
         const presenceRef = db.ref('presence');
-
         presenceRef.on('value', async snap => {
             const raw      = snap.val() || {};
             const sessions = { ...raw };
-
-            /* Sweep stale */
             await sweepStale(sessions);
-
             diffAndNotify(sessions);
             updateChip(Object.keys(sessions).length);
             if (modalOpen) renderModal(sessions);
@@ -381,7 +334,7 @@
         });
     }
 
-    /* ── REST fallback (poll every 5s) ──────────────────────── */
+    /* ── REST fallback ──────────────────────────────────────── */
     async function pollREST() {
         try {
             const r   = await fetch(`${RTDB_BASE}/presence.json`);
@@ -401,29 +354,18 @@
         injectHTML();
         startTimerTick();
 
-        /* Try SDK first */
         function trySDK() {
-            if (window.firebase?.database) {
-                initWithSDK(window.firebase.database());
-                return true;
-            }
+            if (window.firebase?.database) { initWithSDK(window.firebase.database()); return true; }
             return false;
         }
 
         if (!trySDK()) {
             setTimeout(() => {
-                if (!trySDK()) {
-                    pollREST();
-                    setInterval(pollREST, 5_000);
-                }
+                if (!trySDK()) { pollREST(); setInterval(pollREST, 8_000); }
             }, 1500);
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();

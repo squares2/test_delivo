@@ -5,6 +5,8 @@
    3. Dismisses the splash screen smoothly
    ============================================================ */
 
+const SPLASH_MIN_MS = 2500; // minimum time the HD splash stays visible
+
 async function loadComponent(slotId, file) {
     try {
         const res = await fetch(`components/${file}?v=8`);
@@ -21,14 +23,30 @@ function hideSplash() {
     const splash = document.getElementById('delivo-splash');
     if (!splash) return;
     splash.classList.add('hiding');
-    // After fade-out transition (500ms) remove from DOM entirely
     setTimeout(() => splash.classList.add('hidden'), 520);
 }
 
+/* Wait for the splash image to fully decode before starting the timer.
+   This prevents the old low-res cached frame from flashing before the
+   HD PNG is ready — we simply don't start counting until it's painted. */
+function splashImageReady() {
+    return new Promise(resolve => {
+        const img = document.querySelector('#delivo-splash img');
+        if (!img) return resolve();
+        if (img.complete && img.naturalWidth > 0) return resolve();
+        img.addEventListener('load',  resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true }); // don't block on error
+    });
+}
+
 async function loadAll() {
-    /* ── Safety net: if loading takes > 6s on slow connections,
-       hide splash anyway so the user isn't stuck on a blank screen */
-    const slowNetTimer = setTimeout(hideSplash, 6750);
+    const startTime = Date.now();
+
+    // Safety net: never keep splash longer than 7s on slow connections
+    const slowNetTimer = setTimeout(hideSplash, 7000);
+
+    // Wait for the HD splash image to fully render before doing anything else
+    await splashImageReady();
 
     await Promise.all([
         loadComponent('categories',   'categories.html'),
@@ -49,10 +67,12 @@ async function loadAll() {
     document.body.classList.add('loaded');
     console.log('[Delivo] All components loaded ✓');
 
-    // Clear slow-net timer and hide splash
     clearTimeout(slowNetTimer);
-    // Small delay so the page renders at least one frame before fading
-    requestAnimationFrame(() => setTimeout(hideSplash, 930));
+
+    // Enforce minimum splash display time so the HD logo is clearly seen
+    const elapsed   = Date.now() - startTime;
+    const remaining = Math.max(0, SPLASH_MIN_MS - elapsed);
+    setTimeout(hideSplash, remaining);
 }
 
 document.addEventListener('DOMContentLoaded', loadAll);

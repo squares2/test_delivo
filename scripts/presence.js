@@ -7,16 +7,12 @@
 (function () {
     'use strict';
 
-    const RTDB_BASE   = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
-    const HEARTBEAT   = 5  * 1000;
-    const STALE_MS    = 15 * 1000;
+    const RTDB_BASE  = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+    const HEARTBEAT  = 8 * 1000;   // must be well under admin STALE_MS (45s)
 
-    /* ── Get stable device UUID from localStorage ───────────── */
     function getDeviceUUID() {
-        /* firebase-init.js stores it here */
         let uuid = localStorage.getItem('delivo_device_uuid');
         if (!uuid) {
-            /* Fallback: generate and persist if firebase-init hasn't run yet */
             uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
                 const r = Math.random() * 16 | 0;
                 return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
@@ -26,20 +22,17 @@
         return uuid;
     }
 
-    /* ── REST helpers ───────────────────────────────────────── */
     function rtdbPut(path, data, keepalive = false) {
         return fetch(`${RTDB_BASE}/${path}.json`, {
-            method:    'PUT',
-            headers:   { 'Content-Type': 'application/json' },
-            body:      JSON.stringify(data),
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(data),
             keepalive,
         }).catch(() => {});
     }
 
     function rtdbDelete(path, keepalive = false) {
-        return fetch(`${RTDB_BASE}/${path}.json`, {
-            method: 'DELETE', keepalive,
-        }).catch(() => {});
+        return fetch(`${RTDB_BASE}/${path}.json`, { method: 'DELETE', keepalive }).catch(() => {});
     }
 
     async function rtdbGet(path) {
@@ -49,7 +42,6 @@
         } catch (_) { return null; }
     }
 
-    /* ── Build payload ──────────────────────────────────────── */
     function buildPayload(uuid, connectedAt) {
         const auth = window._delivoAuthUser || null;
         return {
@@ -57,22 +49,9 @@
             uid:         auth?.uid      || null,
             username:    auth?.username || null,
             device:      /Mobi/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-            connectedAt: connectedAt || Date.now(),   /* preserve original connect time */
+            connectedAt: connectedAt || Date.now(),
             lastSeen:    Date.now(),
         };
-    }
-
-    /* ── Stale sweep ────────────────────────────────────────── */
-    async function sweepStale(db) {
-        try {
-            const snap     = db ? await db.ref('presence').once('value') : null;
-            const sessions = db ? (snap.val() || {}) : (await rtdbGet('presence') || {});
-            const cutoff   = Date.now() - STALE_MS;
-            const stale    = Object.keys(sessions).filter(k => (sessions[k].lastSeen || 0) < cutoff);
-            await Promise.all(stale.map(k =>
-                db ? db.ref(`presence/${k}`).remove() : rtdbDelete(`presence/${k}`)
-            ));
-        } catch (_) {}
     }
 
     /* ── SDK path ───────────────────────────────────────────── */
@@ -80,55 +59,56 @@
         const ref          = db.ref(`presence/${uuid}`);
         const connectedRef = db.ref('.info/connected');
 
-        /* Track connectedAt in memory so it never resets */
-        let connectedAt = null;
+        let connectedAt    = null;
+        let registered     = false;
+        let reconnectTimer = null;
 
         connectedRef.on('value', async snap => {
             if (!snap.val()) return;
-            await sweepStale(db);
-            await ref.onDisconnect().remove();
-            /* Read existing connectedAt if session exists, else use now */
-            const existing = await ref.once('value');
-            connectedAt = (existing.exists() && existing.val().connectedAt) || Date.now();
-            await ref.set(buildPayload(uuid, connectedAt));
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(async () => {
+                await ref.onDisconnect().remove().catch(() => {});
+                if (!registered) {
+                    registered = true;
+                    const existing = await ref.once('value').catch(() => null);
+                    connectedAt = (existing?.exists() && existing.val().connectedAt) || Date.now();
+                    await ref.set(buildPayload(uuid, connectedAt)).catch(() => {});
+                } else {
+                    // Reconnect: update only — never set() which triggers leave+join on admin
+                    const existing = await ref.once('value').catch(() => null);
+                    if (existing?.exists()) {
+                        connectedAt = existing.val().connectedAt || connectedAt || Date.now();
+                        await ref.update({ lastSeen: Date.now(), uid: window._delivoAuthUser?.uid || null, username: window._delivoAuthUser?.username || null }).catch(() => {});
+                    } else {
+                        connectedAt = Date.now();
+                        await ref.set(buildPayload(uuid, connectedAt)).catch(() => {});
+                    }
+                }
+            }, 1500);
         });
 
-        /* Heartbeat — only updates lastSeen, never touches connectedAt */
+        // Heartbeat: update() only, never delete+recreate
         setInterval(() => {
             if (document.visibilityState === 'hidden') return;
-            ref.once('value').then(snap => {
-                if (!snap.exists()) {
-                    /* Session swept while tab was active — re-register with fresh connectedAt */
-                    connectedAt = Date.now();
-                    ref.onDisconnect().remove();
-                    ref.set(buildPayload(uuid, connectedAt));
-                } else {
-                    connectedAt = snap.val().connectedAt || connectedAt || Date.now();
-                    ref.update({
-                        lastSeen: Date.now(),
-                        uuid,
-                        uid:      window._delivoAuthUser?.uid      || null,
-                        username: window._delivoAuthUser?.username || null,
-                    }).catch(() => {});
-                }
-            }).catch(() => {});
+            ref.update({
+                lastSeen: Date.now(),
+                uid:      window._delivoAuthUser?.uid      || null,
+                username: window._delivoAuthUser?.username || null,
+            }).catch(() => {
+                connectedAt = connectedAt || Date.now();
+                ref.onDisconnect().remove().catch(() => {});
+                ref.set(buildPayload(uuid, connectedAt)).catch(() => {});
+            });
         }, HEARTBEAT);
 
-        /* Re-register on foreground return — preserve connectedAt */
+        // Visibility restore: quiet update, not re-register
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState !== 'visible') return;
-            ref.once('value').then(snap => {
-                connectedAt = (snap.exists() && snap.val().connectedAt) || connectedAt || Date.now();
-                ref.onDisconnect().remove().then(() =>
-                    ref.set(buildPayload(uuid, connectedAt))
-                ).catch(() => {});
-            }).catch(() => {});
+            ref.update({ lastSeen: Date.now(), uid: window._delivoAuthUser?.uid || null, username: window._delivoAuthUser?.username || null }).catch(() => {});
         });
 
-        /* Live count */
         db.ref('presence').on('value', snap => updateWidget(snap.numChildren()));
 
-        /* Expose API */
         window._delivoPresence = {
             linkUser(uid, username) {
                 window._delivoAuthUser = { uid, username };
@@ -140,30 +120,25 @@
     /* ── REST fallback ──────────────────────────────────────── */
     async function initWithREST(uuid) {
         const path = `presence/${uuid}`;
-        await sweepStale(null);
-        await rtdbPut(path, buildPayload(uuid));
+        const restConnectedAt = Date.now();
+        await rtdbPut(path, buildPayload(uuid, restConnectedAt));
 
-        let restConnectedAt = Date.now();
         const hb = setInterval(() => {
-            /* Only update lastSeen — never reset connectedAt */
+            if (document.visibilityState === 'hidden') return;
             rtdbPut(path, { ...buildPayload(uuid, restConnectedAt), lastSeen: Date.now() });
         }, HEARTBEAT);
 
         let cleaned = false;
         function cleanup() {
-            if (cleaned) return;
-            cleaned = true;
-            clearInterval(hb);
-            rtdbDelete(path, true);
+            if (cleaned) return; cleaned = true;
+            clearInterval(hb); rtdbDelete(path, true);
         }
         window.addEventListener('pagehide',     cleanup);
         window.addEventListener('beforeunload', cleanup);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                cleaned = false;
-                /* Re-register but keep original connectedAt */
-                rtdbPut(path, buildPayload(uuid, restConnectedAt));
-            }
+            if (document.visibilityState !== 'visible') return;
+            cleaned = false;
+            rtdbPut(path, { ...buildPayload(uuid, restConnectedAt), lastSeen: Date.now() });
         });
 
         async function pollCount() {
@@ -171,19 +146,18 @@
             updateWidget(d ? Object.keys(d).length : 1);
         }
         pollCount();
-        setInterval(pollCount, 5_000);
+        setInterval(pollCount, HEARTBEAT);
 
         window._delivoPresence = {
             linkUser(uid, username) {
                 window._delivoAuthUser = { uid, username };
-                rtdbPut(path, buildPayload(uuid));
+                rtdbPut(path, buildPayload(uuid, restConnectedAt));
             }
         };
     }
 
-    /* ── Widget ─────────────────────────────────────────────── */
     function updateWidget(count) {
-        const el  = document.getElementById('hero-online-count');
+        const el = document.getElementById('hero-online-count');
         if (!el) return;
         const num = el.querySelector('.online-num');
         const dot = el.querySelector('.online-dot');
@@ -201,28 +175,17 @@
         setTimeout(() => dot?.classList.remove('pulse'), 600);
     }
 
-    /* ── Init — wait for firebase-init to write the UUID ────── */
     function init() {
-        /* Give firebase-init.js up to 2s to set delivo_device_uuid */
         setTimeout(() => {
             const uuid = getDeviceUUID();
-
             function trySDK() {
-                if (window.firebase?.database) {
-                    initWithSDK(uuid, window.firebase.database());
-                    return true;
-                }
+                if (window.firebase?.database) { initWithSDK(uuid, window.firebase.database()); return true; }
                 return false;
             }
-            if (!trySDK()) {
-                setTimeout(() => { if (!trySDK()) initWithREST(uuid); }, 1500);
-            }
+            if (!trySDK()) setTimeout(() => { if (!trySDK()) initWithREST(uuid); }, 1500);
         }, 800);
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();
