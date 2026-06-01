@@ -44,6 +44,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'Al-Amana',
         tags:    'سوبرماركت',
         img:     'assets/al-amana.png',
+        emoji:   '🛒',
         type:    'supermarket',
         min:     '200,000 ل.ل',
         time:    '20-35 د',
@@ -74,6 +75,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'AL-Beik',
         tags:    'برجر • وجبات',
         img:     'assets/al-beik.png',
+        emoji:   '🍔',
         type:    'restaurants',
         min:     '200,000 ل.ل',
         time:    '20-30 د',
@@ -84,6 +86,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'AL-Fajr',
         tags:    'ملحمة',
         img:     'assets/al-fajr.png',
+        emoji:   '🥩',
         type:    'meat',
         min:     '150,000 ل.ل',
         time:    '20-35 د',
@@ -94,6 +97,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'Assaf-Grocery',
         tags:    'بقالة',
         img:     'assets/assaf-grocery.png',
+        emoji:   '🧺',
         type:    'supermarket',
         min:     '100,000 ل.ل',
         time:    '15-25 د',
@@ -104,6 +108,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'Foodigo',
         tags:    'سوبرماركت',
         img:     'assets/foodigo.png',
+        emoji:   '🛒',
         type:    'supermarket',
         min:     '200,000 ل.ل',
         time:    '20-30 د',
@@ -114,6 +119,7 @@ const STORE_REGISTRY = [
         rtdbKey: 'Minini',
         tags:    'ملحمة',
         img:     'assets/minini.png',
+        emoji:   '🥩',
         type:    'meat',
         min:     '150,000 ل.ل',
         time:    '20-35 د',
@@ -182,6 +188,7 @@ async function renderTopStores() {
         const imgStyle  = store.imgContain
             ? `background-image:url('${store.img}');background-size:contain;background-color:#fff;`
             : `background-image:url('${store.img}');`;
+        const storeEmoji = store.emoji || (store.type === 'restaurants' ? '🍽️' : store.type === 'supermarket' ? '🛒' : store.type === 'meat' ? '🥩' : store.type === 'coffee' ? '☕' : store.type === 'sweets' ? '🍰' : store.type === 'bakery' ? '🥖' : store.type === 'fish' ? '🐟' : '🏪');
 
         scroll.insertAdjacentHTML('beforeend', `
         <div class="store-card ${isTop ? 'store-card--top' : ''}"
@@ -194,7 +201,12 @@ async function renderTopStores() {
                 ${rank.icon}
             </div>
 
-            <div class="store-card__thumb store-thumb" style="${imgStyle}">
+            <div class="store-card__thumb store-thumb" style="${imgStyle}"
+                 onerror-target="sc-img-${store.id}">
+                <img src="${store.img}" alt="${store.name}" class="store-card__thumb-img"
+                     style="display:none"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="store-card__thumb-fallback" style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-size:2.5rem;background:#f7f7f8;">${storeEmoji}</div>
                 <button class="store-card__wish" aria-label="حفظ">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="#fff" stroke-width="2"

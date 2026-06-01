@@ -7,7 +7,7 @@
 
 async function loadComponent(slotId, file) {
     try {
-        const res = await fetch(`components/${file}?v=${Date.now()}`);
+        const res = await fetch(`components/${file}?v=8`);
         if (!res.ok) throw new Error(`Failed: ${file} (${res.status})`);
         const html = await res.text();
         const slot = document.getElementById(slotId);

@@ -757,3 +757,36 @@ function _showBlockedScreen(reason) {
     // Also block all interaction
     document.body.style.overflow = 'hidden';
 }
+// ── Firebase init failure guard ───────────────────────────────
+// If Firebase fails to load (network error, SDK quota, etc.),
+// DelivoAuth and DelivoDB won't be defined. This stub prevents
+// JS exceptions and shows a friendly error instead.
+(function installFailsafeStub() {
+    const STUB_MSG = 'الخدمة غير متاحة حالياً. تحقق من اتصالك وأعد المحاولة.';
+
+    function stubFn() {
+        return Promise.resolve({ error: true, message: STUB_MSG });
+    }
+
+    // Wait 8s — if Firebase still hasn't initialised, install stubs
+    setTimeout(() => {
+        if (!window.DelivoAuth) {
+            console.warn('[Delivo] Firebase did not initialise — installing stubs');
+            window.DelivoAuth = {
+                register: stubFn, login: stubFn, logout: stubFn,
+                updateProfile: stubFn, changePassword: stubFn,
+                sendOTP: stubFn, verifyOTP: stubFn, resendOTP: stubFn,
+            };
+        }
+        if (!window.DelivoDB) {
+            window.DelivoDB = {
+                getStores: () => Promise.resolve([]),
+                getCategories: () => Promise.resolve([]),
+                getOffers: () => Promise.resolve([]),
+                isUserBlocked: () => Promise.resolve(false),
+                checkDailyLimit: () => Promise.resolve({ allowed: false, message: STUB_MSG }),
+                placeOrder: stubFn,
+            };
+        }
+    }, 8000);
+})();
