@@ -1073,7 +1073,7 @@ function buildOrderCard(key, order) {
     const items = [];
     (order.cart || '').split(',').filter(Boolean).forEach(seg => {
         const p = seg.split(':');
-        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: p[2], store: p[3] || '' });
+        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: p[2], store: p[3] || '', notes: p[4] || '' });
     });
 
     const card = document.createElement('div');
@@ -1135,7 +1135,10 @@ function buildOrderCard(key, order) {
                 <div class="drv-order__items-title">🛍 المنتجات</div>
                 ${items.map(i => `
                     <div class="drv-item-row">
-                        <span class="drv-item-row__name">${i.name}</span>
+                        <span class="drv-item-row__name">
+                            ${i.name}
+                            ${i.notes ? `<span style="display:block;font-size:0.68rem;font-weight:700;color:var(--clr-orange);margin-top:3px;">📝 ${i.notes}</span>` : ''}
+                        </span>
                         <span class="drv-item-row__qty">×${i.qty}</span>
                         <span class="drv-item-row__price">${i.price}$</span>
                     </div>

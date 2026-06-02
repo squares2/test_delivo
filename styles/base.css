@@ -222,27 +222,19 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
 }
 
 /* ── Wordmark logo — transparent on orange, no card/box ────── */
-.splash__logo-wrap {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Width: 80% of screen, never wider than 300px, min 200px */
+/* Single <img> carries both classes — merged into one rule */
+.splash__logo-wrap.splash__logo {
+    display: block;
     width: clamp(200px, 78vw, 300px);
-    flex-shrink: 0;
-    animation: splash-pop 0.5s cubic-bezier(0.34, 1.45, 0.64, 1) both;
-}
-.splash__logo {
-    width: 100%;
     height: auto;
+    flex-shrink: 0;
     object-fit: contain;
     object-position: center;
-    display: block;
-    /* aspect-ratio from actual image 900x1046 */
     aspect-ratio: 900 / 1046;
     background: transparent;
-    /* Force crisp rendering on HiDPI screens */
     image-rendering: -webkit-optimize-contrast;
     -ms-interpolation-mode: nearest-neighbor;
+    animation: splash-pop 0.5s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
 
 /* ── Spinner ──────────────────────────────────────────────── */

@@ -535,6 +535,21 @@
                         </button>
                     </div>
                 </div>
+                <!-- Points balance card -->
+                <div class="acct-points-card" id="acct-points-card" onclick="openLoyaltyModal()" style="cursor:pointer;">
+                    <div class="acct-points-card__left">
+                        <span class="acct-points-card__icon">⭐</span>
+                        <div>
+                            <div class="acct-points-card__label">رصيد نقاطك</div>
+                            <div class="acct-points-card__val"><span id="acct-points-balance">0</span> نقطة</div>
+                        </div>
+                    </div>
+                    <div class="acct-points-card__right">
+                        <span class="acct-points-card__hint">كل طلب = 10 نقاط 🎁</span>
+                        <span class="acct-points-card__cta">عرض السلم ›</span>
+                    </div>
+                </div>
+
                 <p class="acct-sec-label">الحساب</p>
                 <div class="acct-menu">
                     <button class="acct-row" id="acct-orders-btn">
@@ -749,6 +764,16 @@
 
         <!-- Footer (totals + checkout) -->
         <div class="cart-footer" id="cart-footer" style="display:none;">
+
+            <!-- First-order free delivery banner (shown only for new users) -->
+            <div id="cart-free-delivery-banner" style="display:none;align-items:center;gap:10px;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;border-radius:12px;padding:10px 14px;margin-bottom:10px;">
+                <span style="font-size:1.5rem;line-height:1;">🎁</span>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:800;color:#065f46;font-size:0.88rem;">طلبك الأول — توصيل مجاني!</div>
+                    <div style="color:#047857;font-size:0.76rem;margin-top:2px;">رسوم التوصيل مخفضة تلقائياً لهذا الطلب</div>
+                </div>
+            </div>
+
             <div class="cart-totals">
                 <div class="cart-total-row">
                     <span class="cart-total-label">المجموع الفرعي</span>
@@ -858,6 +883,7 @@
     <script src="scripts/navbar.js?v=7"></script>
     <script src="scripts/firebase-init.js?v=7"></script>
     <script src="scripts/modal-auth.js?v=25"></script>
+    <script src="scripts/onboarding.js?v=1"></script>
     <script src="scripts/loader.js?v=8"></script>
     <script src="scripts/modals.js?v=7"></script>
     <script src="scripts/stores.js?v=7"></script>
@@ -927,7 +953,7 @@
 </div>
 
 <!-- ── Cart Map Modal — outside sidebar so Leaflet can measure it ── -->
-<div id="cart-map-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:flex-end;justify-content:center;">
+<div id="cart-map-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);display:none;align-items:flex-end;justify-content:center;">
     <div style="width:100%;max-width:480px;background:#fff;border-radius:20px 20px 0 0;overflow:hidden;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #f0f0f0;">
             <span style="font-size:1rem;font-weight:800;color:#111;">📍 اختر موقع التوصيل</span>
@@ -940,6 +966,479 @@
         </div>
     </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════
+     LOYALTY MODAL — Points ladder
+══════════════════════════════════════════════════════════ -->
+<div id="loyalty-overlay" class="loyalty-overlay" onclick="closeLoyaltyModal()"></div>
+<div id="loyalty-sheet" class="loyalty-sheet" role="dialog" aria-modal="true" aria-label="برنامج النقاط">
+
+    <!-- Handle -->
+    <div class="loyalty-sheet__handle"></div>
+
+    <!-- Header -->
+    <div class="loyalty-sheet__header">
+        <div class="loyalty-sheet__header-left">
+            <span class="loyalty-sheet__icon">⭐</span>
+            <div>
+                <div class="loyalty-sheet__title">برنامج النقاط</div>
+                <div class="loyalty-sheet__subtitle">اطلب — اجمع — اربح</div>
+            </div>
+        </div>
+        <button class="loyalty-sheet__close" onclick="closeLoyaltyModal()" aria-label="إغلاق">✕</button>
+    </div>
+
+    <!-- Points balance hero -->
+    <div class="loyalty-balance-hero" id="loyalty-balance-hero">
+        <div class="loyalty-balance-hero__ring" id="loyalty-ring-wrap">
+            <svg class="loyalty-ring-svg" viewBox="0 0 120 120">
+                <circle class="loyalty-ring-bg"  cx="60" cy="60" r="52" />
+                <circle class="loyalty-ring-fill" cx="60" cy="60" r="52" id="loyalty-ring-fill"/>
+            </svg>
+            <div class="loyalty-ring-center">
+                <span class="loyalty-ring-num" id="loyalty-modal-points">0</span>
+                <span class="loyalty-ring-lbl">نقطة</span>
+            </div>
+        </div>
+        <div class="loyalty-balance-hero__info">
+            <div class="loyalty-balance-hero__next" id="loyalty-next-msg">اطلب وابدأ بجمع نقاطك!</div>
+            <div class="loyalty-balance-hero__hint">🛵 كل طلب موصَّل = <strong>10 نقاط</strong></div>
+        </div>
+    </div>
+
+    <!-- How to earn -->
+    <div class="loyalty-howto">
+        <div class="loyalty-howto__title">كيف تجمع نقاط؟</div>
+        <div class="loyalty-howto__steps">
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">1</span><span>أتمم طلبًا من أي متجر</span></div>
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">2</span><span>ينتظر حتى يُوصَّل الطلب ✅</span></div>
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">3</span><span>تُضاف <strong>10 نقاط</strong> تلقائياً لحسابك</span></div>
+        </div>
+    </div>
+
+    <!-- Rewards ladder -->
+    <div class="loyalty-ladder" id="loyalty-ladder">
+        <!-- Rendered by JS -->
+    </div>
+
+</div>
+
+<style>
+/* ── Loyalty Modal Styles ─────────────────────────────────── */
+.loyalty-overlay {
+    position: fixed; inset: 0; z-index: 3000;
+    background: rgba(0,0,0,0.55);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+}
+.loyalty-overlay.active { opacity: 1; pointer-events: all; }
+
+.loyalty-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 3001;
+    background: #fff;
+    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(0.32,0.72,0,1);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+    -webkit-overflow-scrolling: touch;
+}
+.loyalty-sheet.active { transform: translateY(0); }
+
+.loyalty-sheet__handle {
+    width: 40px; height: 4px;
+    background: #e5e7eb; border-radius: 99px;
+    margin: 10px auto 0; flex-shrink: 0;
+}
+
+.loyalty-sheet__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.loyalty-sheet__header-left { display: flex; align-items: center; gap: 12px; }
+.loyalty-sheet__icon { font-size: 2rem; line-height: 1; }
+.loyalty-sheet__title { font-size: 1.1rem; font-weight: 800; color: #111; }
+.loyalty-sheet__subtitle { font-size: 0.78rem; color: #888; margin-top: 2px; }
+.loyalty-sheet__close {
+    background: #f3f4f6; border: none; border-radius: 50%;
+    width: 32px; height: 32px; font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: #555;
+    flex-shrink: 0;
+}
+
+/* Balance hero */
+.loyalty-balance-hero {
+    display: flex; align-items: center; gap: 20px;
+    padding: 20px 20px 16px;
+    background: linear-gradient(135deg, #fff7ed, #fff3e0);
+    border-bottom: 1px solid #ffe8cc;
+}
+.loyalty-balance-hero__ring { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+.loyalty-ring-svg { width: 110px; height: 110px; transform: rotate(-90deg); }
+.loyalty-ring-bg {
+    fill: none; stroke: #f3f4f6; stroke-width: 10;
+}
+.loyalty-ring-fill {
+    fill: none; stroke: #FF5C00; stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 326.7; stroke-dashoffset: 326.7;
+    transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1);
+}
+.loyalty-ring-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.loyalty-ring-num {
+    font-size: 1.7rem; font-weight: 900; color: #FF5C00; line-height: 1;
+}
+.loyalty-ring-lbl { font-size: 0.7rem; color: #888; font-weight: 600; }
+
+.loyalty-balance-hero__info { flex: 1; min-width: 0; }
+.loyalty-balance-hero__next {
+    font-size: 0.9rem; font-weight: 700; color: #1a1a1a; line-height: 1.4;
+    margin-bottom: 8px;
+}
+.loyalty-balance-hero__hint {
+    font-size: 0.8rem; color: #555;
+    background: #fff; border-radius: 10px;
+    padding: 6px 10px; display: inline-block;
+    border: 1px solid #ffe0c0;
+}
+
+/* How to earn */
+.loyalty-howto {
+    padding: 16px 20px 8px;
+    border-bottom: 1px solid #f3f4f6;
+}
+.loyalty-howto__title { font-size: 0.82rem; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+.loyalty-howto__steps { display: flex; flex-direction: column; gap: 8px; }
+.loyalty-howto__step {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.88rem; color: #333;
+}
+.loyalty-howto__num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #FF5C00; color: #fff;
+    font-size: 0.72rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Ladder */
+.loyalty-ladder { padding: 16px 20px 24px; }
+.loyalty-ladder__title { font-size: 0.82rem; font-weight: 800; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+
+.loyalty-step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    margin-bottom: 6px;
+    background: #fafafa;
+    border: 1.5px solid #f0f0f0;
+    position: relative;
+    transition: all 0.2s;
+}
+.loyalty-step--reached {
+    background: linear-gradient(135deg,#fff7ed,#fff3e0);
+    border-color: #ffcc99;
+}
+.loyalty-step--current {
+    background: linear-gradient(135deg,#fff3e0,#ffe8cc);
+    border-color: #FF5C00;
+    box-shadow: 0 2px 12px rgba(255,92,0,0.13);
+}
+.loyalty-step--locked { opacity: 0.5; }
+
+.loyalty-step__pts-col {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 52px;
+}
+.loyalty-step__pts {
+    font-size: 1.05rem; font-weight: 900; color: #FF5C00; line-height: 1;
+}
+.loyalty-step__pts-lbl { font-size: 0.62rem; color: #aaa; font-weight: 600; }
+
+.loyalty-step__connector {
+    position: absolute; right: 39px; bottom: -14px;
+    width: 2px; height: 14px;
+    background: linear-gradient(#f0f0f0, #f0f0f0);
+    z-index: 0;
+}
+.loyalty-step--reached .loyalty-step__connector { background: #FF5C00; }
+
+.loyalty-step__icon { font-size: 1.8rem; flex-shrink: 0; line-height: 1; }
+
+.loyalty-step__body { flex: 1; min-width: 0; }
+.loyalty-step__reward { font-size: 0.92rem; font-weight: 700; color: #1a1a1a; }
+.loyalty-step__desc { font-size: 0.76rem; color: #777; margin-top: 2px; }
+
+.loyalty-step__badge {
+    font-size: 0.65rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 99px;
+    flex-shrink: 0;
+}
+.loyalty-step__badge--done  { background:#dcfce7; color:#15803d; }
+.loyalty-step__badge--now   { background:#FF5C00; color:#fff; }
+.loyalty-step__badge--lock  { background:#f3f4f6; color:#999; }
+
+.loyalty-step__progress-bar {
+    position: absolute; bottom: 0; left: 0;
+    height: 3px; border-radius: 0 0 12px 12px;
+    background: linear-gradient(90deg,#FF5C00,#ff9c00);
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Guest placeholder */
+.loyalty-guest {
+    text-align: center; padding: 30px 20px;
+    color: #888; font-size: 0.9rem;
+}
+.loyalty-guest__icon { font-size: 3rem; margin-bottom: 10px; }
+.loyalty-guest__title { font-size: 1.05rem; font-weight: 800; color: #333; margin-bottom: 6px; }
+
+/* Points card in profile */
+.acct-points-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg,#fff7ed,#fff3e0);
+    border: 1.5px solid #ffcc99;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin: 12px 0 6px;
+    gap: 10px;
+}
+.acct-points-card__left  { display: flex; align-items: center; gap: 10px; }
+.acct-points-card__icon  { font-size: 1.6rem; line-height: 1; }
+.acct-points-card__label { font-size: 0.72rem; color: #888; font-weight: 600; }
+.acct-points-card__val   { font-size: 1.15rem; font-weight: 900; color: #FF5C00; }
+.acct-points-card__right { text-align: left; }
+.acct-points-card__hint  { display: block; font-size: 0.70rem; color: #888; }
+.acct-points-card__cta   { display: block; font-size: 0.75rem; font-weight: 700; color: #FF5C00; margin-top: 3px; }
+
+/* Offer card loyalty stacked title */
+.offer-card__loyalty-title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 2px;
+    width: 100%;
+}
+.loyalty-title-line {
+    display: block;
+    font-weight: 900;
+    line-height: 1.25;
+    color: #fff;
+}
+.loyalty-title-line--top { font-size: clamp(0.82rem, 4vw, 1.05rem); opacity: 0.8; }
+.loyalty-title-line--mid { font-size: clamp(1rem,   5vw, 1.3rem);  letter-spacing: -0.01em; }
+.loyalty-title-line--bot { font-size: clamp(0.88rem, 4.2vw, 1.1rem); opacity: 0.9; }
+
+/* Center content for loyalty card only */
+.offer-card--loyalty .offer-card__content {
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+}
+.offer-card--loyalty .offer-card__sub {
+    text-align: center;
+}
+
+/* Offer card loyalty glow */
+.offer-card--loyalty { overflow: hidden; }
+.offer-card__loyalty-glow {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.18) 50%, transparent 80%);
+    background-size: 200% 100%;
+    animation: loyalty-shimmer 2.4s infinite;
+}
+@keyframes loyalty-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   LOYALTY — Points ladder system
+   RTDB path: /users/{uid}/points  (integer, incremented on delivery)
+   Rewards defined in LOYALTY_REWARDS below.
+═══════════════════════════════════════════════════════════ */
+
+const LOYALTY_RTDB   = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+const POINTS_PER_ORDER = 10;
+
+const LOYALTY_REWARDS = [
+    { pts: 50,   icon: '☕', reward: 'قهوة مجانية',              desc: 'قهوة إسبريسو من متجر شريك' },
+    { pts: 100,  icon: '🍕', reward: 'خصم $1 على طلبك',         desc: 'خصم دولار واحد على أي طلب' },
+    { pts: 150,  icon: '🛵', reward: 'توصيل مجاني',              desc: 'طلب واحد بتوصيل مجاني' },
+    { pts: 200,  icon: '🎁', reward: 'هدية مفاجئة',              desc: 'هدية خاصة من Delivo' },
+    { pts: 300,  icon: '🍔', reward: 'وجبة مجانية',              desc: 'وجبة مجانية من متجر مختار' },
+    { pts: 400,  icon: '💳', reward: 'رصيد $5 في حسابك',         desc: 'رصيد دائم قابل للاستخدام' },
+    { pts: 500,  icon: '🏅', reward: 'عضوية VIP شهر',            desc: 'تخفيضات وأولوية دائمة لمدة شهر' },
+    { pts: 700,  icon: '🎟️', reward: 'خصم 10% لمدة أسبوع',      desc: 'على جميع طلباتك لمدة 7 أيام' },
+    { pts: 1000, icon: '👑', reward: 'عضوية Gold سنة كاملة',     desc: 'أعلى مرتبة — مزايا حصرية للأبد' },
+];
+
+let _loyaltyOpen = false;
+
+function openLoyaltyModal() {
+    const user = window.DelivoUser;
+    const overlay = document.getElementById('loyalty-overlay');
+    const sheet   = document.getElementById('loyalty-sheet');
+    if (!overlay || !sheet) return;
+    overlay.classList.add('active');
+    sheet.classList.add('active');
+    document.body.classList.add('modal-open');
+    _loyaltyOpen = true;
+    _renderLoyaltyModal();
+}
+
+function closeLoyaltyModal() {
+    const overlay = document.getElementById('loyalty-overlay');
+    const sheet   = document.getElementById('loyalty-sheet');
+    if (!overlay || !sheet) return;
+    overlay.classList.remove('active');
+    sheet.classList.remove('active');
+    document.body.classList.remove('modal-open');
+    _loyaltyOpen = false;
+}
+
+async function _getLoyaltyPoints() {
+    const user = window.DelivoUser;
+    if (!user) return 0;
+    try {
+        const r = await fetch(`${LOYALTY_RTDB}/users/${user.uid}/points.json`);
+        const v = await r.json();
+        return parseInt(v) || 0;
+    } catch (_) { return 0; }
+}
+
+async function _renderLoyaltyModal() {
+    const user    = window.DelivoUser;
+    const ladder  = document.getElementById('loyalty-ladder');
+    const ringFill = document.getElementById('loyalty-ring-fill');
+    const ringNum  = document.getElementById('loyalty-modal-points');
+    const nextMsg  = document.getElementById('loyalty-next-msg');
+    if (!ladder) return;
+
+    if (!user) {
+        ladder.innerHTML = `
+            <div class="loyalty-guest">
+                <div class="loyalty-guest__icon">🔒</div>
+                <div class="loyalty-guest__title">سجّل دخولك لرؤية نقاطك</div>
+                <p>اشترك مجاناً وابدأ بجمع النقاط مع كل طلب!</p>
+            </div>`;
+        if (ringNum) ringNum.textContent = '0';
+        if (nextMsg) nextMsg.textContent = 'سجّل دخولك لتبدأ!';
+        return;
+    }
+
+    // Show skeleton while loading
+    ladder.innerHTML = `<div class="loyalty-ladder__title">سلم المكافآت</div>` +
+        Array(5).fill(`<div class="loyalty-step" style="opacity:0.4;"><div style="width:52px;height:48px;background:#f0f0f0;border-radius:10px;"></div><div style="flex:1;height:36px;background:#f0f0f0;border-radius:8px;"></div></div>`).join('');
+
+    const pts = await _getLoyaltyPoints();
+
+    // Update profile badge
+    const balEl = document.getElementById('acct-points-balance');
+    if (balEl) balEl.textContent = pts;
+
+    // Animate ring
+    const maxPts = LOYALTY_REWARDS[LOYALTY_REWARDS.length - 1].pts;
+    const nextReward = LOYALTY_REWARDS.find(r => r.pts > pts);
+    const prevReward = [...LOYALTY_REWARDS].reverse().find(r => r.pts <= pts);
+    const segStart   = prevReward ? prevReward.pts : 0;
+    const segEnd     = nextReward ? nextReward.pts : maxPts;
+    const segProgress = (pts - segStart) / (segEnd - segStart);
+    const circumference = 2 * Math.PI * 52; // r=52
+
+    if (ringFill) {
+        setTimeout(() => {
+            ringFill.style.strokeDashoffset = circumference * (1 - Math.min(segProgress, 1));
+        }, 80);
+    }
+    if (ringNum) ringNum.textContent = pts;
+
+    if (nextMsg) {
+        if (!nextReward) {
+            nextMsg.innerHTML = `🏆 وصلت للقمة! أنت <strong>Gold Member</strong>`;
+        } else {
+            const needed = nextReward.pts - pts;
+            nextMsg.innerHTML = `${nextReward.icon} ${needed} نقطة تفصلك عن <strong>${nextReward.reward}</strong>`;
+        }
+    }
+
+    // Build ladder
+    let html = `<div class="loyalty-ladder__title">سلم المكافآت</div>`;
+    LOYALTY_REWARDS.forEach((step, i) => {
+        const reached  = pts >= step.pts;
+        const isCurrent = nextReward && nextReward.pts === step.pts;
+        const cls = reached ? 'loyalty-step--reached' : isCurrent ? 'loyalty-step--current' : 'loyalty-step--locked';
+        const badgeTxt = reached ? '✓ تم' : isCurrent ? 'الهدف' : 'مقفل';
+        const badgeCls = reached ? 'loyalty-step__badge--done' : isCurrent ? 'loyalty-step__badge--now' : 'loyalty-step__badge--lock';
+        const isLast   = i === LOYALTY_REWARDS.length - 1;
+
+        // Progress bar inside current step
+        let progressBar = '';
+        if (isCurrent) {
+            const pct = Math.round(((pts - segStart) / (segEnd - segStart)) * 100);
+            progressBar = `<div class="loyalty-step__progress-bar" id="lsp-bar" style="width:0%"></div>`;
+            setTimeout(() => {
+                const b = document.getElementById('lsp-bar');
+                if (b) b.style.width = pct + '%';
+            }, 200);
+        }
+
+        html += `
+        <div class="loyalty-step ${cls}" style="position:relative;overflow:hidden;">
+            <div class="loyalty-step__pts-col">
+                <span class="loyalty-step__pts">${step.pts}</span>
+                <span class="loyalty-step__pts-lbl">نقطة</span>
+            </div>
+            <span class="loyalty-step__icon">${step.icon}</span>
+            <div class="loyalty-step__body">
+                <div class="loyalty-step__reward">${step.reward}</div>
+                <div class="loyalty-step__desc">${step.desc}</div>
+            </div>
+            <span class="loyalty-step__badge ${badgeCls}">${badgeTxt}</span>
+            ${progressBar}
+            ${!isLast ? `<div class="loyalty-step__connector"></div>` : ''}
+        </div>`;
+    });
+
+    ladder.innerHTML = html;
+}
+
+/* ── Wire loyalty card click — event delegation (card is injected dynamically) ── */
+document.addEventListener('click', (e) => {
+    const card = e.target.closest('#loyalty-card');
+    if (card) openLoyaltyModal();
+});
+document.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('#loyalty-card')) openLoyaltyModal();
+});
+
+/* ── Refresh points balance when account modal opens ─────── */
+async function _refreshLoyaltyBalance() {
+    const user = window.DelivoUser;
+    if (!user) return;
+    try {
+        const r = await fetch(`${LOYALTY_RTDB}/users/${user.uid}/points.json`);
+        const v = await r.json();
+        const pts = parseInt(v) || 0;
+        const balEl = document.getElementById('acct-points-balance');
+        if (balEl) balEl.textContent = pts;
+    } catch (_) {}
+}
+
+// Hook into account modal open
+const _origAcctBtn = document.getElementById('account-btn');
+if (_origAcctBtn) {
+    _origAcctBtn.addEventListener('click', () => setTimeout(_refreshLoyaltyBalance, 300));
+}
+</script>
 
 </body>
 </html>

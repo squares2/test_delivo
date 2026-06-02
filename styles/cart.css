@@ -649,3 +649,28 @@
 .cart-extras-panel .cart-location {
     margin-top: 6px;
 }
+/* ── Item customization notes ─────────────────────────────── */
+.cart-item__notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 5px 0 4px;
+}
+
+.cart-item__note-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    background: #fff3ed;
+    border: 1px solid rgba(255,92,0,0.25);
+    border-radius: 50px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #FF5C00;
+    white-space: nowrap;
+}
+
+/* Highlighted border for items with notes */
+.cart-item--noted {
+    border-right: 3px solid rgba(255,92,0,0.4);
+}

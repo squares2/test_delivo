@@ -535,6 +535,7 @@ input, select, textarea { font-family: var(--font); }
 .coc-item-info { flex:1; min-width:0; }
 .coc-item-name-big { font-size:0.88rem; font-weight:800; color:var(--white); margin-bottom:2px;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.coc-item-notes { font-size:0.65rem; font-weight:700; color:var(--orange,#FF5C00); background:rgba(255,92,0,0.08); border-radius:4px; padding:2px 7px; margin-top:4px; display:inline-block; }
 .coc-item-sub { font-size:0.68rem; color:var(--gray); font-weight:600; }
 .coc-item-qty-badge {
     width:36px; height:36px; border-radius:50%; flex-shrink:0;
@@ -978,9 +979,10 @@ input, select, textarea { font-family: var(--font); }
 
 /* ─── SETTINGS PANEL ────────────────────────────────────────── */
 .settings-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; max-width: 600px; }
-.settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.settings-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: visible; }
 .settings-section-title { padding: 12px 16px; font-size: 0.72rem; font-weight: 800; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
 .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
+.setting-row--col { align-items: flex-start; flex-direction: column; }
 .setting-row:last-child { border-bottom: none; }
 .setting-label { font-size: 0.82rem; font-weight: 700; color: var(--white); }
 .setting-sub { font-size: 0.7rem; color: var(--gray); margin-top: 2px; }
@@ -3262,6 +3264,7 @@ function buildOrderCard(key, order) {
             <span class="oc-store">${order.store || '—'}</span>
             <span class="oc-customer">${order.fullname || order.username || '—'}</span>
             <span class="oc-total">$${order.total || '0'}</span>
+            ${order.freeDelivery === '1' ? `<span class="oc-meta-chip" style="color:#22c55e;border-color:rgba(34,197,94,0.35);background:rgba(34,197,94,0.1);font-size:0.72rem;padding:2px 7px;">🎁 توصيل مجاني</span>` : ''}
             <span class="oc-state state-badge-${state}">${STATE_LABELS[state] || state}</span>
             <span class="oc-toggle">▾</span>
         </div>
@@ -3271,7 +3274,10 @@ function buildOrderCard(key, order) {
             <div class="oc-items-list">
                 ${items.map(i => `
                     <div class="oc-item-row">
-                        <span class="name">${i.name}</span>
+                        <span class="name">
+                            ${i.name}
+                            ${i.notes ? `<span class="oc-item-notes">📝 ${i.notes}</span>` : ''}
+                        </span>
                         <span class="qty">×${i.qty}</span>
                         <span class="price">${i.price < 1000 ? '$'+i.price : (i.price/1000).toFixed(0)+'k ل.ل'}</span>
                     </div>`).join('')}
@@ -3425,7 +3431,7 @@ function parseCart(cartStr) {
     const items = [];
     (cartStr || '').split(',').filter(Boolean).forEach(seg => {
         const p = seg.split(':');
-        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: parseFloat(p[2]) || 0 });
+        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: parseFloat(p[2]) || 0, notes: p[4] || '' });
     });
     return items;
 }
@@ -3451,7 +3457,25 @@ async function changeState(orderId, newState) {
         if (uid) updates[`/historyRequests/${uid}/${orderId}/state`] = newState;
         allOrders[orderId].state = newState; // update local BEFORE await so any re-render is correct
         await fbUpdate('', updates);
-        toast(`✅ تم تحديث حالة الطلب #${orderId.replace('id_','')}`);
+
+        // ── Award 10 points on delivery ──────────────────────
+        if (newState === '1' && uid) {
+            try {
+                const ptsResp = await fetch(`${RTDB}/users/${uid}/points.json`);
+                const curPts  = parseInt(await ptsResp.json()) || 0;
+                await fetch(`${RTDB}/users/${uid}/points.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(curPts + 10),
+                });
+                toast(`✅ تم توصيل الطلب #${orderId.replace('id_','')} — 10 نقاط أضيفت للعميل ⭐`);
+            } catch (_) {
+                toast(`✅ تم تحديث حالة الطلب #${orderId.replace('id_','')}`);
+            }
+        } else {
+            toast(`✅ تم تحديث حالة الطلب #${orderId.replace('id_','')}`);
+        }
+        // ─────────────────────────────────────────────────────
 
         // Update the card in-place without re-filtering
         // so it stays visible regardless of the active filter
@@ -4445,6 +4469,53 @@ function renderSettings() {
             </div>
         </div>
         <div class="settings-section">
+            <div class="settings-section-title">📝 خصائص الطلبات — Keywords</div>
+            <div class="setting-row setting-row--col" style="padding:14px 16px;">
+                <div>
+                    <div class="setting-label">خصائص المطاعم</div>
+                    <div class="setting-sub">تظهر للعميل عند الطلب من مطعم (مثال: بدون ثوم، إضافي صوص)</div>
+                </div>
+                <div style="width:100%;">
+                    <div id="kw-restaurants-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <input id="kw-restaurants-input" type="text" placeholder="اكتب خاصية واضغط Enter…"
+                               style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-md);
+                                      padding:8px 12px;color:var(--white);font-family:'Almarai',sans-serif;font-size:0.82rem;outline:none;direction:rtl;"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();kwAddChip('Restaurants');}">
+                        <button onclick="kwAddChip('Restaurants')"
+                                style="padding:8px 16px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-md);
+                                       font-family:'Almarai',sans-serif;font-weight:700;cursor:pointer;font-size:0.82rem;flex-shrink:0;">+ إضافة</button>
+                    </div>
+                    <button onclick="kwSave('Restaurants')"
+                            style="margin-top:10px;width:100%;padding:9px;background:rgba(34,197,94,0.12);color:#22c55e;
+                                   border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);font-family:'Almarai',sans-serif;
+                                   font-weight:700;cursor:pointer;font-size:0.82rem;">💾 حفظ خصائص المطاعم</button>
+                </div>
+            </div>
+            <div class="setting-row setting-row--col" style="padding:14px 16px;border-top:1px solid var(--border);">
+                <div>
+                    <div class="setting-label">خصائص المخابز</div>
+                    <div class="setting-sub">تظهر للعميل عند الطلب من مخبز (مثال: بدون سكر، مشوي إضافي)</div>
+                </div>
+                <div style="width:100%;">
+                    <div id="kw-bakery-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:28px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <input id="kw-bakery-input" type="text" placeholder="اكتب خاصية واضغط Enter…"
+                               style="flex:1;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-md);
+                                      padding:8px 12px;color:var(--white);font-family:'Almarai',sans-serif;font-size:0.82rem;outline:none;direction:rtl;"
+                               onkeydown="if(event.key==='Enter'){event.preventDefault();kwAddChip('BakeryShops');}">
+                        <button onclick="kwAddChip('BakeryShops')"
+                                style="padding:8px 16px;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-md);
+                                       font-family:'Almarai',sans-serif;font-weight:700;cursor:pointer;font-size:0.82rem;flex-shrink:0;">+ إضافة</button>
+                    </div>
+                    <button onclick="kwSave('BakeryShops')"
+                            style="margin-top:10px;width:100%;padding:9px;background:rgba(34,197,94,0.12);color:#22c55e;
+                                   border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);font-family:'Almarai',sans-serif;
+                                   font-weight:700;cursor:pointer;font-size:0.82rem;">💾 حفظ خصائص المخابز</button>
+                </div>
+            </div>
+        </div>
+        <div class="settings-section">
             <div class="settings-section-title">معلومات النظام</div>
             <div class="setting-row">
                 <div><div class="setting-label">Firebase Project</div><div class="setting-sub" style="font-family:var(--mono);">deliveryonline-300f7</div></div>
@@ -4466,7 +4537,72 @@ function renderSettings() {
         const inp = document.getElementById('max-orders-input');
         if (inp && val) inp.value = val;
     }).catch(() => {});
+    // Load keyword chips
+    kwLoad();
 }
+
+
+/* ═══════════════════════════════════════════════════════
+   KEYWORDS MANAGEMENT
+   Firebase path: /customization_keywords/{storeType}
+═══════════════════════════════════════════════════════ */
+const _kwState = { Restaurants: [], BakeryShops: [] };
+
+async function kwLoad() {
+    for (const type of ['Restaurants', 'BakeryShops']) {
+        try {
+            const data = await fbGet('customization_keywords/' + type);
+            _kwState[type] = Array.isArray(data)
+                ? data.filter(Boolean)
+                : (data && typeof data === 'object') ? Object.values(data).filter(Boolean) : [];
+        } catch (_) { _kwState[type] = []; }
+        kwRenderChips(type);
+    }
+}
+
+function kwRenderChips(type) {
+    const id = type === 'Restaurants' ? 'kw-restaurants-chips' : 'kw-bakery-chips';
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = _kwState[type].map((kw, i) => `
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px 4px 6px;
+                     background:rgba(255,92,0,0.1);border:1px solid rgba(255,92,0,0.3);
+                     border-radius:50px;font-size:0.75rem;font-weight:700;color:var(--orange);">
+            ${kw}
+            <button onclick="kwRemoveChip('${type}',${i})"
+                    style="background:none;border:none;cursor:pointer;color:var(--orange);
+                           font-size:0.95rem;line-height:1;padding:0;opacity:0.7;font-family:inherit;">×</button>
+        </span>`).join('');
+}
+
+function kwAddChip(type) {
+    const inputId = type === 'Restaurants' ? 'kw-restaurants-input' : 'kw-bakery-input';
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const val = inp.value.trim();
+    if (!val) return;
+    if (_kwState[type].includes(val)) { toast('الكلمة موجودة مسبقاً', true); return; }
+    _kwState[type].push(val);
+    inp.value = '';
+    inp.focus();
+    kwRenderChips(type);
+}
+
+function kwRemoveChip(type, index) {
+    _kwState[type].splice(index, 1);
+    kwRenderChips(type);
+}
+
+async function kwSave(type) {
+    try {
+        await fbSet('customization_keywords/' + type, _kwState[type]);
+        toast('✅ تم حفظ خصائص ' + (type === 'Restaurants' ? 'المطاعم' : 'المخابز'));
+    } catch(e) { toast('خطأ في الحفظ', true); }
+}
+
+window.kwAddChip    = kwAddChip;
+window.kwRemoveChip = kwRemoveChip;
+window.kwSave       = kwSave;
 
 window.setMaintenance = async function(on) {
     try {
@@ -4762,7 +4898,7 @@ async function cpGetStoreProducts(storeName) {
 function cpParseCart(cartStr) {
     return (cartStr || '').split(',').filter(Boolean).map(seg => {
         const p = seg.trim().split(':');
-        return { qty: p[0] || '1', prodId: p[1] || '', rawPrice: p[2] || '', storePart: p[3] || '' };
+        return { qty: p[0] || '1', name: p[1] || '', rawPrice: p[2] || '', storePart: p[3] || '', notes: p[4] || '' };
     });
 }
 
@@ -4774,31 +4910,27 @@ async function cpLoadItemsIntoEl(el, o) {
         return;
     }
 
-    const storeName = o.store || currentAdmin.linkedStore || '';
-    const prodMap   = await cpGetStoreProducts(storeName);
-    const typeEmoji = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', Groceries:'🏪', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕' };
-    const fallbackEmoji = typeEmoji[(allStores[storeName]?.type)] || '📦';
+    const storeName     = o.store || currentAdmin.linkedStore || '';
+    const storeTypeMap  = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', Groceries:'🏪', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕' };
+    const fallbackEmoji = storeTypeMap[(allStores[storeName]?.type)] || '📦';
 
     el.innerHTML = '';
-    segments.forEach(({ qty, prodId }) => {
-        const prod = prodMap[prodId] || {};
-        const name = prod.name || prod.productName || prod.title || prodId;
-        const imgUrl = prod.imageUrl || prod.image || prod.photo || prod.img || prod.imageurl || null;
+    segments.forEach(({ qty, name, rawPrice, notes }) => {
+        const priceNum = parseFloat(rawPrice) || 0;
+        const priceStr = priceNum > 0
+            ? (priceNum < 1000 ? '$' + priceNum : (priceNum / 1000).toFixed(0) + 'k ل.ل')
+            : '';
 
         const itemEl = document.createElement('div');
         itemEl.className = 'coc-item-card';
         itemEl.innerHTML = `
-            ${imgUrl
-                ? `<img class="coc-item-img" src="${imgUrl}" alt="${name}"
-                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-                   ><div class="coc-item-img-placeholder" style="display:none;">${fallbackEmoji}</div>`
-                : `<div class="coc-item-img-placeholder">${fallbackEmoji}</div>`
-            }
+            <div class="coc-item-img-placeholder">${fallbackEmoji}</div>
             <div class="coc-item-info">
-                <div class="coc-item-name-big">${name}</div>
-                ${prod.description || prod.desc ? `<div class="coc-item-sub">${prod.description||prod.desc}</div>` : ''}
+                <div class="coc-item-name-big">${name || '—'}</div>
+                ${priceStr ? `<div class="coc-item-sub">${priceStr} / قطعة</div>` : ''}
+                ${notes ? `<div class="coc-item-notes">📝 ${notes}</div>` : ''}
             </div>
-            <div class="coc-item-qty-badge">${qty}</div>
+            <div class="coc-item-qty-badge">${qty}×</div>
         `;
         el.appendChild(itemEl);
     });

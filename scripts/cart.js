@@ -8,6 +8,51 @@
 const RTDB_CART_URL = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
 const DELIVERY_FEE_PER_STORE = 2; // $2 per store
 
+/* ── First-free-delivery state (resolved once per session) ── */
+let _isFirstOrder       = false;  // true  → this checkout qualifies for free delivery
+let _firstOrderChecked  = false;  // true  → check already ran, don't re-fetch
+let _firstOrderPromise  = null;   // pending fetch — prevent duplicate requests
+
+/**
+ * Returns a promise that resolves to true if the signed-in user
+ * has never placed an order before (historyRequests/{uid} is empty/absent).
+ * Result is cached for the session so we only hit RTDB once.
+ */
+async function _checkIsFirstOrder() {
+    const user = window.DelivoUser;
+    if (!user) return false;
+
+    if (_firstOrderChecked) return _isFirstOrder;
+
+    if (_firstOrderPromise) return _firstOrderPromise;
+
+    _firstOrderPromise = (async () => {
+        try {
+            const resp = await fetch(
+                `${RTDB_CART_URL}/historyRequests/${user.uid}.json?shallow=true`
+            );
+            const data = await resp.json();
+            // data is null (no history) or an object of keys → user has orders
+            const hasOrders = data !== null && typeof data === 'object' && Object.keys(data).length > 0;
+            _isFirstOrder      = !hasOrders;
+            _firstOrderChecked = true;
+        } catch (_) {
+            _isFirstOrder      = false;
+            _firstOrderChecked = true;
+        }
+        return _isFirstOrder;
+    })();
+
+    return _firstOrderPromise;
+}
+
+/** Reset cached first-order check (called after successful checkout) */
+function _resetFirstOrderCache() {
+    _isFirstOrder      = false;
+    _firstOrderChecked = true;  // keep checked=true so we never show free delivery again
+    _firstOrderPromise = null;
+}
+
 function initCart() {
 
     /* ── State ──────────────────────────────────────────────── */
@@ -33,18 +78,23 @@ function initCart() {
             return this.items.reduce((s, i) => s + i.price * i.qty, 0);
         },
 
-        addItem(id, name, price, storeName, storeType) {
-            const existing = this.items.find(i => i.id === id && i.storeName === storeName);
+        addItem(id, name, price, storeName, storeType, notes) {
+            const isInstance = id.includes('__i');
+            const existing   = !isInstance
+                ? this.items.find(i => i.id === id && i.storeName === storeName)
+                : null;
+
             if (existing) {
                 existing.qty++;
             } else {
                 this.items.push({
                     id,
                     name,
-                    price : parseFloat(price),
-                    qty   : 1,
-                    storeName : storeName || '',
-                    storeType : storeType || '',
+                    price    : parseFloat(price),
+                    qty      : 1,
+                    storeName: storeName || '',
+                    storeType: storeType || '',
+                    notes    : notes || '',
                 });
             }
             this.save();
@@ -86,10 +136,8 @@ function initCart() {
 
         updateBadge() {
             const count = this.getCount();
-            // old top navbar badge (hidden — bottom bar used instead)
             const badge = document.getElementById('cart-badge');
             if (badge) badge.style.display = 'none';
-            // bottom bar badge
             const bbBadge = document.getElementById('bb-cart-badge');
             if (bbBadge) {
                 bbBadge.textContent = count;
@@ -110,6 +158,9 @@ function initCart() {
         sidebar.classList.add('active');
         document.body.classList.add('modal-open');
         if (typeof window._cartLocationRefresh === 'function') window._cartLocationRefresh();
+
+        // Kick off first-order check in background so it's ready by checkout time
+        if (window.DelivoUser) _checkIsFirstOrder().then(() => _refreshTotals());
     };
 
     window.closeCartSidebar = function() {
@@ -159,20 +210,19 @@ function initCart() {
         /* Footer */
         if (footerEl) {
             footerEl.style.display = 'flex';
-            const subtotalUSD  = _cartTotalUSD();
-            const deliveryFee  = stores.length * DELIVERY_FEE_PER_STORE;
-            const grandTotal   = subtotalUSD + deliveryFee;
-            document.getElementById('cart-subtotal').textContent   = '$' + subtotalUSD.toFixed(2);
-            document.getElementById('cart-delivery').textContent   = deliveryFee > 0 ? '$' + deliveryFee.toFixed(2) : 'مجاناً';
-            document.getElementById('cart-grandtotal').textContent = '$' + grandTotal.toFixed(2);
+            _refreshTotals();
         }
-    
-        // re-init mouse drag each render (body is rebuilt)
+
         setTimeout(_initMouseDragScroll, 0);
     };
 
     /* ── Store group section HTML ───────────────────────────── */
     function _renderStoreGroup(storeName, items) {
+        const freeDelivery = _isFirstOrder;
+        const feeDisplay   = freeDelivery
+            ? `<span style="text-decoration:line-through;color:#aaa;margin-left:4px;">$${DELIVERY_FEE_PER_STORE.toFixed(2)}</span> <span style="color:#22c55e;font-weight:800;">مجاناً 🎁</span>`
+            : `<strong>$${DELIVERY_FEE_PER_STORE.toFixed(2)}</strong>`;
+
         return `
         <div class="cart-store-group" id="csg-${_cslug(storeName)}">
             <div class="cart-store-group__header">
@@ -186,42 +236,57 @@ function initCart() {
                 المجموع: <strong>${'$' + _storeUSD(items).toFixed(2)}</strong>
             </div>
             <div class="cart-store-group__delivery-hint">
-                🛵 رسوم توصيل هذا المتجر: <strong>$${DELIVERY_FEE_PER_STORE.toFixed(2)}</strong>
+                🛵 رسوم توصيل هذا المتجر: ${feeDisplay}
             </div>
         </div>`;
     }
 
     /* ── Single cart item row HTML ──────────────────────────── */
     function _renderCartItem(item) {
-        const itemIdParts = item.id.split('__');
-        const rawId       = itemIdParts[itemIdParts.length - 1];
+        const baseItemId  = item.id.replace(/__i\d+$/, '');
+        const idParts     = baseItemId.split('__');
+        const rawId       = idParts[idParts.length - 1];
         const imgUrl      = `./items/${rawId.toLowerCase()}.png`;
         const uniqueKey   = `${item.storeName}__${item.id}`;
+        const isInstance  = item.id.includes('__i');
+
         return `
-        <div class="cart-item" id="ci-${_cslug(uniqueKey)}">
+        <div class="cart-item${item.notes ? ' cart-item--noted' : ''}" id="ci-${_cslug(uniqueKey)}">
             <img class="cart-item__img" src="${imgUrl}" alt="${item.name}"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="cart-item__img-fallback" style="display:none">🛍️</div>
             <div class="cart-item__info">
                 <div class="cart-item__name">${item.name}</div>
+                ${item.notes
+                    ? `<div class="cart-item__notes">
+                           ${item.notes.split('، ').map(kw =>
+                               `<span class="cart-item__note-chip">${kw}</span>`
+                           ).join('')}
+                       </div>`
+                    : ''}
                 <div class="cart-item__unit-price">${_fmt(item.price)} / قطعة</div>
-                <div class="cart-item__subtotal">${_fmt(item.price * item.qty)}</div>
             </div>
             <div class="cart-item__controls">
-                <button class="cart-item__btn cart-item__btn--remove"
-                        onclick="cartRemoveItem('${item.id}','${item.storeName}')" title="حذف">🗑</button>
-                <button class="cart-item__btn"
-                        onclick="cartDecrement('${item.id}','${item.storeName}')">−</button>
-                <span class="cart-item__qty" id="cqty-${_cslug(uniqueKey)}">${item.qty}</span>
-                <button class="cart-item__btn"
-                        onclick="cartIncrement('${item.id}','${item.name}',${item.price},'${item.storeName}','${item.storeType}')">+</button>
+                ${isInstance
+                    ? `<button class="cart-item__btn cart-item__btn--remove"
+                               onclick="cartRemoveItem('${item.id}','${item.storeName}')" title="حذف">🗑</button>`
+                    : `<button class="cart-item__btn cart-item__btn--remove"
+                               onclick="cartRemoveItem('${item.id}','${item.storeName}')" title="حذف">🗑</button>
+                       <button class="cart-item__btn"
+                               onclick="cartDecrement('${item.id}','${item.storeName}')">−</button>
+                       <span class="cart-item__qty" id="cqty-${_cslug(uniqueKey)}">${item.qty}</span>
+                       <button class="cart-item__btn"
+                               onclick="cartIncrement('${item.id}','${item.name}',${item.price},'${item.storeName}','${item.storeType}')">+</button>`
+                }
             </div>
         </div>`;
     }
 
     /* ── Mutations ──────────────────────────────────────────── */
     window.cartIncrement = function(id, name, price, storeName, storeType) {
-        window.DelivoCart.addItem(id, name, price, storeName, storeType);
+        const existing = window.DelivoCart.items.find(i => i.id === id && i.storeName === storeName);
+        const notes = existing ? existing.notes : '';
+        window.DelivoCart.addItem(id, name, price, storeName, storeType, notes);
         _refreshCartItem(id, storeName);
         if (window.updateSpCartBar) window.updateSpCartBar();
     };
@@ -265,7 +330,6 @@ function initCart() {
             const group = document.getElementById(`csg-${_cslug(storeName)}`);
             if (group) group.remove();
         } else {
-            // Refresh subtotal for this store
             const group = document.getElementById(`csg-${_cslug(storeName)}`);
             if (group) {
                 const subEl = group.querySelector('.cart-store-group__subtotal strong');
@@ -294,13 +358,26 @@ function initCart() {
         const subtotalEl   = document.getElementById('cart-subtotal');
         const deliveryEl   = document.getElementById('cart-delivery');
         const grandtotalEl = document.getElementById('cart-grandtotal');
+        const bannerEl     = document.getElementById('cart-free-delivery-banner');
         const subtotalUSD  = _cartTotalUSD();
         const storeCount   = cart.getStores().length;
-        const deliveryFee  = storeCount * DELIVERY_FEE_PER_STORE;
+
+        // Apply free delivery if this is user's first order
+        const deliveryFee  = _isFirstOrder ? 0 : storeCount * DELIVERY_FEE_PER_STORE;
         const grandTotal   = subtotalUSD + deliveryFee;
+
         if (subtotalEl)   subtotalEl.textContent   = '$' + subtotalUSD.toFixed(2);
-        if (deliveryEl)   deliveryEl.textContent   = deliveryFee > 0 ? '$' + deliveryFee.toFixed(2) : 'مجاناً';
+        if (deliveryEl) {
+            if (_isFirstOrder) {
+                deliveryEl.innerHTML = `<span style="text-decoration:line-through;color:#aaa;font-size:0.82em;">$${(storeCount * DELIVERY_FEE_PER_STORE).toFixed(2)}</span> <span style="color:#22c55e;font-weight:800;">مجاناً 🎁</span>`;
+            } else {
+                deliveryEl.textContent = deliveryFee > 0 ? '$' + deliveryFee.toFixed(2) : 'مجاناً';
+            }
+        }
         if (grandtotalEl) grandtotalEl.textContent = '$' + grandTotal.toFixed(2);
+
+        // Show/hide first-order banner
+        if (bannerEl) bannerEl.style.display = _isFirstOrder ? 'flex' : 'none';
     }
 
     function _syncStorePanelQty(id, qty) {
@@ -343,6 +420,9 @@ function initCart() {
         if (btn) { btn.disabled = true; btn.innerHTML = '<span>جاري الإرسال…</span>'; }
 
         try {
+            // Re-check first-order status right before writing (definitive check)
+            const isFirstOrderNow = await _checkIsFirstOrder();
+
             // Get current counter
             const counterResp = await fetch(`${RTDB_CART_URL}/globalCounter.json`);
             const counterData = await counterResp.json();
@@ -355,20 +435,21 @@ function initCart() {
             const now         = new Date();
             const dateStr     = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
 
-            // Normalize phone — always store as +961XXXXXXXX
             const phone = userPhone.startsWith('+961') ? userPhone : '+961' + userPhone;
 
-            // Delivery location — cart picker overrides profile location
-            const cartLat = document.getElementById('cart-loc-lat')?.value || '';
-            const cartLng = document.getElementById('cart-loc-lng')?.value || '';
+            const cartLat  = document.getElementById('cart-loc-lat')?.value || '';
+            const cartLng  = document.getElementById('cart-loc-lng')?.value || '';
             const orderLat = cartLat || String(userProfile.location?.lat || userProfile.lat || '');
             const orderLng = cartLng || String(userProfile.location?.lng || userProfile.lng || '');
+
+            // Compute effective delivery fee per store
+            const effectiveDeliveryFee = isFirstOrderNow ? 0 : DELIVERY_FEE_PER_STORE;
 
             // Write one request per store
             for (const storeName of stores) {
                 const storeItems = cart.getStoreItems(storeName);
-                const cartStr    = storeItems.map(i => `${i.qty}:${i.name}:${i.price}:${storeName}`).join(',');
-                const storeTotal = (parseFloat(_storeUSD(storeItems)) + DELIVERY_FEE_PER_STORE).toFixed(2);
+                const cartStr    = storeItems.map(i => `${i.qty}:${i.name}:${i.price}:${storeName}:${(i.notes||'').replace(/,/g,'،').replace(/:/g,'؛')}`).join(',');
+                const storeTotal = (parseFloat(_storeUSD(storeItems)) + effectiveDeliveryFee).toFixed(2);
                 const requestKey = `id_${nextId}`;
 
                 const requestObj = {
@@ -377,57 +458,56 @@ function initCart() {
                     date         : dateStr,
                     delivryplusid: user.uid || '',
                     driver       : '0',
+                    freeDelivery : isFirstOrderNow ? '1' : '0',  // ← flag for admin/driver
                     fullname     : userProfile.displayName || user.displayName || user.email || '',
                     lat          : String(orderLat),
                     lng          : String(orderLng),
                     phone        : phone,
                     read         : '0',
-                    state        : '0',       // 0=new, 1=accepted, 2=on-way, 3=delivered
+                    state        : '0',
                     store        : storeName,
                     street       : userProfile.street || '',
                     total        : storeTotal,
-                    trackorder   : '0',       // 0=not trackable yet, 1=driver tracking enabled
+                    trackorder   : '0',
                     username     : userProfile.username || user.email || '',
                     vault        : '0',
                     xnote        : note,
                 };
 
-                // ── 1. Write to /requests (active orders — seen by admin/driver/store) ──
                 const writeRequest = fetch(`${RTDB_CART_URL}/requests/${requestKey}.json`, {
                     method  : 'PUT',
                     headers : { 'Content-Type': 'application/json' },
                     body    : JSON.stringify(requestObj),
                 });
 
-                // ── 2. Write to /historyRequests/{uid}/{id_XXX} (customer history) ──
-                // trackorder here means: has the driver enabled live tracking for this order
-                // driver app sets trackorder to '1' → customer can then track live
-                const historyObj = {
-                    ...requestObj,
-                    trackorder: '0',   // will be updated to '1' by driver when they start delivery
-                };
+                const historyObj = { ...requestObj, trackorder: '0' };
                 const writeHistory = fetch(`${RTDB_CART_URL}/historyRequests/${user.uid}/${requestKey}.json`, {
                     method  : 'PUT',
                     headers : { 'Content-Type': 'application/json' },
                     body    : JSON.stringify(historyObj),
                 });
 
-                // Fire both writes in parallel
                 await Promise.all([writeRequest, writeHistory]);
-
                 nextId++;
             }
 
-            // Update counter to last used ID
+            // Update counter
             await fetch(`${RTDB_CART_URL}/globalCounter/requestId.json`, {
                 method  : 'PUT',
                 headers : { 'Content-Type': 'application/json' },
                 body    : JSON.stringify(nextId - 1),
             });
 
+            // Invalidate first-order cache so it never applies again this session
+            _resetFirstOrderCache();
+
             cart.clear();
             closeCartSidebar();
-            _showToast(`✅ تم إرسال ${stores.length > 1 ? stores.length + ' طلبات' : 'طلبك'} بنجاح!`, 'success');
+
+            const successMsg = isFirstOrderNow
+                ? `🎉 مبروك! طلبك الأول وصل مجاناً — بدون رسوم توصيل!`
+                : `✅ تم إرسال ${stores.length > 1 ? stores.length + ' طلبات' : 'طلبك'} بنجاح! ⭐ +${stores.length * POINTS_PER_ORDER} نقاط عند التوصيل`;
+            _showToast(successMsg, 'success');
 
         } catch (err) {
             console.error('[Cart] Checkout error:', err);
@@ -508,7 +588,6 @@ function _initCartLocation() {
     const lngInput  = document.getElementById('cart-loc-lng');
     if (!gpsBtn || !mapBtn) return;
 
-
     function setLocation(lat, lng, label) {
         latInput.value  = lat;
         lngInput.value  = lng;
@@ -534,7 +613,6 @@ function _initCartLocation() {
         if (mapWrap) mapWrap.style.display = 'none';
     }
 
-    // Pre-fill from saved profile location if available
     const prof = window.DelivoUser || {};
     const savedLat = prof.location?.lat || prof.lat || '';
     const savedLng = prof.location?.lng || prof.lng || '';
@@ -542,7 +620,6 @@ function _initCartLocation() {
         setLocation(savedLat, savedLng, '📍 موقعك المحفوظ');
     }
 
-    // GPS button
     gpsBtn.addEventListener('click', () => {
         if (!navigator.geolocation) {
             statusTxt.textContent = 'جهازك لا يدعم تحديد الموقع.';
@@ -567,7 +644,6 @@ function _initCartLocation() {
         );
     });
 
-    // Map button — opens fullscreen modal OUTSIDE the transformed sidebar
     let _cartMap = null, _cartMarker = null;
 
     mapBtn.addEventListener('click', () => {
@@ -575,18 +651,15 @@ function _initCartLocation() {
         const mapDiv = document.getElementById('cart-map-modal-map');
         if (!modal || !mapDiv) return;
 
-        // Show modal
         modal.style.display = 'flex';
 
         const initLat    = parseFloat(latInput.value) || 34.004;
         const initLng    = parseFloat(lngInput.value) || 36.210;
         const GOOGLE_KEY = 'AIzaSyCSTThgge2nSFlEQXjS1ta2tZXvVgNAnZ0';
 
-        // Destroy stale instance
         if (_cartMap) { _cartMap.remove(); _cartMap = null; _cartMarker = null; }
         mapDiv.innerHTML = '';
 
-        // Modal is position:fixed — no transform parent — safe to init immediately
         requestAnimationFrame(() => {
             const tileSatellite = L.tileLayer(
                 `https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=${GOOGLE_KEY}`,
@@ -606,7 +679,6 @@ function _initCartLocation() {
 
             tileSatellite.addTo(_cartMap);
 
-            // Toggle satellite ↔ standard
             const toggleCtrl = L.control({ position: 'topright' });
             toggleCtrl.onAdd = function() {
                 const btn = L.DomUtil.create('button', '');
@@ -630,7 +702,6 @@ function _initCartLocation() {
             };
             toggleCtrl.addTo(_cartMap);
 
-            // Orange teardrop marker
             const orangeIcon = L.divIcon({
                 className: '',
                 html: '<div style="width:30px;height:30px;background:#FF5C00;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',
@@ -648,7 +719,6 @@ function _initCartLocation() {
         });
     });
 
-    // Confirm button — read marker position, close modal, update status
     const confirmBtn = document.getElementById('cart-map-modal-confirm');
     if (confirmBtn) {
         confirmBtn.addEventListener('click', () => {
@@ -662,7 +732,6 @@ function _initCartLocation() {
         });
     }
 
-    // Close button
     const modalClose = document.getElementById('cart-map-modal-close');
     if (modalClose) {
         modalClose.addEventListener('click', () => {
@@ -671,12 +740,10 @@ function _initCartLocation() {
         });
     }
 
-        // Clear button
     clearBtn.addEventListener('click', clearLocation);
 
-    // Re-fill from profile when sidebar opens (user may have just logged in)
     window._cartLocationRefresh = function() {
-        if (latInput.value) return; // already set manually
+        if (latInput.value) return;
         const p = window.DelivoUser || {};
         const lat = p.location?.lat || p.lat || '';
         const lng = p.location?.lng || p.lng || '';
@@ -688,12 +755,11 @@ function _initMouseDragScroll() {
     const el = document.getElementById('cart-body');
     if (!el) return;
 
-    let isDown   = false;
-    let startY   = 0;
+    let isDown    = false;
+    let startY    = 0;
     let scrollTop = 0;
 
     el.addEventListener('mousedown', (e) => {
-        /* Ignore clicks on buttons/inputs inside the cart */
         if (e.target.closest('button, input, textarea, a')) return;
         isDown    = true;
         startY    = e.pageY - el.offsetTop;
@@ -701,15 +767,8 @@ function _initMouseDragScroll() {
         el.classList.add('is-mouse-dragging');
     });
 
-    el.addEventListener('mouseleave', () => {
-        isDown = false;
-        el.classList.remove('is-mouse-dragging');
-    });
-
-    el.addEventListener('mouseup', () => {
-        isDown = false;
-        el.classList.remove('is-mouse-dragging');
-    });
+    el.addEventListener('mouseleave', () => { isDown = false; el.classList.remove('is-mouse-dragging'); });
+    el.addEventListener('mouseup',    () => { isDown = false; el.classList.remove('is-mouse-dragging'); });
 
     el.addEventListener('mousemove', (e) => {
         if (!isDown) return;
@@ -724,27 +783,21 @@ function _initCartSwipe() {
     const sidebar = document.getElementById('cart-sidebar');
     if (!sidebar) return;
 
-    /* Sidebar slides from LEFT (translateX -100% → 0).
-       Dismiss by swiping LEFT past threshold or fast flick. */
-
-    let touchStartX  = 0;
-    let touchStartY  = 0;
-    let touchStartT  = 0;
+    let touchStartX   = 0;
+    let touchStartY   = 0;
+    let touchStartT   = 0;
     let currentDeltaX = 0;
-    let isSwiping    = false;
-    let isScrolling  = null;
+    let isSwiping     = false;
+    let isScrolling   = null;
 
-    const THRESHOLD   = 72;   // px to commit close
-    const VELOCITY_TH = 0.35; // px/ms fast flick
+    const THRESHOLD   = 72;
+    const VELOCITY_TH = 0.35;
 
     sidebar.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         const rect  = sidebar.getBoundingClientRect();
         const relX  = touch.clientX - rect.left;
-
-        // Only start swipe in the left 35% of the sidebar (near the edge)
         if (relX > sidebar.offsetWidth * 0.35) return;
-
         touchStartX   = touch.clientX;
         touchStartY   = touch.clientY;
         touchStartT   = e.timeStamp;
@@ -755,26 +808,17 @@ function _initCartSwipe() {
 
     sidebar.addEventListener('touchmove', (e) => {
         if (!isSwiping) return;
-        const touch  = e.touches[0];
-        const dX = touch.clientX - touchStartX;
-        const dY = touch.clientY - touchStartY;
-
-        if (isScrolling === null) {
-            isScrolling = Math.abs(dY) > Math.abs(dX);
-        }
+        const touch = e.touches[0];
+        const dX    = touch.clientX - touchStartX;
+        const dY    = touch.clientY - touchStartY;
+        if (isScrolling === null) { isScrolling = Math.abs(dY) > Math.abs(dX); }
         if (isScrolling) { isSwiping = false; return; }
-
-        // Only allow leftward swipe (negative)
         currentDeltaX = Math.min(0, dX);
-
         sidebar.classList.add('is-dragging');
         sidebar.style.transform = 'translateX(' + currentDeltaX + 'px)';
-
-        // Fade the overlay proportionally
         const progress  = Math.abs(currentDeltaX) / sidebar.offsetWidth;
         const overlayEl = document.getElementById('cart-overlay');
         if (overlayEl) overlayEl.style.opacity = String(0.55 * (1 - progress));
-
     }, { passive: true });
 
     sidebar.addEventListener('touchend', (e) => {
@@ -782,25 +826,18 @@ function _initCartSwipe() {
         isSwiping = false;
         sidebar.classList.remove('is-dragging');
         sidebar.style.transform = '';
-
         const touch    = e.changedTouches[0];
         const dX       = touch.clientX - touchStartX;
         const dt       = Math.max(1, e.timeStamp - touchStartT);
         const velocity = Math.abs(dX) / dt;
-
         const overlayEl = document.getElementById('cart-overlay');
         if (overlayEl) overlayEl.style.opacity = '';
-
-        if (dX < -THRESHOLD || velocity > VELOCITY_TH) {
-            window.closeCartSidebar();
-        }
-        // else snap back — transform reset above handles it
+        if (dX < -THRESHOLD || velocity > VELOCITY_TH) window.closeCartSidebar();
     }, { passive: true });
 }
 
 /* ── Utilities ──────────────────────────────────────────────── */
 
-// Display price — dual currency
 function _fmt(n) {
     const v = parseFloat(n);
     if (isNaN(v)) return '';
@@ -808,19 +845,16 @@ function _fmt(n) {
     return (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + ' ألف ل.ل';
 }
 
-// Convert any price to USD
 function _toUSD(n) {
     const v = parseFloat(n);
     if (isNaN(v)) return 0;
     return v < 1000 ? v : v / 90000;
 }
 
-// Total USD for a list of items
 function _storeUSD(items) {
     return items.reduce((sum, i) => sum + _toUSD(i.price) * i.qty, 0);
 }
 
-// Grand total USD across all stores
 function _cartTotalUSD() {
     if (!window.DelivoCart) return 0;
     return _storeUSD(window.DelivoCart.items);

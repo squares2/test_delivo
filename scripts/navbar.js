@@ -254,6 +254,11 @@ window.refreshActiveOrders = async function() {
             .filter(([, o]) => o && (o.trackorder === '1' || o.trackorder === 1))
             .map(([id, order]) => ({ id, order }));
         _applyLogoState();
+        // If the sheet is currently open, re-render it live
+        const sheet = document.getElementById('bb-track-sheet');
+        if (sheet && sheet.classList.contains('open')) {
+            _renderTrackSheetList();
+        }
     }
 
     es.onerror = () => {
@@ -303,7 +308,8 @@ function _setLogoState(state) {
     stMulti.classList.add('bb-logo-state--hidden');
     if (state === 'track') {
         stTrack.classList.remove('bb-logo-state--hidden');
-        label.textContent = 'تتبّع الطلب';
+        const _trackId = _activeOrders[0]?.id?.replace('id_', '#') || '';
+        label.textContent = _trackId ? `تتبّع ${_trackId}` : 'تتبّع الطلب';
         circle.classList.add('bb-logo-btn__circle--active');
     } else if (state === 'multi') {
         stMulti.classList.remove('bb-logo-state--hidden');
@@ -329,24 +335,49 @@ function _handleLogoClick() {
     }
 }
 
-window._openTrackSheet = function _openTrackSheet() {
-    const sheet  = document.getElementById('bb-track-sheet');
+function _renderTrackSheetList() {
     const listEl = document.getElementById('bb-track-sheet-list');
-    sheet.classList.add('open');
-    document.body.classList.add('modal-open');
+    if (!listEl) return;
+
+    if (_activeOrders.length === 0) {
+        listEl.innerHTML = `
+            <div style="text-align:center;padding:32px 20px;color:#9898a6;font-size:0.85rem;">
+                <div style="font-size:2rem;margin-bottom:8px;">📭</div>
+                لا توجد طلبات نشطة حالياً
+            </div>`;
+        return;
+    }
+
     listEl.innerHTML = _activeOrders.map(({ id, order }) => {
-        const store = order.store || order.storeName || id;
-        const uid   = order.delivryplusid || window.DelivoUser?.uid || '';
+        const store  = order.store || order.storeName || id;
+        const uid    = order.delivryplusid || window.DelivoUser?.uid || '';
+        const reqNum = id.replace('id_', '#');
+        const stateMap = { '0':'🔵 جديد', '1':'✅ وُصِّل', '2':'🔴 ملغي', '3':'🟡 متأخر', '6':'🟠 قيد الاستلام', '7':'⏳ قيد التحضير', '8':'🟢 جاهز' };
+        const stateLabel = stateMap[order.state || '0'] || '🔵 جديد';
         return `
         <div class="bb-track-item" onclick="_closeTrackSheet();setTimeout(()=>window._openTrackModal('${id}','${uid}',true),200);">
             <span class="bb-track-item__icon">🛵</span>
             <div class="bb-track-item__body">
-                <strong>${store}</strong>
-                <small>${order.date || ''}</small>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <strong>${store}</strong>
+                    <span style="font-size:0.68rem;font-weight:800;color:#FF5C00;background:rgba(255,92,0,0.1);
+                                 border:1px solid rgba(255,92,0,0.25);border-radius:50px;padding:2px 8px;">
+                        ${reqNum}
+                    </span>
+                    <span style="font-size:0.65rem;font-weight:700;color:#555;">${stateLabel}</span>
+                </div>
+                <small style="color:#9898a6;">${order.date || ''}</small>
             </div>
             <span class="bb-track-item__arrow">›</span>
         </div>`;
     }).join('');
+}
+
+window._openTrackSheet = function _openTrackSheet() {
+    const sheet = document.getElementById('bb-track-sheet');
+    sheet.classList.add('open');
+    document.body.classList.add('modal-open');
+    _renderTrackSheetList();
 }
 
 window._closeTrackSheet = function _closeTrackSheet() {

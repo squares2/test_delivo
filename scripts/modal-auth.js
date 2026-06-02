@@ -831,11 +831,11 @@ function _buildOrderCard(key, order) {
             : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // decimal → 12.00
     }
 
-    // Parse cart: "qty:name:price:store,..."
+    // Parse cart: "qty:name:price:store:notes,..."
     const items = [];
     (order.cart || '').split(',').filter(Boolean).forEach(seg => {
         const p = seg.split(':');
-        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: p[2], store: p[3] || '' });
+        if (p.length >= 3) items.push({ qty: p[0], name: p[1], price: p[2], store: p[3] || '', notes: p[4] || '' });
     });
 
     const storeName = order.store || items[0]?.store || '—';
@@ -860,7 +860,10 @@ function _buildOrderCard(key, order) {
                 <div class="oh-items__title">🛍 المنتجات</div>
                 ${items.map(i => `
                     <div class="oh-item-row">
-                        <span class="oh-item-row__name">${i.name}</span>
+                        <span class="oh-item-row__name">
+                            ${i.name}
+                            ${i.notes ? `<span class="oh-item-row__notes">📝 ${i.notes}</span>` : ''}
+                        </span>
                         <span class="oh-item-row__qty">×${i.qty}</span>
                         <span class="oh-item-row__price">${fmt(i.price)}$</span>
                     </div>
@@ -1152,6 +1155,22 @@ window._openTrackModal = function(orderId, uid, fromList) {
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
     _setTrackStatus('جاري تحميل بيانات التتبع…', 'loading');
+
+    // Show request ID in header
+    const titleEl = document.getElementById('track-header-title');
+    if (titleEl) {
+        const reqNum = (orderId || '').replace('id_', '#');
+        titleEl.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="#FF5C00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            تتبع طلبك
+            <span style="font-size:0.75rem;font-weight:800;color:#FF5C00;background:rgba(255,92,0,0.1);
+                         border:1px solid rgba(255,92,0,0.25);border-radius:50px;padding:2px 10px;margin-right:6px;">
+                ${reqNum}
+            </span>`;
+    }
 
     setTimeout(() => {
         if (!_trackMap) {
