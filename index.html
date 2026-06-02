@@ -976,19 +976,34 @@
     <!-- Handle -->
     <div class="loyalty-sheet__handle"></div>
 
-    <!-- Header -->
+    <!-- Rewards ladder — top (highest reward at very top, scroll up to reach) -->
+    <div class="loyalty-ladder" id="loyalty-ladder">
+        <!-- Rendered by JS — highest pts first -->
+    </div>
+
+    <!-- How to earn -->
+    <div class="loyalty-howto">
+        <div class="loyalty-howto__title">كيف تجمع نقاط؟</div>
+        <div class="loyalty-howto__steps">
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">1</span><span>أتمم طلبًا من أي متجر</span></div>
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">2</span><span>ينتظر حتى يُوصَّل الطلب ✅</span></div>
+            <div class="loyalty-howto__step"><span class="loyalty-howto__num">3</span><span>تُضاف <strong>10 نقاط</strong> تلقائياً لحسابك</span></div>
+        </div>
+    </div>
+
+    <!-- Header — above balance -->
     <div class="loyalty-sheet__header">
         <div class="loyalty-sheet__header-left">
             <span class="loyalty-sheet__icon">⭐</span>
             <div>
                 <div class="loyalty-sheet__title">برنامج النقاط</div>
-                <div class="loyalty-sheet__subtitle">اطلب — اجمع — اربح</div>
+                <div class="loyalty-sheet__subtitle">اسحب لأعلى لرؤية كل الجوائز ↑</div>
             </div>
         </div>
         <button class="loyalty-sheet__close" onclick="closeLoyaltyModal()" aria-label="إغلاق">✕</button>
     </div>
 
-    <!-- Points balance hero -->
+    <!-- Points balance hero — very bottom -->
     <div class="loyalty-balance-hero" id="loyalty-balance-hero">
         <div class="loyalty-balance-hero__ring" id="loyalty-ring-wrap">
             <svg class="loyalty-ring-svg" viewBox="0 0 120 120">
@@ -1004,21 +1019,6 @@
             <div class="loyalty-balance-hero__next" id="loyalty-next-msg">اطلب وابدأ بجمع نقاطك!</div>
             <div class="loyalty-balance-hero__hint">🛵 كل طلب موصَّل = <strong>10 نقاط</strong></div>
         </div>
-    </div>
-
-    <!-- How to earn -->
-    <div class="loyalty-howto">
-        <div class="loyalty-howto__title">كيف تجمع نقاط؟</div>
-        <div class="loyalty-howto__steps">
-            <div class="loyalty-howto__step"><span class="loyalty-howto__num">1</span><span>أتمم طلبًا من أي متجر</span></div>
-            <div class="loyalty-howto__step"><span class="loyalty-howto__num">2</span><span>ينتظر حتى يُوصَّل الطلب ✅</span></div>
-            <div class="loyalty-howto__step"><span class="loyalty-howto__num">3</span><span>تُضاف <strong>10 نقاط</strong> تلقائياً لحسابك</span></div>
-        </div>
-    </div>
-
-    <!-- Rewards ladder -->
-    <div class="loyalty-ladder" id="loyalty-ladder">
-        <!-- Rendered by JS -->
     </div>
 
 </div>
@@ -1050,12 +1050,16 @@
     width: 40px; height: 4px;
     background: #e5e7eb; border-radius: 99px;
     margin: 10px auto 0; flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 3;
 }
 
 .loyalty-sheet__header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px 12px;
-    border-bottom: 1px solid #f3f4f6;
+    border-top: 1px solid #f3f4f6;
+    background: #fff;
 }
 .loyalty-sheet__header-left { display: flex; align-items: center; gap: 12px; }
 .loyalty-sheet__icon { font-size: 2rem; line-height: 1; }
@@ -1073,7 +1077,8 @@
     display: flex; align-items: center; gap: 20px;
     padding: 20px 20px 16px;
     background: linear-gradient(135deg, #fff7ed, #fff3e0);
-    border-bottom: 1px solid #ffe8cc;
+    border-top: 1px solid #ffe8cc;
+    position: sticky; bottom: 0; z-index: 2;
 }
 .loyalty-balance-hero__ring { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
 .loyalty-ring-svg { width: 110px; height: 110px; transform: rotate(-90deg); }
@@ -1292,7 +1297,10 @@ function openLoyaltyModal() {
     sheet.classList.add('active');
     document.body.classList.add('modal-open');
     _loyaltyOpen = true;
-    _renderLoyaltyModal();
+    _renderLoyaltyModal().then(() => {
+        // After render, scroll sheet to bottom so balance hero is visible first
+        sheet.scrollTop = sheet.scrollHeight;
+    });
 }
 
 function closeLoyaltyModal() {
@@ -1315,8 +1323,7 @@ async function _getLoyaltyPoints() {
     } catch (_) { return 0; }
 }
 
-async function _renderLoyaltyModal() {
-    const user    = window.DelivoUser;
+async function _renderLoyaltyModal() {    const user    = window.DelivoUser;
     const ladder  = document.getElementById('loyalty-ladder');
     const ringFill = document.getElementById('loyalty-ring-fill');
     const ringNum  = document.getElementById('loyalty-modal-points');
@@ -1372,13 +1379,13 @@ async function _renderLoyaltyModal() {
 
     // Build ladder
     let html = `<div class="loyalty-ladder__title">سلم المكافآت</div>`;
-    LOYALTY_REWARDS.forEach((step, i) => {
+    [...LOYALTY_REWARDS].reverse().forEach((step, i) => {
         const reached  = pts >= step.pts;
         const isCurrent = nextReward && nextReward.pts === step.pts;
         const cls = reached ? 'loyalty-step--reached' : isCurrent ? 'loyalty-step--current' : 'loyalty-step--locked';
         const badgeTxt = reached ? '✓ تم' : isCurrent ? 'الهدف' : 'مقفل';
         const badgeCls = reached ? 'loyalty-step__badge--done' : isCurrent ? 'loyalty-step__badge--now' : 'loyalty-step__badge--lock';
-        const isLast   = i === LOYALTY_REWARDS.length - 1;
+        const isLast   = i === LOYALTY_REWARDS.length - 1; // last in reversed = lowest (50pts) = bottom
 
         // Progress bar inside current step
         let progressBar = '';
