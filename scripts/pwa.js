@@ -259,3 +259,36 @@ if (document.readyState === 'loading') {
 } else {
     _updatePwaRow();
 }
+
+// ── 5. iOS slim top banner (one-line, auto-dismisses) ────────
+const IOS_TOP_KEY = 'delivo_ios_top_seen';
+
+function _showIosTopBanner() {
+    const el = document.getElementById('ios-top-banner');
+    if (!el) return;
+    el.style.display = 'flex';
+    requestAnimationFrame(() =>
+        requestAnimationFrame(() => el.classList.add('ios-top-banner--visible'))
+    );
+    // Auto-dismiss after 7 seconds
+    setTimeout(() => _hideIosTopBanner(true), 7000);
+}
+
+function _hideIosTopBanner(snooze) {
+    const el = document.getElementById('ios-top-banner');
+    if (!el) return;
+    if (snooze) localStorage.setItem(IOS_TOP_KEY, '1');
+    el.classList.remove('ios-top-banner--visible');
+    setTimeout(() => { el.style.display = 'none'; }, 400);
+}
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#ios-top-banner-close')) _hideIosTopBanner(true);
+});
+
+// Show only on iOS Safari, not installed, and only once ever
+if (isIosSafari() && !isAlreadyInstalled() &&
+    !localStorage.getItem(IOS_TOP_KEY)) {
+    // Wait for splash to clear before sliding in
+    setTimeout(_showIosTopBanner, 1800);
+}

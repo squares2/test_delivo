@@ -590,3 +590,59 @@ body.loaded   { visibility: visible; }
     color: #fff;
 }
 .exit-confirm-btn--exit:hover { background: var(--clr-orange-dim); }
+
+/* ── iOS one-line install tip banner ─────────────────────── */
+#ios-top-banner {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 9998;
+    background: #1a1a1a;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 14px 8px;
+    font-family: inherit;
+    font-size: clamp(0.72rem, 2.2vw, 0.82rem);
+    font-weight: 700;
+    text-align: center;
+    transform: translateY(-110%);
+    transition: transform 0.38s cubic-bezier(0.34, 1.1, 0.64, 1);
+    box-shadow: 0 3px 16px rgba(0,0,0,0.35);
+}
+#ios-top-banner.ios-top-banner--visible {
+    transform: translateY(0);
+}
+.ios-top-banner__text {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+    line-height: 1.4;
+}
+.ios-top-banner__share {
+    width: 15px;
+    height: 15px;
+    stroke: #FF5C00;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+.ios-top-banner__close {
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: rgba(255,255,255,0.7);
+    font-size: 11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: auto;    /* push to left edge in RTL */
+    transition: background 0.18s;
+}
+.ios-top-banner__close:hover { background: rgba(255,255,255,0.22); }
