@@ -882,16 +882,52 @@
     <!-- ═══════════════════════════════════════════════
          iOS "Add to Home Screen" HINT
     ═══════════════════════════════════════════════ -->
-    <div id="ios-hint" class="ios-hint" style="display:none;" role="dialog" aria-label="أضف للشاشة الرئيسية">
-        <button class="ios-hint__close" id="ios-hint-close" aria-label="إغلاق">✕</button>
-        <div class="ios-hint__body">
-            <img src="assets/logo.png" alt="Delivo" class="ios-hint__logo">
-            <div class="ios-hint__text">
-                <strong>ثبّت Delivo على هاتفك</strong>
-                <span>اضغط <span class="ios-hint__share-icon">&#xfe0e;</span> ثم «إضافة إلى الشاشة الرئيسية»</span>
+    <div id="ios-hint" class="ios-hint" style="display:none;" role="dialog" aria-modal="true" aria-label="أضف للشاشة الرئيسية">
+        <div class="ios-hint__backdrop" id="ios-hint-backdrop"></div>
+        <div class="ios-hint__sheet">
+            <div class="ios-hint__handle"></div>
+            <div class="ios-hint__header">
+                <img src="assets/logo.png" alt="Delivo" class="ios-hint__logo">
+                <div class="ios-hint__header-text">
+                    <strong>ثبّت Delivo على هاتفك</strong>
+                    <span>مجاني — بدون App Store</span>
+                </div>
+                <button class="ios-hint__close" id="ios-hint-close" aria-label="إغلاق">✕</button>
             </div>
+            <div class="ios-hint__steps">
+                <div class="ios-hint__step">
+                    <div class="ios-hint__step-num">١</div>
+                    <div class="ios-hint__step-body">
+                        <span class="ios-hint__step-label">اضغط على زر المشاركة</span>
+                        <span class="ios-hint__step-sub">الزر الموجود في شريط Safari في الأسفل</span>
+                    </div>
+                    <svg class="ios-hint__step-icon" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="ios-hint__step">
+                    <div class="ios-hint__step-num">٢</div>
+                    <div class="ios-hint__step-body">
+                        <span class="ios-hint__step-label">اختر «إضافة إلى الشاشة الرئيسية»</span>
+                        <span class="ios-hint__step-sub">مرّر القائمة للأسفل إذا لم تجده</span>
+                    </div>
+                    <svg class="ios-hint__step-icon" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+                    </svg>
+                </div>
+                <div class="ios-hint__step">
+                    <div class="ios-hint__step-num">٣</div>
+                    <div class="ios-hint__step-body">
+                        <span class="ios-hint__step-label">اضغط «إضافة» في الأعلى</span>
+                        <span class="ios-hint__step-sub">سيظهر أيقونة Delivo على شاشتك</span>
+                    </div>
+                    <svg class="ios-hint__step-icon" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+            </div>
+            <button class="ios-hint__got-it" id="ios-hint-got-it">فهمت، شكراً!</button>
         </div>
-        <div class="ios-hint__arrow"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
