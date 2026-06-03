@@ -2745,7 +2745,7 @@ function startAutoRefresh() {
             const ap = document.querySelector('.panel.active');
             if (!ap) return;
             const pid = ap.id.replace('panel-', '');
-            if (pid === 'map')     renderMap();
+            if (pid === 'map')     _refreshDriverMarkers(); // live pin update, no full rebuild
             if (pid === 'drivers') _refreshDrivers();
         });
     }
@@ -2857,6 +2857,46 @@ function initMap() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap', maxZoom: 19,
     }).addTo(adminMap);
+}
+
+// ── Live driver marker refresh (no full map rebuild) ──────────
+// Called every time the RTDB drivers listener fires.
+// Only removes + re-adds the driver layer — stores/customers/orders untouched.
+function _refreshDriverMarkers() {
+    if (!adminMap) return;
+    if (!document.getElementById('panel-map').classList.contains('active')) return;
+
+    // Remove old driver markers
+    mapMarkers.drivers.forEach(m => adminMap.removeLayer(m));
+    mapMarkers.drivers = [];
+
+    if (!mapLayers.drivers) return;
+
+    const labelStyle = 'font-family:Almarai,sans-serif;font-size:11px;font-weight:800;' +
+                       'text-align:center;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,0.8);';
+
+    allDrivers.forEach(d => {
+        if (!d || !d.location?.lat) return;
+        const online  = d.status === 'online';
+        const name    = (online && d._activeUser) ? d._activeUser : (d.owner || d.username || '—');
+        const bgColor = online ? '#22c55e' : '#4b5563';
+        const shadow  = online ? 'rgba(34,197,94,0.5)' : 'rgba(0,0,0,0.4)';
+        const icon = mkDiv(
+            `<div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;">
+                <div style="${labelStyle}color:${online?'#86efac':'#9ca3af'};">@${name}</div>
+                <div style="width:32px;height:32px;border-radius:50%;
+                            background:${bgColor};
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:14px;box-shadow:0 3px 12px ${shadow};
+                            border:2.5px solid #fff;">🛵</div>
+            </div>`,
+            null, [16, 50]
+        );
+        const m = L.marker([d.location.lat, d.location.lng], { icon })
+            .bindPopup(`<b style="font-family:Almarai">${name}</b><br><small style="color:${online?'#22c55e':'#9ca3af'}">${online?'نشط':'غير نشط'}</small>`)
+            .addTo(adminMap);
+        mapMarkers.drivers.push(m);
+    });
 }
 
 function renderMap() {

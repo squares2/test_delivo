@@ -78,7 +78,7 @@
 
         // 6. Cart sidebar
         const cartSidebar = document.getElementById('cart-sidebar');
-        if (cartSidebar && cartSidebar.classList.contains('open')) {
+        if (cartSidebar && cartSidebar.classList.contains('active')) {
             return () => { if (typeof window.closeCartSidebar === 'function') window.closeCartSidebar(); };
         }
 
@@ -95,6 +95,57 @@
         return null;
     }
 
+    /* ── Exit confirm dialog ─────────────────────────────────── */
+
+    function _showExitConfirm() {
+        // Don't stack duplicates
+        if (document.getElementById('exit-confirm-overlay')) return;
+
+        // Re-push so we stay on the page while dialog is open
+        _push();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'exit-confirm-overlay';
+        overlay.className = 'exit-confirm-overlay';
+        overlay.innerHTML = `
+            <div class="exit-confirm-box" role="dialog" aria-modal="true" aria-labelledby="exit-confirm-title">
+                <div class="exit-confirm-icon">🚪</div>
+                <h3 class="exit-confirm-title" id="exit-confirm-title">إغلاق التطبيق</h3>
+                <p class="exit-confirm-msg">هل تريد فعلاً الخروج من Delivo؟</p>
+                <div class="exit-confirm-actions">
+                    <button class="exit-confirm-btn exit-confirm-btn--cancel" id="exit-cancel-btn">البقاء</button>
+                    <button class="exit-confirm-btn exit-confirm-btn--exit"   id="exit-confirm-btn">خروج</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+
+        // Animate in
+        requestAnimationFrame(() => overlay.classList.add('exit-confirm-overlay--visible'));
+
+        function _close() {
+            overlay.classList.remove('exit-confirm-overlay--visible');
+            setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 280);
+        }
+
+        document.getElementById('exit-cancel-btn').addEventListener('click', () => {
+            _close();
+            // Keep the fake entry so next back press triggers this again
+        });
+
+        document.getElementById('exit-confirm-btn').addEventListener('click', () => {
+            _close();
+            _clearPush();
+            // Give the dialog time to close, then actually navigate back (exits)
+            setTimeout(() => history.back(), 300);
+        });
+
+        // Tap backdrop to cancel
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) _close();
+        });
+    }
+
     /* ── popstate — fired when back button is pressed ────────── */
 
     window.addEventListener('popstate', function(e) {
@@ -104,12 +155,13 @@
         if (closer) {
             closer();
             // Re-push so the next back press is also intercepted
-            // (only if there's still something open after a short delay)
             setTimeout(() => {
                 if (_getTopLayer()) _push();
             }, 50);
+        } else {
+            // Nothing open → would exit the app → show confirm instead
+            _showExitConfirm();
         }
-        // If nothing is open → let the browser navigate normally (exits or goes to prev page)
     });
 
     /* ── Patch open functions after DOM is ready ─────────────── */
