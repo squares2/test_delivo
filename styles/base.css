@@ -351,3 +351,96 @@ body.loaded   { visibility: visible; }
     line-height: 1;
 }
 .install-banner__dismiss:hover { background: var(--clr-gray-100); }
+
+/* ── iOS "Add to Home Screen" hint ───────────────────────── */
+.ios-hint {
+    position: fixed;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 999;
+    background: var(--clr-white);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10);
+    padding: 14px 16px 16px;
+    width: min(88vw, 320px);
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+.ios-hint--visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+.ios-hint__body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.ios-hint__logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    object-fit: contain;
+    background: var(--clr-orange);
+    padding: 4px;
+}
+.ios-hint__text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+    min-width: 0;
+}
+.ios-hint__text strong {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--clr-black);
+}
+.ios-hint__text span {
+    font-size: 0.72rem;
+    color: var(--clr-gray-400);
+    line-height: 1.4;
+}
+.ios-hint__share-icon {
+    display: inline-block;
+    background: #007AFF;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: 1px 5px;
+    vertical-align: middle;
+    letter-spacing: 0;
+    font-style: normal;
+}
+.ios-hint__close {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    background: none;
+    border: none;
+    color: var(--clr-gray-400);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 50%;
+    line-height: 1;
+    transition: background 0.18s;
+}
+.ios-hint__close:hover { background: var(--clr-gray-100); }
+/* Arrow pointing down toward Safari share button */
+.ios-hint__arrow {
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-top: 9px solid var(--clr-white);
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.08));
+}

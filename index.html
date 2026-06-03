@@ -861,7 +861,7 @@
          SCRIPTS
     ═══════════════════════════════════════════════════════ -->
     <!-- ═══════════════════════════════════════════════
-         PWA INSTALL BANNER
+         PWA INSTALL BANNER (Android / Desktop)
     ═══════════════════════════════════════════════ -->
     <div id="install-banner" class="install-banner" style="display:none;">
         <div class="install-banner__content">
@@ -879,6 +879,21 @@
         </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════
+         iOS "Add to Home Screen" HINT
+    ═══════════════════════════════════════════════ -->
+    <div id="ios-hint" class="ios-hint" style="display:none;" role="dialog" aria-label="أضف للشاشة الرئيسية">
+        <button class="ios-hint__close" id="ios-hint-close" aria-label="إغلاق">✕</button>
+        <div class="ios-hint__body">
+            <img src="assets/logo.png" alt="Delivo" class="ios-hint__logo">
+            <div class="ios-hint__text">
+                <strong>ثبّت Delivo على هاتفك</strong>
+                <span>اضغط <span class="ios-hint__share-icon">&#xfe0e;</span> ثم «إضافة إلى الشاشة الرئيسية»</span>
+            </div>
+        </div>
+        <div class="ios-hint__arrow"></div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="scripts/navbar.js?v=7"></script>
     <script src="scripts/firebase-init.js?v=7"></script>
@@ -890,7 +905,7 @@
     <script src="scripts/categories.js?v=3"></script>
     <script src="scripts/cart.js?v=13"></script>
     <script src="scripts/store-panel.js?v=5"></script>
-    <script src="scripts/pwa.js?v=7"></script>
+    <script src="scripts/pwa.js?v=8"></script>
     <script src="scripts/presence.js?v=1"></script>
     <script>
     // ── Wire "تتبع الطلب" nav links ──────────────────────────

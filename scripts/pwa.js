@@ -107,3 +107,58 @@ window.addEventListener('appinstalled', () => {
     hideBanner();
     localStorage.removeItem(SNOOZE_KEY);
 });
+
+// ── 3. iOS "Add to Home Screen" hint ─────────────────────────
+const IOS_HINT_KEY = 'delivo_ios_hint_dismissed';
+
+function isIosSafari() {
+    const ua = navigator.userAgent;
+    const isIos = /iphone|ipad|ipod/i.test(ua);
+    // Chrome and Firefox on iOS include 'CriOS' / 'FxiOS' — they don't support PWA install
+    const isSafari = /safari/i.test(ua) && !/crios|fxios|opios|chromium/i.test(ua);
+    return isIos && isSafari;
+}
+
+function isAlreadyInstalled() {
+    return window.navigator.standalone === true ||
+           window.matchMedia('(display-mode: standalone)').matches;
+}
+
+function iosHintSnoozed() {
+    const t = localStorage.getItem(IOS_HINT_KEY);
+    if (!t) return false;
+    // Don't show again for 3 days after dismissal
+    return Date.now() - parseInt(t) < 3 * 24 * 60 * 60 * 1000;
+}
+
+function showIosHint() {
+    const hint = document.getElementById('ios-hint');
+    if (!hint) return;
+    hint.style.display = 'block';
+    setTimeout(() => hint.classList.add('ios-hint--visible'), 50);
+}
+
+function hideIosHint(snooze = false) {
+    const hint = document.getElementById('ios-hint');
+    if (!hint) return;
+    if (snooze) localStorage.setItem(IOS_HINT_KEY, Date.now().toString());
+    hint.classList.remove('ios-hint--visible');
+    setTimeout(() => { hint.style.display = 'none'; }, 320);
+}
+
+document.addEventListener('click', (e) => {
+    if (e.target.closest('#ios-hint-close')) {
+        hideIosHint(true);
+    }
+});
+
+// Show hint after 3 seconds — only on iOS Safari, not installed, not snoozed
+if (isIosSafari() && !isAlreadyInstalled() && !iosHintSnoozed()) {
+    setTimeout(showIosHint, 3000);
+}
+
+// Dev helper — test the hint in console: showIosInstallHint()
+window.showIosInstallHint = function() {
+    localStorage.removeItem(IOS_HINT_KEY);
+    showIosHint();
+};
