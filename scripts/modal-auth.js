@@ -941,9 +941,9 @@ let _trackMap         = null;
 let _trackDriverMark  = null;
 let _trackDestMark    = null;
 let _trackRouteLine   = null;
-let _trackInterval    = null;   // legacy — no longer used for polling
-let _trackOrderRef    = null;   // RTDB listener: order state
-let _trackLocRef      = null;   // RTDB listener: driver location
+let _trackInterval    = null;   // REST polling interval
+let _trackOrderRef    = null;   // reserved (RTDB SDK not loaded on this page)
+let _trackLocRef      = null;   // reserved (RTDB SDK not loaded on this page)
 let _trackOrderId     = null;
 let _trackFitted      = false;
 
@@ -1461,87 +1461,62 @@ async function _updateRoute(driverLat, driverLng, destLat, destLng) {
     }
 }
 
-// ── Live RTDB listeners (replaces polling) ────────────────────
+// ── Polling (REST-based — RTDB SDK not loaded on this page) ──
 function _startTrackPolling(orderId, uid) {
-    // Detach any previous listeners
-    if (_trackOrderRef) { _trackOrderRef.off(); _trackOrderRef = null; }
-    if (_trackLocRef)   { _trackLocRef.off();   _trackLocRef   = null; }
+    // Detach any stale refs (safety — these are null without the DB SDK)
+    if (_trackOrderRef) { try { _trackOrderRef.off(); } catch(e){} _trackOrderRef = null; }
+    if (_trackLocRef)   { try { _trackLocRef.off();   } catch(e){} _trackLocRef   = null; }
     clearInterval(_trackInterval); _trackInterval = null;
 
-    // Cache: last known order so location listener can use it
-    let _cachedOrder = null;
-    // Track the driverId we're currently watching so we can swap listeners when it changes
-    let _watchedDriverId = null;
+    // Kick off immediately then repeat every 4s
+    _fetchAndUpdateTrack(orderId, uid);
+    _trackInterval = setInterval(() => _fetchAndUpdateTrack(orderId, uid), 4000);
+}
 
-    function _attachLocListener(driverId) {
-        if (!driverId || driverId === _watchedDriverId) return;
-        if (_trackLocRef) { _trackLocRef.off(); _trackLocRef = null; }
-        _watchedDriverId = driverId;
-
-        const db = window.firebase && window.firebase.apps.length
-            ? window.firebase.database()
-            : null;
-        if (!db) return;
-
-        _trackLocRef = db.ref(`drivers/${driverId}/location`);
-        _trackLocRef.on('value', snap => {
-            const loc = snap.val();
-            if (_cachedOrder) _applyTrackUpdate(_cachedOrder, loc);
-        });
-    }
-
-    // ── Listen to order ───────────────────────────────────────
-    const db = window.firebase && window.firebase.apps.length
-        ? window.firebase.database()
-        : null;
-
-    if (!db) {
-        // Firebase not ready yet — fall back to one-shot fetch then retry
-        _setTrackStatus('جاري تحميل بيانات التتبع…', 'loading');
-        setTimeout(() => _startTrackPolling(orderId, uid), 800);
-        return;
-    }
-
-    _setTrackStatus('جاري تحميل بيانات التتبع…', 'loading');
-    _trackOrderRef = db.ref(`requests/${orderId}`);
-    _trackOrderRef.on('value', async snap => {
-        let order = snap.val();
-        // Fallback to historyRequests if not found in requests
+async function _fetchAndUpdateTrack(orderId, uid) {
+    try {
+        // Fetch order state
+        let order = null;
+        const orderResp = await fetch(`${OH_RTDB_URL}/requests/${orderId}.json`);
+        order = await orderResp.json();
         if (!order && uid) {
-            try {
-                const hSnap = await db.ref(`historyRequests/${uid}/${orderId}`).get();
-                order = hSnap.val();
-            } catch(e) {}
+            const histResp = await fetch(`${OH_RTDB_URL}/historyRequests/${uid}/${orderId}.json`);
+            order = await histResp.json();
         }
         if (!order) { _setTrackStatus('⚠️ لم يتم العثور على الطلب', 'warn'); return; }
 
-        _cachedOrder = order;
-
-        // Resolve and attach location listener
+        // Resolve driver ID — prefer stored driverid, fall back to name lookup
         let driverId = order.driverid || null;
         if (!driverId && order.driver && order.driver !== '0') {
-            // Fallback: search drivers by name (legacy orders)
             try {
-                const dSnap = await db.ref('drivers').get();
-                const dData = dSnap.val();
-                if (dData && typeof dData === 'object') {
-                    for (const [key, d] of Object.entries(dData)) {
+                const driversResp = await fetch(`${OH_RTDB_URL}/drivers.json`);
+                const driversData = await driversResp.json();
+                if (driversData && typeof driversData === 'object') {
+                    for (const [key, d] of Object.entries(driversData)) {
                         if (d && d.owner === order.driver) { driverId = key; break; }
                     }
                 }
             } catch(e) { console.warn('[Track] driver resolve failed', e); }
         }
 
-        if (driverId) _attachLocListener(driverId);
+        // Fetch driver location separately
+        let loc = null;
+        if (driverId) {
+            try {
+                const locResp = await fetch(`${OH_RTDB_URL}/drivers/${driverId}/location.json`);
+                loc = await locResp.json();
+            } catch(e) {}
+        }
 
-        // Apply order-state changes immediately (markers, status text)
-        // Location will update via its own listener
-        _applyTrackUpdate(order, null);
-    });
+        await _applyTrackUpdate(order, loc);
+
+    } catch(e) {
+        _setTrackStatus('⚠️ تعذّر تحميل بيانات التتبع', 'warn');
+        console.error('[Track]', e);
+    }
 }
 
-// ── Single update applier (called by both order + location listeners) ─
-async function _applyTrackUpdate(order, locOverride) {
+async function _applyTrackUpdate(order, loc) {
     try {
 
         // ── Populate driver card from order data ──────────────
@@ -1563,8 +1538,6 @@ async function _applyTrackUpdate(order, locOverride) {
         const trackable = order.trackorder === '1' || order.trackorder === 1;
         if (!trackable) { _setTrackStatus('⏳ في انتظار تفعيل التتبع من السائق…', 'warn'); return; }
 
-        // Use live location from RTDB listener; if not available yet, wait
-        const loc = locOverride !== undefined ? locOverride : null;
         if (!loc?.lat || !loc?.lng) { _setTrackStatus('⏳ في انتظار موقع السائق…', 'warn'); return; }
 
         const dLat = parseFloat(loc.lat);
