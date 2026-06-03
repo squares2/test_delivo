@@ -140,16 +140,21 @@
     padding: 0;
     overflow: hidden;
     max-width: 420px;
+    /* Clamp height so it never overflows the viewport */
+    max-height: min(92vh, 92dvh);
+    display: flex;
+    flex-direction: column;
 }
 .modal-box--account::before { display: none; }
 
-/* ── Header ────────────────────────────────────────────────── */
+/* ── Header — stays fixed at top ──────────────────────────── */
 .acct-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 6px 20px 14px;
     border-bottom: 1px solid var(--clr-gray-100);
+    flex-shrink: 0;  /* never compress */
 }
 .acct-header__title {
     font-size: clamp(1.15rem, 3.5vw, 1.4rem);
@@ -159,7 +164,13 @@
 }
 
 /* ── GUEST STATE ───────────────────────────────────────────── */
-.acct-guest { padding: 0 0 8px; }
+.acct-guest {
+    padding: 0 0 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
 
 .acct-guest__hero {
     display: flex;
@@ -283,7 +294,13 @@
 }
 
 /* ── LOGGED-IN STATE ───────────────────────────────────────── */
-.acct-user { padding-bottom: 8px; }
+.acct-user {
+    padding-bottom: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
 
 .acct-profile {
     display: flex;
