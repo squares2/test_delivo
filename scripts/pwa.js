@@ -169,3 +169,93 @@ window.showIosInstallHint = function() {
     localStorage.removeItem(IOS_HINT_KEY);
     showIosHint();
 };
+// ── 4. PWA install row in account modal ──────────────────────
+
+function _isPwaInstalled() {
+    return window.navigator.standalone === true ||
+           window.matchMedia('(display-mode: standalone)').matches;
+}
+
+function _updatePwaRow() {
+    const btn      = document.getElementById('acct-pwa-btn');
+    const title    = document.getElementById('acct-pwa-title');
+    const sub      = document.getElementById('acct-pwa-sub');
+    const badge    = document.getElementById('acct-pwa-badge');
+    const chevron  = document.getElementById('acct-pwa-chevron');
+    if (!btn) return;
+
+    const installed = _isPwaInstalled();
+
+    if (installed) {
+        title.textContent   = 'التطبيق مثبّت ✓';
+        sub.textContent     = 'أنت تستخدم نسخة الشاشة الرئيسية';
+        badge.style.display = 'inline-flex';
+        chevron.style.display = 'none';
+        btn.style.cursor    = 'default';
+        btn.style.opacity   = '0.75';
+        btn.disabled        = true;
+    } else {
+        const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        title.textContent    = 'تثبيت التطبيق';
+        sub.textContent      = isIos
+            ? 'Safari ← المشاركة ← إضافة للشاشة'
+            : 'أضف Delivo لشاشتك الرئيسية';
+        badge.style.display  = 'none';
+        chevron.style.display = '';
+        btn.style.cursor     = 'pointer';
+        btn.style.opacity    = '1';
+        btn.disabled         = false;
+    }
+}
+
+// Wire click on the PWA row
+document.addEventListener('click', async (e) => {
+    if (!e.target.closest('#acct-pwa-btn')) return;
+    if (_isPwaInstalled()) return; // already installed, row is disabled
+
+    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) &&
+                  /safari/i.test(navigator.userAgent) &&
+                  !/crios|fxios/i.test(navigator.userAgent);
+
+    if (isIos) {
+        // Close account modal then show iOS bottom sheet
+        if (typeof closeModal === 'function') closeModal('modal-account');
+        setTimeout(() => {
+            localStorage.removeItem(IOS_HINT_KEY);
+            showIosHint();
+        }, 300);
+    } else if (_deferredPrompt) {
+        // Android / desktop Chrome — trigger native prompt
+        _deferredPrompt.prompt();
+        const { outcome } = await _deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            _deferredPrompt = null;
+            hideBanner();
+            _updatePwaRow();
+        }
+    } else {
+        // No prompt available (already dismissed system prompt) — show instructions
+        const isIosAny = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (isIosAny) {
+            if (typeof closeModal === 'function') closeModal('modal-account');
+            setTimeout(() => { localStorage.removeItem(IOS_HINT_KEY); showIosHint(); }, 300);
+        }
+    }
+});
+
+// Update row every time account modal opens
+document.addEventListener('modalOpen', (e) => {
+    if (e.detail === 'modal-account') _updatePwaRow();
+});
+
+// Also update when app is installed (Android)
+window.addEventListener('appinstalled', () => {
+    _updatePwaRow();
+});
+
+// Initial update on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _updatePwaRow);
+} else {
+    _updatePwaRow();
+}

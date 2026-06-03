@@ -387,6 +387,17 @@
 }
 .acct-row__icon--orange { background: var(--clr-orange-light); }
 .acct-row__icon--blue   { background: #eef3ff; }
+.acct-row__icon--green  { background: #dcfce7; }
+.acct-pwa-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #16a34a;
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+    border-radius: 50px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
 
 .acct-row__body {
     flex: 1;

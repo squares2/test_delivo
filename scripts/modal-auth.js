@@ -688,6 +688,7 @@ function openModal(id) {
     if (!m) return;
     m.classList.add('active');
     document.body.classList.add('modal-open');
+    document.dispatchEvent(new CustomEvent('modalOpen', { detail: id }));
 }
 function closeModal(id) {
     const m = document.getElementById(id);
