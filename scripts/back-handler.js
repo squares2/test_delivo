@@ -152,8 +152,12 @@
 
         document.getElementById('exit-confirm-btn').addEventListener('click', () => {
             _close();
-            // Navigate back past our sentinel — browser exits the PWA
-            setTimeout(() => history.back(), 300);
+            // Go back twice: once past the confirm-guard push, once past the
+            // root sentinel — that exhausts our fake entries and lets the
+            // browser exit the PWA / close the tab.
+            setTimeout(() => {
+                history.go(-2);
+            }, 300);
         });
 
         overlay.addEventListener('click', function(e) {
