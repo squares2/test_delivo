@@ -193,12 +193,12 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: #ffffff;          /* white background */
+    background: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
-    /* stays fully visible until JS removes it */
+    /* Slow fade so the transition from OS splash feels intentional */
+    transition: opacity 0.65s ease, visibility 0.65s ease;
 }
 #delivo-splash.hiding {
     opacity: 0;
@@ -214,51 +214,44 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 36px;
+    gap: 0;
     padding: 32px 24px;
     max-width: 100vw;
     box-sizing: border-box;
     flex: 1;
 }
 
-/* ── Wordmark logo — transparent on orange, no card/box ────── */
-/* Single <img> carries both classes — merged into one rule */
-.splash__logo-wrap.splash__logo {
+/* ── HD logo — crisp on all screens including Retina / AMOLED ── */
+.splash__logo-wrap {
     display: block;
-    width: clamp(200px, 78vw, 300px);
+    width: clamp(200px, 72vw, 290px);
     height: auto;
     flex-shrink: 0;
+}
+.splash__logo-wrap img,
+.splash__logo-wrap source {
+    width: 100%;
+    height: auto;
     object-fit: contain;
     object-position: center;
-    aspect-ratio: 900 / 1046;
-    background: transparent;
     image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
     -ms-interpolation-mode: nearest-neighbor;
-    animation: splash-pop 0.5s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+    animation: splash-pop 0.45s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
 
-/* ── Spinner ──────────────────────────────────────────────── */
-.splash__spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: splash-spin 0.8s linear infinite;
-    flex-shrink: 0;
-}
-@keyframes splash-spin {
-    to { transform: rotate(360deg); }
-}
+/* ── Spinner hidden — clean look, no loading indicator ──────── */
+.splash__spinner { display: none; }
 
 /* ── Entrance animation ───────────────────────────────────── */
 @keyframes splash-pop {
-    from { transform: scale(0.75) translateY(12px); opacity: 0; }
+    from { transform: scale(0.82) translateY(10px); opacity: 0; }
     to   { transform: scale(1)    translateY(0);    opacity: 1; }
 }
 
-body          { visibility: hidden; }
-body.loaded   { visibility: visible; }
+/* body hidden until loaded class — splash covers during this time */
+body        { visibility: hidden; }
+body.loaded { visibility: visible; }
 /* ── PWA Install Banner ───────────────────────────────────── */
 .install-banner {
     position: fixed;
