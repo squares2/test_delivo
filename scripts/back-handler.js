@@ -14,8 +14,7 @@
    • We push EXACTLY once when a layer opens.
    • We call history.back() when a layer closes programmatically
      (so the stack stays clean — no accumulated garbage).
-   • Exit confirm uses window.close() + location.replace('about:blank')
-     fallback so we never touch history and never re-trigger popstate.
+   • Exit confirm: removes popstate listener then history.go(-2) past sentinel → browser exits PWA
    ============================================================ */
 
 (function () {
@@ -145,17 +144,10 @@
 
     /* ── actual exit ─────────────────────────────────────────── */
     function _doExit() {
-        // Remove our popstate listener so history navigation below
-        // doesn't re-trigger confirm
+        // Remove listener first so history navigation doesn't re-trigger confirm
         window.removeEventListener('popstate', _onPopstate);
-
-        // Try window.close() (works in some Android WebViews / TWA)
-        try { window.close(); } catch (_) {}
-
-        // Fallback: navigate to a blank page so the app content is gone
-        setTimeout(() => {
-            try { window.location.replace('about:blank'); } catch (_) {}
-        }, 100);
+        // Go back past every entry we pushed — browser exits the PWA
+        history.go(-2);
     }
 
     /* ── popstate handler ────────────────────────────────────── */
