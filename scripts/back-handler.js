@@ -1,52 +1,30 @@
 /* ============================================================
-   scripts/back-handler.js  v2
-   Intercepts the mobile/browser back button so it closes open
-   UI layers (modals, panels, sidebars) instead of exiting the app.
+   scripts/back-handler.js  v3
+   Precise stack counter — tracks every pushState so history.go()
+   always jumps exactly the right number of steps to exit.
 
-   Strategy: History API "fake entry"
-   ─ Push a sentinel entry IMMEDIATELY on load so the very first
-     back press always fires popstate (never exits silently).
-   ─ Every time a layer opens  → push another state
-   ─ Every time a layer closes → _clearPush()
-   ─ On popstate              → close topmost layer, or show exit confirm
-
-   Layer priority (highest → lowest):
-     1. Track modal
-     2. Orders sheet
-     3. Any .modal-overlay.active
-     4. Loyalty sheet
-     5. Track sheet
-     6. Store panel
-     7. Cart sidebar
-     8. Mobile nav menu
+   Rule:
+     _depth = how many fake entries WE have pushed since page load.
+     On popstate  → _depth--  (browser already consumed one)
+     On _push()   → history.pushState + _depth++
+     On exit btn  → history.go(-_depth)  clears all our entries → exit
    ============================================================ */
 
-(function() {
+(function () {
 
-    /* ── State ───────────────────────────────────────────────── */
+    /* ── Depth counter ───────────────────────────────────────── */
+    // Counts every pushState we make. Decremented in popstate.
+    let _depth = 0;
 
-    let _pushed = false;   // true = we have a fake layer entry pending
-
-    /* Push a fake history entry (deduplicated) */
     function _push() {
-        if (!_pushed) {
-            history.pushState({ delivoLayer: true }, '');
-            _pushed = true;
-        }
+        history.pushState({ delivoApp: true }, '');
+        _depth++;
     }
 
-    function _clearPush() {
-        _pushed = false;
-    }
-
-    /* ── Sentinel push on page load ──────────────────────────── */
-    // Push once immediately so the very first back press fires popstate
-    // instead of letting the browser exit the PWA/tab without warning.
-    // We mark it with delivoRoot so we can distinguish it from layer entries.
-    history.pushState({ delivoRoot: true }, '');
+    /* ── Sentinel: push once on load so first back always fires popstate ── */
+    _push();
 
     /* ── Layer detectors ─────────────────────────────────────── */
-
     function _getTopLayer() {
 
         // 1. Track modal
@@ -68,7 +46,7 @@
             return () => { if (typeof closeOrdersModal === 'function') closeOrdersModal(); };
         }
 
-        // 3. Any .modal-overlay that is active
+        // 3. Any .modal-overlay active (login, account, edit-profile…)
         const activeModal = document.querySelector('.modal-overlay.active');
         if (activeModal) {
             return () => {
@@ -91,7 +69,8 @@
 
         // 6. Store panel
         const storePanel = document.getElementById('store-panel');
-        if (storePanel && (storePanel.classList.contains('open') || storePanel.classList.contains('active'))) {
+        if (storePanel && (storePanel.classList.contains('open') ||
+                           storePanel.classList.contains('active'))) {
             return () => { if (typeof window.closeStorePanel === 'function') window.closeStorePanel(); };
         }
 
@@ -115,12 +94,11 @@
     }
 
     /* ── Exit confirm dialog ─────────────────────────────────── */
-
     function _showExitConfirm() {
         if (document.getElementById('exit-confirm-overlay')) return;
 
-        // Re-push so we remain on the page while the dialog is visible
-        history.pushState({ delivoRoot: true }, '');
+        // Push one more so the dialog doesn't get dismissed by a stray popstate
+        _push();
 
         const overlay = document.createElement('div');
         overlay.id = 'exit-confirm-overlay';
@@ -144,159 +122,116 @@
             setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 280);
         }
 
+        // Stay — close dialog, push a fresh sentinel so next back shows confirm again
         document.getElementById('exit-cancel-btn').addEventListener('click', () => {
             _close();
-            // Push again so next back press shows confirm again
-            history.pushState({ delivoRoot: true }, '');
+            _push();
         });
 
+        // Exit — jump back past every entry we have pushed
         document.getElementById('exit-confirm-btn').addEventListener('click', () => {
             _close();
-            // Go back twice: once past the confirm-guard push, once past the
-            // root sentinel — that exhausts our fake entries and lets the
-            // browser exit the PWA / close the tab.
-            setTimeout(() => {
-                history.go(-2);
-            }, 300);
+            const stepsBack = _depth;   // snapshot before go() triggers popstate(s)
+            _depth = 0;
+            setTimeout(() => history.go(-stepsBack), 300);
         });
 
-        overlay.addEventListener('click', function(e) {
+        // Tap backdrop = stay
+        overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 _close();
-                history.pushState({ delivoRoot: true }, '');
+                _push();
             }
         });
     }
 
-    /* ── popstate — fired on every back press ────────────────── */
-
-    window.addEventListener('popstate', function(e) {
-        _clearPush();
+    /* ── popstate ────────────────────────────────────────────── */
+    window.addEventListener('popstate', function () {
+        // Browser just consumed one of our entries
+        if (_depth > 0) _depth--;
 
         const closer = _getTopLayer();
         if (closer) {
             closer();
-            // Re-push so the next back press is also intercepted
-            setTimeout(() => {
-                if (_getTopLayer()) _push();
-                else history.pushState({ delivoRoot: true }, '');
-            }, 50);
+            // Re-push so next back press is still intercepted
+            _push();
         } else {
-            // Nothing open → at root → show exit confirm
             _showExitConfirm();
         }
     });
 
-    /* ── Patch open/close functions after DOM is ready ───────── */
-
+    /* ── Patch open/close functions ──────────────────────────── */
     function _patchAll() {
 
-        // ── store panel ──
+        // store panel
         const _origOpenStore = window.openStorePanel;
         if (_origOpenStore && !_origOpenStore._backPatched) {
-            window.openStorePanel = function(...args) {
-                _push();
-                return _origOpenStore.apply(this, args);
-            };
+            window.openStorePanel = function (...a) { _push(); return _origOpenStore.apply(this, a); };
             window.openStorePanel._backPatched = true;
         }
-
         const _origCloseStore = window.closeStorePanel;
         if (_origCloseStore && !_origCloseStore._backPatched) {
-            window.closeStorePanel = function(...args) {
-                _clearPush();
-                return _origCloseStore.apply(this, args);
-            };
+            window.closeStorePanel = function (...a) { return _origCloseStore.apply(this, a); };
             window.closeStorePanel._backPatched = true;
         }
 
-        // ── cart sidebar ──
+        // cart sidebar
         const _origOpenCart = window.openCartSidebar;
         if (_origOpenCart && !_origOpenCart._backPatched) {
-            window.openCartSidebar = function(...args) {
-                _push();
-                return _origOpenCart.apply(this, args);
-            };
+            window.openCartSidebar = function (...a) { _push(); return _origOpenCart.apply(this, a); };
             window.openCartSidebar._backPatched = true;
         }
-
         const _origCloseCart = window.closeCartSidebar;
         if (_origCloseCart && !_origCloseCart._backPatched) {
-            window.closeCartSidebar = function(...args) {
-                _clearPush();
-                return _origCloseCart.apply(this, args);
-            };
+            window.closeCartSidebar = function (...a) { return _origCloseCart.apply(this, a); };
             window.closeCartSidebar._backPatched = true;
         }
 
-        // ── track sheet ──
+        // track sheet
         const _origOpenTrack = window._openTrackSheet;
         if (_origOpenTrack && !_origOpenTrack._backPatched) {
-            window._openTrackSheet = function(...args) {
-                _push();
-                return _origOpenTrack.apply(this, args);
-            };
+            window._openTrackSheet = function (...a) { _push(); return _origOpenTrack.apply(this, a); };
             window._openTrackSheet._backPatched = true;
         }
-
         const _origCloseTrack = window._closeTrackSheet;
         if (_origCloseTrack && !_origCloseTrack._backPatched) {
-            window._closeTrackSheet = function(...args) {
-                _clearPush();
-                return _origCloseTrack.apply(this, args);
-            };
+            window._closeTrackSheet = function (...a) { return _origCloseTrack.apply(this, a); };
             window._closeTrackSheet._backPatched = true;
         }
 
-        // ── track modal ──
+        // track modal
         const _origCloseTrackModal = window._closeTrackModal;
         if (_origCloseTrackModal && !_origCloseTrackModal._backPatched) {
-            window._closeTrackModal = function(...args) {
-                _clearPush();
-                return _origCloseTrackModal.apply(this, args);
-            };
+            window._closeTrackModal = function (...a) { return _origCloseTrackModal.apply(this, a); };
             window._closeTrackModal._backPatched = true;
         }
 
-        // ── generic openModal / closeModal ──
+        // generic openModal / closeModal
         if (typeof openModal === 'function' && !openModal._backPatched) {
             const _origOpen = openModal;
-            window.openModal = function(id) {
-                _push();
-                return _origOpen(id);
-            };
+            window.openModal = function (id) { _push(); return _origOpen(id); };
             window.openModal._backPatched = true;
         }
-
         if (typeof closeModal === 'function' && !closeModal._backPatched) {
             const _origClose = closeModal;
-            window.closeModal = function(id) {
-                _clearPush();
-                return _origClose(id);
-            };
+            window.closeModal = function (id) { return _origClose(id); };
             window.closeModal._backPatched = true;
         }
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            _patchAll();
-            setTimeout(_patchAll, 800);
-        });
+        document.addEventListener('DOMContentLoaded', () => { _patchAll(); setTimeout(_patchAll, 800); });
     } else {
         _patchAll();
         setTimeout(_patchAll, 800);
     }
 
-    /* ── Mobile nav menu — hamburger delegation ──────────────── */
-    document.addEventListener('click', function(e) {
+    /* ── Mobile nav menu hamburger ───────────────────────────── */
+    document.addEventListener('click', function (e) {
         if (e.target.closest('#mobile-menu-btn')) {
             const menu = document.getElementById('mobile-menu');
             if (menu) {
-                setTimeout(() => {
-                    if (menu.classList.contains('open')) _push();
-                    else _clearPush();
-                }, 10);
+                setTimeout(() => { if (menu.classList.contains('open')) _push(); }, 10);
             }
         }
     }, true);
