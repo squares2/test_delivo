@@ -221,7 +221,7 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
     flex: 1;
 }
 
-/* ── HD logo — crisp on all screens including Retina / AMOLED ── */
+/* ── HD logo — smooth anti-aliased rendering on all screens ── */
 .splash__logo-wrap {
     display: block;
     width: clamp(200px, 72vw, 290px);
@@ -234,9 +234,9 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
     height: auto;
     object-fit: contain;
     object-position: center;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-    -ms-interpolation-mode: nearest-neighbor;
+    image-rendering: auto;
+    -ms-interpolation-mode: bicubic;
+    -webkit-font-smoothing: antialiased;
     animation: splash-pop 0.45s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
 
