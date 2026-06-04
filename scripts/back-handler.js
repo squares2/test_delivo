@@ -14,7 +14,8 @@
 
     /* ── Depth counter ───────────────────────────────────────── */
     // Counts every pushState we make. Decremented in popstate.
-    let _depth = 0;
+    let _depth   = 0;
+    let _exiting = false;   // true while history.go(-N) is in flight
 
     function _push() {
         history.pushState({ delivoApp: true }, '');
@@ -132,7 +133,8 @@
         document.getElementById('exit-confirm-btn').addEventListener('click', () => {
             _close();
             const stepsBack = _depth;   // snapshot before go() triggers popstate(s)
-            _depth = 0;
+            _depth   = 0;
+            _exiting = true;            // suppress popstate handler during exit
             setTimeout(() => history.go(-stepsBack), 300);
         });
 
@@ -147,6 +149,7 @@
 
     /* ── popstate ────────────────────────────────────────────── */
     window.addEventListener('popstate', function () {
+        if (_exiting) return;   // ignore all popstates fired by history.go(-N) during exit
         // Browser just consumed one of our entries
         if (_depth > 0) _depth--;
 
