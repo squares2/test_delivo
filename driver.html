@@ -804,6 +804,10 @@ function setupLogout() {
         if (!driverData) return;
         // Stop GPS first so no stale location writes happen after status clears
         if (geoWatchId !== null) { navigator.geolocation.clearWatch(geoWatchId); geoWatchId = null; }
+        // Stop Android background service BEFORE clearing driverData
+        if (window.AndroidBridge && window.AndroidBridge.stopBackgroundTracking) {
+            window.AndroidBridge.stopBackgroundTracking();
+        }
         // Set offline and clear active-user stamp
         await db.ref(`drivers/${driverData.id}`).update({
             status:      'offline',

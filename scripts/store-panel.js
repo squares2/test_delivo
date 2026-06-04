@@ -1,14 +1,15 @@
 /* ============================================================
-   scripts/store-panel.js  v2 — with item customization notes
-   Customization (ملاحظات) applies to Restaurants & BakeryShops.
-   Keywords are fetched from Firebase: /customization_keywords/{storeType}
+   scripts/store-panel.js  v3 — description input (no keywords)
+   For Restaurants & BakeryShops:
+     • Direct add (+ button on card) → adds instantly, no modal
+     • Item detail popup            → shows a free-text input for notes
    Cart item shape: { id, name, price, storeName, storeType, notes? }
    ============================================================ */
 
 const RTDB_URL  = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
 const GH_IMAGES = './items';
 
-/* Store types that support customization keywords */
+/* Store types that show description input inside item popup */
 const CUSTOMIZABLE_TYPES = ['Restaurants', 'BakeryShops'];
 
 /* ── Category emoji map ───────────────────────────────────── */
@@ -42,24 +43,6 @@ function formatPrice(p) {
 let _currentStore = null;
 let _activeTab    = null;
 const _spCache    = {};
-
-/* ── Keywords cache ───────────────────────────────────────── */
-const _kwCache = {};   // { storeType: ['بدون ثوم', ...] }
-
-async function _fetchKeywords(storeType) {
-    if (_kwCache[storeType] !== undefined) return _kwCache[storeType];
-    try {
-        const data = await rtdbGet(`customization_keywords/${storeType}`);
-        _kwCache[storeType] = Array.isArray(data)
-            ? data.filter(Boolean)
-            : (data && typeof data === 'object')
-                ? Object.values(data).filter(Boolean)
-                : [];
-    } catch (_) {
-        _kwCache[storeType] = [];
-    }
-    return _kwCache[storeType];
-}
 
 /* ── Store Intro ──────────────────────────────────────────── */
 function _ensureIntroCard() {
@@ -178,11 +161,6 @@ function openStorePanel(storeId, storeName, storeType) {
     const _introFetch = _spCache[_introCacheKey]
         ? Promise.resolve(_spCache[_introCacheKey])
         : rtdbGet(`pattern/${storeType}`).then(d => { _spCache[_introCacheKey] = d; return d; });
-
-    // Pre-fetch keywords in background while intro plays
-    if (CUSTOMIZABLE_TYPES.includes(storeType)) {
-        _fetchKeywords(storeType);
-    }
 
     _introFetch
         .then(patternData => {
@@ -390,33 +368,25 @@ function renderItem(item, storeName) {
 }
 
 /* ── Cart interactions ────────────────────────────────────── */
-async function spAddItem(uniqueId, name, price, storeName, storeType, event) {
+
+/*
+ * spAddItem — always adds instantly (no modal, no keyword popup).
+ * Description notes are only set via the item detail popup.
+ */
+function spAddItem(uniqueId, name, price, storeName, storeType, event) {
     if (!window.DelivoCart) return;
     if (event) event.stopPropagation();
-
-    if (CUSTOMIZABLE_TYPES.includes(storeType)) {
-        const keywords = await _fetchKeywords(storeType);
-        _openNotesModal({ baseId: uniqueId, name, price, storeName, storeType, keywords }, (selectedKws) => {
-            // Each add creates a NEW instance with its own unique ID
-            // instanceId = baseId + '__' + timestamp so identical items with diff notes are separate entries
-            const instanceId = uniqueId + '__i' + Date.now();
-            _doAddItem(instanceId, name, price, storeName, storeType, selectedKws, uniqueId);
-        });
-        return;
-    }
-
+    // Direct add — no notes, no modal
     _doAddItem(uniqueId, name, price, storeName, storeType, '', uniqueId);
 }
 
 /* Remove the most-recently-added instance of an item */
 function spRemoveLastInstance(baseId, storeName) {
     if (!window.DelivoCart) return;
-    // Find all instances of this base item (id starts with baseId)
     const instances = window.DelivoCart.items.filter(i =>
         i.storeName === storeName && (i.id === baseId || i.id.startsWith(baseId + '__i'))
     );
     if (!instances.length) return;
-    // Remove the last instance (most recently added)
     const last = instances[instances.length - 1];
     window.DelivoCart.decrementItem(last.id, storeName);
     _updatePanelQtyDisplay(baseId, storeName);
@@ -425,8 +395,6 @@ function spRemoveLastInstance(baseId, storeName) {
 }
 
 function _doAddItem(instanceId, name, price, storeName, storeType, notes, baseId) {
-    // baseId is the original storeName__itemId used for UI element IDs
-    // instanceId may have a __iXXXX suffix for separate instances
     const bId = baseId || instanceId;
     window.DelivoCart.addItem(instanceId, name, price, storeName, storeType, notes);
     _updatePanelQtyDisplay(bId, storeName);
@@ -441,8 +409,6 @@ function _updatePanelQtyDisplay(baseId, storeName) {
     const actionsEl = document.getElementById(`sp-actions-${slug}`);
     if (!actionsEl) return;
 
-    // Parse name and price from baseId context (needed for onclick)
-    // We read them from the existing cart item
     const sample = window.DelivoCart?.items.find(i =>
         i.storeName === storeName && (i.id === baseId || i.id.startsWith(baseId + '__i'))
     );
@@ -456,12 +422,12 @@ function _updatePanelQtyDisplay(baseId, storeName) {
                         onclick="spRemoveLastInstance('${baseId}','${storeName}')">−</button>
                 <span class="sp-item__qty-num" id="sp-qty-${slug}">${total}</span>
                 <button class="sp-item__qty-btn sp-item__qty-btn--add"
-                        onclick="spAddItem('${baseId}','${name.replace(/'/g,"\'")}',${price},'${storeName}','${storeType}',event)">+</button>
+                        onclick="spAddItem('${baseId}','${name.replace(/'/g,"\\'")}',${price},'${storeName}','${storeType}',event)">+</button>
             </div>`;
     } else {
         actionsEl.innerHTML = `
             <button class="sp-item__add-btn" id="sp-add-btn-${slug}"
-                    onclick="spAddItem('${baseId}','${name.replace(/'/g,"\'")}',${price},'${storeName}','${storeType}',event)">
+                    onclick="spAddItem('${baseId}','${name.replace(/'/g,"\\'")}',${price},'${storeName}','${storeType}',event)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2.5"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -471,7 +437,6 @@ function _updatePanelQtyDisplay(baseId, storeName) {
     }
 }
 
-/* spChangeQty kept for compatibility but routes through instance logic */
 function spChangeQty(baseId, name, price, delta, storeName, storeType) {
     if (!window.DelivoCart) return;
     if (delta > 0) {
@@ -494,216 +459,6 @@ function _updateSpCartBar() {
     bar.classList.toggle('visible', count > 0);
     if (countEl) countEl.textContent = count + ' منتج';
     if (totalEl) totalEl.textContent = '$' + totalUSD.toFixed(2);
-}
-
-/* ══════════════════════════════════════════════════════════
-   NOTES MODAL — keyword chips + free text input
-══════════════════════════════════════════════════════════ */
-function _ensureNotesModal() {
-    if (document.getElementById('nm-overlay')) return;
-
-    const style = document.createElement('style');
-    style.textContent = `
-    #nm-overlay {
-        position:fixed;inset:0;z-index:100000;
-        background:rgba(10,10,15,0.72);
-        backdrop-filter:blur(8px);
-        display:flex;align-items:flex-end;justify-content:center;
-        direction:rtl;
-        opacity:1;transition:opacity 0.22s;
-    }
-    #nm-overlay.nm-hidden { opacity:0;pointer-events:none; }
-    #nm-box {
-        background:#fff;border-radius:24px 24px 0 0;
-        width:100%;max-width:520px;
-        padding-bottom:env(safe-area-inset-bottom,0);
-        box-shadow:0 -8px 40px rgba(0,0,0,0.22);
-        transform:translateY(0);
-        transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
-        font-family:'Almarai',sans-serif;
-    }
-    #nm-overlay.nm-hidden #nm-box { transform:translateY(100%); }
-    .nm-handle {
-        width:40px;height:4px;border-radius:2px;
-        background:#e2e2e6;margin:12px auto 0;
-    }
-    .nm-header {
-        display:flex;align-items:flex-start;justify-content:space-between;
-        padding:14px 20px 12px;border-bottom:1px solid #f0f0f2;
-    }
-    .nm-header-left { display:flex;flex-direction:column;gap:2px; }
-    .nm-title { font-size:1rem;font-weight:800;color:#111; }
-    .nm-item-name {
-        font-size:0.8rem;color:#FF5C00;font-weight:700;
-        max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-    }
-    .nm-close {
-        background:none;border:none;width:32px;height:32px;
-        border-radius:50%;display:flex;align-items:center;justify-content:center;
-        font-size:1rem;color:#aaa;cursor:pointer;flex-shrink:0;
-        transition:background 0.15s;margin-top:2px;
-    }
-    .nm-close:hover { background:#f0f0f2;color:#555; }
-    .nm-body { padding:18px 20px 0; }
-    .nm-kw-label {
-        font-size:0.68rem;font-weight:800;color:#9898a6;
-        letter-spacing:0.8px;text-transform:uppercase;margin-bottom:12px;
-    }
-    .nm-chips {
-        display:flex;flex-wrap:wrap;gap:9px;margin-bottom:6px;
-        max-height:200px;overflow-y:auto;padding-bottom:4px;
-    }
-    .nm-chip {
-        padding:9px 16px;
-        border:1.5px solid #e2e2e6;border-radius:50px;
-        font-size:0.82rem;font-weight:700;color:#555;background:#fff;
-        cursor:pointer;transition:all 0.15s;
-        font-family:'Almarai',sans-serif;
-        user-select:none;
-    }
-    .nm-chip:hover { border-color:#FF5C00;color:#FF5C00;background:#fff8f5; }
-    .nm-chip.nm-chip--active {
-        background:#FF5C00;border-color:#FF5C00;color:#fff;
-        box-shadow:0 2px 8px rgba(255,92,0,0.3);
-    }
-    .nm-empty-kw {
-        font-size:0.8rem;color:#bbb;
-        padding:24px 0;text-align:center;
-    }
-    .nm-footer {
-        display:flex;gap:10px;
-        padding:14px 20px 20px;
-        border-top:1px solid #f0f0f2;
-        margin-top:16px;
-    }
-    .nm-btn-skip {
-        padding:13px 20px;
-        border:1.5px solid #e2e2e6;border-radius:12px;
-        background:#fff;color:#888;
-        font-family:'Almarai',sans-serif;font-size:0.85rem;font-weight:700;
-        cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0;
-    }
-    .nm-btn-skip:hover { background:#f7f7f8;color:#555; }
-    .nm-btn-add {
-        flex:1;padding:13px;border:none;border-radius:12px;
-        background:#FF5C00;color:#fff;
-        font-family:'Almarai',sans-serif;font-size:0.92rem;font-weight:800;
-        cursor:pointer;
-        box-shadow:0 4px 14px rgba(255,92,0,0.35);
-        transition:all 0.15s;
-        display:flex;align-items:center;justify-content:center;gap:8px;
-    }
-    .nm-btn-add:hover { background:#cc4800; }
-    .nm-btn-add:disabled { background:#e2e2e6;color:#aaa;box-shadow:none;cursor:not-allowed; }
-    .nm-selected-preview {
-        font-size:0.72rem;color:#FF5C00;font-weight:700;
-        min-height:20px;padding:0 20px 10px;text-align:center;
-        transition:opacity 0.2s;
-    }
-    `;
-    document.head.appendChild(style);
-
-    const overlay = document.createElement('div');
-    overlay.id = 'nm-overlay';
-    overlay.className = 'nm-hidden';
-    overlay.innerHTML = `
-    <div id="nm-box" role="dialog" aria-modal="true">
-        <div class="nm-handle"></div>
-        <div class="nm-header">
-            <div class="nm-header-left">
-                <div class="nm-title">اختر خصائص الصنف</div>
-                <div class="nm-item-name" id="nm-item-name"></div>
-            </div>
-            <button class="nm-close" id="nm-close">✕</button>
-        </div>
-        <div class="nm-body">
-            <div class="nm-kw-label" id="nm-kw-label">الخصائص المتاحة</div>
-            <div class="nm-chips" id="nm-chips"></div>
-        </div>
-        <div class="nm-selected-preview" id="nm-preview"></div>
-        <div class="nm-footer">
-            <button class="nm-btn-skip" id="nm-btn-skip">بدون خاصية</button>
-            <button class="nm-btn-add" id="nm-btn-add">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4"/><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-                </svg>
-                أضف للسلة
-            </button>
-        </div>
-    </div>`;
-    document.body.appendChild(overlay);
-
-    overlay.addEventListener('click', e => { if (e.target === overlay) _closeNotesModal(null); });
-    document.getElementById('nm-close').addEventListener('click', () => _closeNotesModal(null));
-}
-
-let _nmCallback = null;
-let _nmSelected = new Set();
-
-function _openNotesModal({ baseId, name, price, storeName, storeType, keywords }, onConfirm) {
-    _ensureNotesModal();
-    _nmCallback = onConfirm;
-    _nmSelected = new Set();
-
-    document.getElementById('nm-item-name').textContent = name;
-    _nmUpdatePreview();
-
-    const chipsEl   = document.getElementById('nm-chips');
-    const labelEl   = document.getElementById('nm-kw-label');
-    const addBtn    = document.getElementById('nm-btn-add');
-
-    if (keywords && keywords.length > 0) {
-        labelEl.style.display = '';
-        chipsEl.innerHTML = keywords.map(kw => `
-            <button class="nm-chip" data-kw="${kw}">${kw}</button>
-        `).join('');
-
-        // Wire chip clicks
-        chipsEl.querySelectorAll('.nm-chip').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const kw = btn.dataset.kw;
-                if (_nmSelected.has(kw)) {
-                    _nmSelected.delete(kw);
-                    btn.classList.remove('nm-chip--active');
-                } else {
-                    _nmSelected.add(kw);
-                    btn.classList.add('nm-chip--active');
-                }
-                _nmUpdatePreview();
-            });
-        });
-    } else {
-        labelEl.style.display = 'none';
-        chipsEl.innerHTML = '<div class="nm-empty-kw">لا توجد خصائص لهذا النوع من المتاجر</div>';
-    }
-
-    // Wire footer buttons
-    document.getElementById('nm-btn-skip').onclick = () => _closeNotesModal('');
-    document.getElementById('nm-btn-add').onclick  = () => {
-        const result = [..._nmSelected].join('، ');
-        _closeNotesModal(result);
-    };
-
-    // Show with animation
-    const overlay = document.getElementById('nm-overlay');
-    overlay.classList.remove('nm-hidden');
-}
-
-function _nmUpdatePreview() {
-    const el = document.getElementById('nm-preview');
-    if (!el) return;
-    const selected = [..._nmSelected];
-    el.textContent = selected.length ? selected.join(' • ') : '';
-    el.style.opacity = selected.length ? '1' : '0';
-}
-
-function _closeNotesModal(result) {
-    const overlay = document.getElementById('nm-overlay');
-    if (overlay) overlay.classList.add('nm-hidden');
-    if (result !== null && typeof _nmCallback === 'function') {
-        _nmCallback(result);
-    }
-    _nmCallback = null;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -819,7 +574,7 @@ function _getItemQty(id) {
     return item ? item.qty : 0;
 }
 
-/* Sum qty across all instances of a base item (id === baseId OR starts with baseId + __i) */
+/* Sum qty across all instances of a base item */
 function _getBaseItemQty(baseId, storeName) {
     if (!window.DelivoCart) return 0;
     return window.DelivoCart.items
@@ -865,16 +620,16 @@ function initStorePanel() {
         });
     });
 
-    window.openStorePanel    = openStorePanel;
-    window.spSelectMain      = spSelectMain;
-    window.spSelectSub       = spSelectSub;
-    window.closeStorePanel   = closeStorePanel;
+    window.openStorePanel         = openStorePanel;
+    window.spSelectMain           = spSelectMain;
+    window.spSelectSub            = spSelectSub;
+    window.closeStorePanel        = closeStorePanel;
     window.spAddItem              = spAddItem;
-    window.spRemoveLastInstance  = spRemoveLastInstance;
+    window.spRemoveLastInstance   = spRemoveLastInstance;
     window._updatePanelQtyDisplay = _updatePanelQtyDisplay;
-    window.spChangeQty       = spChangeQty;
-    window.spScrollToSection = spScrollToSection;
-    window.updateSpCartBar   = _updateSpCartBar;
+    window.spChangeQty            = spChangeQty;
+    window.spScrollToSection      = spScrollToSection;
+    window.updateSpCartBar        = _updateSpCartBar;
 }
 
 function _toFirebaseName(id) {
@@ -882,10 +637,67 @@ function _toFirebaseName(id) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   ITEM DETAIL POPUP — with notes support
+   ITEM DETAIL POPUP — description text input (Restaurants & Bakeries)
 ══════════════════════════════════════════════════════════ */
 function _ensureItemPopup() {
     if (document.getElementById('item-popup')) return;
+
+    /* ── Inject styles for the description input ── */
+    const style = document.createElement('style');
+    style.textContent = `
+    /* Description input inside item popup */
+    .ip-desc-input-wrap {
+        margin-top: 16px;
+        border: 1.5px solid #f0f0f2;
+        border-radius: 14px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+        background: #fafafa;
+    }
+    .ip-desc-input-wrap:focus-within {
+        border-color: #FF5C00;
+        background: #fff;
+    }
+    .ip-desc-input-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 10px 14px 6px;
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: #9898a6;
+        letter-spacing: 0.7px;
+        text-transform: uppercase;
+        user-select: none;
+    }
+    .ip-desc-input-label svg { flex-shrink: 0; }
+    .ip-desc-input {
+        width: 100%;
+        min-height: 62px;
+        max-height: 120px;
+        border: none;
+        background: transparent;
+        resize: none;
+        font-family: 'Almarai', sans-serif;
+        font-size: 0.88rem;
+        color: #1a1a1a;
+        padding: 4px 14px 12px;
+        outline: none;
+        line-height: 1.55;
+        direction: rtl;
+    }
+    .ip-desc-input::placeholder { color: #c0c0cc; }
+    .ip-desc-char-count {
+        font-size: 0.62rem;
+        color: #c0c0cc;
+        text-align: left;
+        padding: 0 14px 8px;
+        font-weight: 600;
+    }
+    .ip-desc-char-count.warn { color: #f59e0b; }
+    .ip-desc-char-count.over { color: #ef4444; }
+    `;
+    document.head.appendChild(style);
 
     const overlay = document.createElement('div');
     overlay.className = 'item-popup-overlay';
@@ -927,12 +739,28 @@ function _ensureItemPopup() {
                 <span class="item-popup__price-old"  id="ip-price-old"  style="display:none"></span>
                 <span class="item-popup__sale-pct"   id="ip-sale-pct"   style="display:none"></span>
             </div>
-            <!-- Notes section — keyword chips only, visible for customizable types -->
-            <div id="ip-notes-section" style="display:none;margin-top:14px;">
-                <div style="font-size:0.68rem;font-weight:800;color:#9898a6;letter-spacing:0.8px;margin-bottom:10px;text-transform:uppercase;">اختر خصائص</div>
-                <div id="ip-notes-chips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
-                <div id="ip-notes-preview" style="font-size:0.72rem;color:#FF5C00;font-weight:700;min-height:18px;margin-top:8px;transition:opacity 0.2s;opacity:0;"></div>
+
+            <!-- Description input — visible only for Restaurants & BakeryShops -->
+            <div id="ip-notes-section" style="display:none;">
+                <div class="ip-desc-input-wrap">
+                    <div class="ip-desc-input-label">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.2"
+                             stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        ملاحظات على الصنف
+                    </div>
+                    <textarea
+                        id="ip-notes-input"
+                        class="ip-desc-input"
+                        maxlength="160"
+                        placeholder="مثال: بدون ثوم، حار، بدون بصل…"></textarea>
+                    <div class="ip-desc-char-count" id="ip-char-count">0 / 160</div>
+                </div>
             </div>
+
             <button class="item-popup__add-btn" id="ip-add-btn">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -949,11 +777,19 @@ function _ensureItemPopup() {
     document.getElementById('ip-minus').addEventListener('click', _ipDecrement);
     document.getElementById('ip-plus').addEventListener('click',  _ipIncrement);
     document.getElementById('ip-add-btn').addEventListener('click', _ipAddToCart);
+
+    /* live character counter */
+    const ta = document.getElementById('ip-notes-input');
+    const cc = document.getElementById('ip-char-count');
+    ta.addEventListener('input', () => {
+        const len = ta.value.length;
+        cc.textContent = `${len} / 160`;
+        cc.className = 'ip-desc-char-count' + (len >= 160 ? ' over' : len >= 130 ? ' warn' : '');
+    });
 }
 
-let _ipItem     = null;
-let _ipQty      = 1;
-let _ipKwActive = new Set();
+let _ipItem = null;
+let _ipQty  = 1;
 const DESC_LIMIT = 90;
 
 async function openItemPopup(item, storeName) {
@@ -969,11 +805,10 @@ async function openItemPopup(item, storeName) {
     const desc     = (item.unitdesc || '').trim();
     const sType    = _currentStore ? _currentStore.type : '';
 
-    _ipItem     = { item, storeName, price: disp, uniqueId: `${storeName}__${id}`, storeType: sType };
-    _ipQty      = Math.max(1, _getItemQty(_ipItem.uniqueId)) || 1;
-    _ipKwActive = new Set();
+    _ipItem = { item, storeName, price: disp, uniqueId: `${storeName}__${id}`, storeType: sType };
+    _ipQty  = Math.max(1, _getItemQty(_ipItem.uniqueId)) || 1;
 
-    // Image
+    /* Image */
     const imgEl      = document.getElementById('ip-img');
     const fallbackEl = document.getElementById('ip-img-fallback');
     if (pngExist && imgUrl) {
@@ -985,15 +820,18 @@ async function openItemPopup(item, storeName) {
         fallbackEl.style.display = 'flex';
     }
 
-    // Sale badge
+    /* Sale badge */
     const saleBadge = document.getElementById('ip-sale-hero');
-    if (hasSale) { const pct = Math.round((1 - sale / price) * 100); saleBadge.textContent = `خصم ${pct}%`; saleBadge.style.display = 'inline-block'; }
-    else { saleBadge.style.display = 'none'; }
+    if (hasSale) {
+        const pct = Math.round((1 - sale / price) * 100);
+        saleBadge.textContent = `خصم ${pct}%`;
+        saleBadge.style.display = 'inline-block';
+    } else { saleBadge.style.display = 'none'; }
 
-    // Name
+    /* Name */
     document.getElementById('ip-name').textContent = item.name || '';
 
-    // Description
+    /* Item description (unitdesc) */
     const descWrap   = document.getElementById('ip-desc-wrap');
     const descText   = document.getElementById('ip-desc-text');
     const descToggle = document.getElementById('ip-desc-toggle');
@@ -1006,7 +844,7 @@ async function openItemPopup(item, storeName) {
         } else { descText.textContent = desc; descToggle.style.display = 'none'; }
     } else { descWrap.style.display = 'none'; }
 
-    // Price
+    /* Price */
     document.getElementById('ip-price').textContent = formatPrice(disp);
     const oldEl = document.getElementById('ip-price-old');
     const pctEl = document.getElementById('ip-sale-pct');
@@ -1016,54 +854,27 @@ async function openItemPopup(item, storeName) {
         pctEl.textContent = `-${pct}%`; pctEl.style.display = 'inline-block';
     } else { oldEl.style.display = 'none'; pctEl.style.display = 'none'; }
 
-    // Qty
+    /* Qty */
     document.getElementById('ip-qty').textContent = _ipQty;
 
-    // Notes section — show only for customizable types
+    /* Notes input — only for Restaurants & BakeryShops */
     const notesSection = document.getElementById('ip-notes-section');
-    const chipsEl      = document.getElementById('ip-notes-chips');
-    // ip-notes-text removed (keyword-only mode)
-
+    const notesInput   = document.getElementById('ip-notes-input');
+    const charCount    = document.getElementById('ip-char-count');
     if (CUSTOMIZABLE_TYPES.includes(sType)) {
         notesSection.style.display = 'block';
-        const keywords = await _fetchKeywords(sType);
-        if (keywords.length > 0) {
-            chipsEl.innerHTML = keywords.map(kw => `
-                <button onclick="_ipToggleKw(this,'${kw.replace(/'/g,"\\'")}')"
-                    style="padding:6px 13px;border:1.5px solid #e2e2e6;border-radius:50px;
-                           font-size:0.75rem;font-weight:700;color:#555;background:#fff;
-                           cursor:pointer;font-family:'Almarai',sans-serif;transition:all 0.15s;"
-                    data-kw="${kw}">${kw}</button>
-            `).join('');
-        } else {
-            chipsEl.innerHTML = '';
-        }
+        notesInput.value = '';
+        charCount.textContent = '0 / 160';
+        charCount.className = 'ip-desc-char-count';
     } else {
         notesSection.style.display = 'none';
-        chipsEl.innerHTML = '';
+        notesInput.value = '';
     }
 
     _ipResetAddBtn();
     document.getElementById('item-popup-overlay').classList.add('active');
     document.getElementById('item-popup').classList.add('active');
     document.body.classList.add('modal-open');
-}
-
-function _ipToggleKw(btn, kw) {
-    if (_ipKwActive.has(kw)) {
-        _ipKwActive.delete(kw);
-        btn.style.cssText = 'padding:6px 13px;border:1.5px solid #e2e2e6;border-radius:50px;font-size:0.75rem;font-weight:700;color:#555;background:#fff;cursor:pointer;font-family:Almarai,sans-serif;transition:all 0.15s;';
-    } else {
-        _ipKwActive.add(kw);
-        btn.style.cssText = 'padding:6px 13px;border:1.5px solid #FF5C00;border-radius:50px;font-size:0.75rem;font-weight:700;color:#fff;background:#FF5C00;cursor:pointer;font-family:Almarai,sans-serif;box-shadow:0 2px 8px rgba(255,92,0,0.3);transition:all 0.15s;';
-    }
-    // Update preview line
-    const preview = document.getElementById('ip-notes-preview');
-    if (preview) {
-        const sel = [..._ipKwActive];
-        preview.textContent = sel.length ? sel.join(' • ') : '';
-        preview.style.opacity = sel.length ? '1' : '0';
-    }
 }
 
 function closeItemPopup() {
@@ -1084,20 +895,20 @@ function _ipAddToCart() {
     if (!_ipItem || !window.DelivoCart) return;
     const { uniqueId, item, storeName, price, storeType } = _ipItem;
 
-    // Collect only keyword chip selections — no free text
-    const notes = [..._ipKwActive].join('، ');
-
+    /* Collect notes from the description textarea */
+    const notesInput    = document.getElementById('ip-notes-input');
+    const notes         = (notesInput ? notesInput.value.trim() : '');
     const isCustomizable = CUSTOMIZABLE_TYPES.includes(storeType);
 
     if (isCustomizable) {
-        // Each popup add = a brand new instance with its own notes
+        /* Each popup add = a brand new instance carrying its notes */
         for (let i = 0; i < _ipQty; i++) {
             const instanceId = uniqueId + '__i' + (Date.now() + i);
             window.DelivoCart.addItem(instanceId, item.name, price, storeName, storeType, notes);
         }
         _updatePanelQtyDisplay(uniqueId, storeName);
     } else {
-        // Non-customizable: stack qty on single entry
+        /* Non-customizable: stack qty on single entry */
         const current = _getItemQty(uniqueId);
         const diff    = _ipQty - current;
         if (diff > 0) {
@@ -1111,12 +922,12 @@ function _ipAddToCart() {
         }
     }
 
-    // Sync store panel
-    const slug    = _slugify(uniqueId);
-    const itemEl  = document.getElementById(`sp-item-${slug}`);
+    /* Sync store panel qty display */
+    const slug   = _slugify(uniqueId);
+    const itemEl = document.getElementById(`sp-item-${slug}`);
     if (itemEl) {
         const actionsEl = itemEl.querySelector('.sp-item__actions');
-        const newQty    = _getItemQty(uniqueId);
+        const newQty    = _getBaseItemQty(uniqueId, storeName);
         if (actionsEl) {
             actionsEl.innerHTML = `
                 <div class="sp-item__qty-control" id="sp-qty-ctrl-${slug}">
@@ -1151,4 +962,3 @@ function _ipResetAddBtn() {
 
 window.openItemPopup  = openItemPopup;
 window.closeItemPopup = closeItemPopup;
-window._ipToggleKw    = _ipToggleKw;
