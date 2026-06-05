@@ -272,28 +272,6 @@
 .cart-total-label { font-weight: 600; }
 .cart-total-val   { font-weight: 700; }
 
-/* ── Note field ───────────────────────────────────────────── */
-.cart-note-field {
-    width: 100%;
-    padding: 9px 12px;
-    border: 1.5px solid var(--clr-gray-200);
-    border-radius: var(--radius-md);
-    font-family: inherit;
-    font-size: clamp(0.78rem, 2vw, 0.86rem);
-    direction: rtl;
-    resize: none;
-    outline: none;
-    color: var(--clr-black);
-    background: var(--clr-gray-50);
-    transition: border-color 0.18s;
-    min-height: 60px;
-    box-sizing: border-box;
-}
-.cart-note-field:focus {
-    border-color: var(--clr-orange);
-    background: var(--clr-white);
-}
-
 /* ── Checkout button ──────────────────────────────────────── */
 .cart-checkout-btn {
     width: 100%;
@@ -643,9 +621,6 @@
 }
 /* Give the inner children proper spacing when open */
 .cart-extras-panel.open > * { overflow: visible; }
-.cart-extras-panel .cart-note-field {
-    margin-top: 8px;
-}
 .cart-extras-panel .cart-location {
     margin-top: 6px;
 }

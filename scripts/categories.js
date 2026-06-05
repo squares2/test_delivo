@@ -76,8 +76,15 @@ async function _fetchStores(fbKey) {
     const status = statusRes && statusRes.ok ? await statusRes.json().catch(() => null) : null;
     if (!data) { _cache[fbKey] = []; return []; }
     const arr = Object.values(data)
-        .filter(s => s && s.companyname)
-        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
+        .filter(s => s && s.companyname && !s.disabled && s.disabled !== '1' && s.disabled !== 1)
+        .sort((a, b) => {
+            // 1st: priority (lower number = higher position; undefined = last)
+            const pa = a.priority !== undefined ? parseInt(a.priority) : 9999;
+            const pb = b.priority !== undefined ? parseInt(b.priority) : 9999;
+            if (pa !== pb) return pa - pb;
+            // 2nd: rank (higher rating first)
+            return (parseFloat(b.rank) || 0) - (parseFloat(a.rank) || 0);
+        })
         .map(s => {
             const st     = status && status[s.companyname];
             const closed = st && (st.closed === true || st.closed === '1' || st.closed === 1);

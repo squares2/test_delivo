@@ -968,6 +968,76 @@ input, select, textarea { font-family: var(--font); }
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
     font-size:1.4rem; z-index:2;
 }
+/* Disabled store card */
+.store-card-admin.sc-disabled { opacity:0.75; }
+.store-card-admin.sc-disabled .sc-thumb { filter:grayscale(0.8) brightness(0.65); }
+
+/* Priority row */
+.sc-priority-row {
+    display:flex; align-items:center; gap:6px;
+    margin-top:6px; padding-top:6px; border-top:1px dashed var(--border);
+}
+.sc-priority-label {
+    display:flex; align-items:center; gap:4px;
+    font-size:0.62rem; color:var(--gray); font-weight:700; white-space:nowrap;
+}
+.sc-priority-input {
+    width:46px; background:var(--surface3,#1a1a2a); border:1px solid var(--border);
+    border-radius:6px; padding:4px 6px; color:var(--white); font-family:var(--mono);
+    font-size:0.78rem; outline:none; text-align:center;
+}
+.sc-priority-input:focus { border-color:var(--orange); }
+.sc-priority-save {
+    background:rgba(255,92,0,0.12); color:var(--orange); border:1px solid rgba(255,92,0,0.3);
+    border-radius:6px; padding:3px 7px; cursor:pointer; font-size:0.75rem; font-weight:800;
+    transition:background 0.15s;
+}
+.sc-priority-save:hover { background:rgba(255,92,0,0.25); }
+
+/* Meal tags row */
+.sc-meal-row {
+    margin-top:6px; padding-top:6px; border-top:1px dashed var(--border);
+    display:flex; flex-direction:column; gap:5px;
+}
+.sc-meal-checks {
+    display:flex; flex-wrap:wrap; gap:5px;
+}
+.sc-meal-check {
+    display:flex; align-items:center; gap:4px; cursor:pointer;
+    font-size:0.65rem; color:var(--gray-light); font-weight:700;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; padding:3px 7px; user-select:none;
+    transition:border-color 0.15s, color 0.15s;
+}
+.sc-meal-check:has(input:checked) {
+    border-color:var(--orange); color:var(--orange);
+    background:rgba(255,92,0,0.08);
+}
+.sc-meal-check input { display:none; }
+
+/* Disable button */
+.sc-disable-btn {
+    display:flex; align-items:center; justify-content:center;
+    border:none; border-radius:10px; padding:8px 6px;
+    font-family:var(--font); font-size:0.7rem; font-weight:800;
+    cursor:pointer; transition:background 0.15s; white-space:nowrap;
+    background:rgba(120,120,120,0.12); color:var(--gray-light);
+    border:1.5px solid rgba(120,120,120,0.25);
+}
+.sc-disable-btn:hover { background:rgba(120,120,120,0.22); }
+.sc-disable-btn--on {
+    background:rgba(34,197,94,0.12); color:var(--green);
+    border-color:rgba(34,197,94,0.35);
+}
+
+/* Delete button */
+.sc-delete-btn {
+    display:flex; align-items:center; justify-content:center;
+    border:none; border-radius:10px; padding:8px;
+    background:rgba(239,68,68,0.1); color:var(--red);
+    border:1.5px solid rgba(239,68,68,0.25); cursor:pointer; transition:background 0.15s;
+}
+.sc-delete-btn:hover { background:rgba(239,68,68,0.22); }
 .sc-closed-lbl {
     font-size:0.6rem; font-weight:900; color:#fff; letter-spacing:0.8px;
     background:rgba(239,68,68,0.85); border-radius:50px; padding:2px 7px;
@@ -1533,18 +1603,31 @@ input, select, textarea { font-family: var(--font); }
                     <h2>المتاجر</h2>
                     <span class="panel-header-sub" id="stores-count-label">—</span>
                     <input type="text" class="search-box" id="stores-search" placeholder="بحث باسم المتجر…" style="max-width:200px;">
+                    <button class="ph-btn ph-btn--primary" id="add-store-btn" onclick="openAddStoreModal()">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        إضافة متجر
+                    </button>
                     <button class="ph-btn" id="stores-refresh-btn">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
                         تحديث
                     </button>
                 </div>
-                <div class="orders-toolbar" style="flex-shrink:0;" id="stores-filter-bar">
+                <div class="orders-toolbar" style="flex-shrink:0;flex-wrap:wrap;" id="stores-filter-bar">
                     <button class="filter-pill active" data-store-filter="all">الكل</button>
                     <button class="filter-pill" data-store-filter="Restaurants">🍔 مطاعم</button>
-                    <button class="filter-pill" data-store-filter="BakeryShops">🥖 مخابز</button>
                     <button class="filter-pill" data-store-filter="ButcherShops">🥩 ملاحم</button>
+                    <button class="filter-pill" data-store-filter="BakeryShops">🥖 مخابز</button>
                     <button class="filter-pill" data-store-filter="Markets">🛒 أسواق</button>
-                    <button class="filter-pill" data-store-filter="Groceries">🏪 بقالة</button>
+                    <button class="filter-pill" data-store-filter="GroceryShops">🧺 بقالة</button>
+                    <button class="filter-pill" data-store-filter="SweetsShops">🍰 حلويات</button>
+                    <button class="filter-pill" data-store-filter="FishShops">🐟 أسماك</button>
+                    <button class="filter-pill" data-store-filter="CoffeeShops">☕ قهوة</button>
+                    <button class="filter-pill" data-store-filter="ChickenShops">🍗 دجاج</button>
+                    <button class="filter-pill" data-store-filter="DairyShops">🥛 ألبان</button>
+                    <button class="filter-pill" data-store-filter="FlowerShops">💐 زهور</button>
+                    <button class="filter-pill" data-store-filter="TobaccoShops">🚬 تبغ</button>
+                    <button class="filter-pill" data-store-filter="ToysShops">🧸 ألعاب</button>
+                    <button class="filter-pill" data-store-filter="Taxi">🚕 تاكسي</button>
                 </div>
                 <div class="stores-grid" id="stores-grid"></div>
             </div>
@@ -4439,8 +4522,8 @@ function renderCustomers() {
 
 // STORES PANEL
 // ═══════════════════════════════════════════════════════════════
-const TYPE_LABELS = { Restaurants:'مطعم', BakeryShops:'مخبز', ButcherShops:'ملحمة', Markets:'سوبرماركت', Groceries:'بقالة', SweetsShops:'حلويات', FishShops:'أسماك', CoffeeShops:'قهوة' };
-const TYPE_EMOJI  = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', Groceries:'🏪', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕' };
+const TYPE_LABELS = { Restaurants:'مطعم', BakeryShops:'مخبز', ButcherShops:'ملحمة', Markets:'سوبرماركت', GroceryShops:'بقالة', SweetsShops:'حلويات', FishShops:'أسماك', CoffeeShops:'قهوة', ChickenShops:'دجاج', DairyShops:'ألبان', FlowerShops:'زهور', TobaccoShops:'تبغ', ToysShops:'ألعاب', Taxi:'تاكسي' };
+const TYPE_EMOJI  = { Restaurants:'🍔', BakeryShops:'🥖', ButcherShops:'🥩', Markets:'🛒', GroceryShops:'🧺', SweetsShops:'🍰', FishShops:'🐟', CoffeeShops:'☕', ChickenShops:'🍗', DairyShops:'🥛', FlowerShops:'💐', TobaccoShops:'🚬', ToysShops:'🧸', Taxi:'🚕' };
 
 function renderStores() {
     const grid    = document.getElementById('stores-grid');
@@ -4480,7 +4563,10 @@ function renderStores() {
         const closedReason = s._closedReason || '';
         const opensAt      = s._opensAt      || '';
 
-        card.className = 'store-card-admin' + (isClosed ? ' sc-closed' : '');
+        const isDisabled = s.disabled === true || s.disabled === '1' || s.disabled === 1;
+        const priority   = s.priority !== undefined ? parseInt(s.priority) : '';
+
+        card.className = 'store-card-admin' + (isClosed ? ' sc-closed' : '') + (isDisabled ? ' sc-disabled' : '');
         card.style.cursor = 'default';
         card.innerHTML = `
             <div class="sc-thumb">
@@ -4488,7 +4574,8 @@ function renderStores() {
                 <div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;">${emoji}</div>
                 <div class="sc-type-badge">${typeLabel}</div>
                 ${newOrders > 0 ? `<div style="position:absolute;top:6px;left:6px;background:var(--orange);color:#fff;font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:50px;">🔴 ${newOrders} جديد</div>` : ''}
-                ${isClosed ? `<div class="sc-closed-overlay"><span>🔒</span><span class="sc-closed-lbl">مغلق</span></div>` : ''}
+                ${isClosed   ? `<div class="sc-closed-overlay"><span>🔒</span><span class="sc-closed-lbl">مغلق</span></div>` : ''}
+                ${isDisabled && !isClosed ? `<div class="sc-closed-overlay" style="background:rgba(30,30,30,0.72);"><span>🚫</span><span class="sc-closed-lbl" style="background:rgba(120,120,120,0.8);">معطّل</span></div>` : ''}
             </div>
             <div class="sc-body">
                 <div class="sc-name">${name}</div>
@@ -4498,13 +4585,44 @@ function renderStores() {
                 </div>
                 ${isClosed ? `<div class="sc-closed-reason">${closedReason || 'مغلق مؤقتاً'}</div>` : ''}
                 ${isClosed && opensAt ? `<div class="sc-opens-at">${_fmtOpensAt(opensAt)}</div>` : ''}
+                <!-- Priority row -->
+                <div class="sc-priority-row">
+                    <span class="sc-priority-label">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                        الأولوية
+                    </span>
+                    <input type="number" class="sc-priority-input" value="${priority}" min="1" max="99" placeholder="—"
+                           title="1 = الأعلى أولوية">
+                    <button class="sc-priority-save" title="حفظ الأولوية">✓</button>
+                </div>
+                <!-- Meal tags row -->
+                <div class="sc-meal-row">
+                    <span class="sc-priority-label" style="margin-bottom:5px;display:flex;">🍽 وجبات</span>
+                    <div class="sc-meal-checks">
+                        ${['breakfast','lunch','snack','dinner'].map(m => {
+                            const mLabel = {breakfast:'فطور',lunch:'غداء',snack:'سناك',dinner:'عشاء'}[m];
+                            const checked = (s.mealTags||[]).includes(m) ? 'checked' : '';
+                            return `<label class="sc-meal-check">
+                                <input type="checkbox" class="sc-meal-cb" data-meal="${m}" ${checked}>
+                                <span>${mLabel}</span>
+                            </label>`;
+                        }).join('')}
+                    </div>
+                    <button class="sc-priority-save sc-meal-save" title="حفظ وجبات">✓</button>
+                </div>
             </div>
-            <div class="sc-close-actions">
-                <button class="sc-status-btn ${isClosed ? 'sc-status-btn--open' : 'sc-status-btn--close'}">
+            <div class="sc-close-actions" style="gap:6px;">
+                <button class="sc-status-btn ${isClosed ? 'sc-status-btn--open' : 'sc-status-btn--close'}" style="flex:2;">
                     ${isClosed
-                        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg> فتح المتجر`
-                        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> إغلاق المتجر`
+                        ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg> فتح`
+                        : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> إغلاق`
                     }
+                </button>
+                <button class="sc-disable-btn ${isDisabled ? 'sc-disable-btn--on' : ''}" style="flex:1.5;" title="${isDisabled ? 'إعادة التفعيل' : 'تعطيل المتجر'}">
+                    ${isDisabled ? '✅ تفعيل' : '🚫 تعطيل'}
+                </button>
+                <button class="sc-delete-btn" style="flex:0.8;" title="حذف المتجر">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                 </button>
             </div>`;
 
@@ -4512,6 +4630,45 @@ function renderStores() {
         card.querySelector('.sc-status-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             openCloseStoreModal(name, isClosed, closedReason, opensAt);
+        });
+
+        // Disable/enable button
+        card.querySelector('.sc-disable-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await _storeSetField(name, s.type, 'disabled', isDisabled ? null : true);
+            toast(isDisabled ? `✅ تم تفعيل ${name}` : `🚫 تم تعطيل ${name}`);
+            await _refreshStoresData();
+        });
+
+        // Meal tags save
+        card.querySelector('.sc-meal-save').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const checks = [...card.querySelectorAll('.sc-meal-cb')];
+            const tags   = checks.filter(c => c.checked).map(c => c.dataset.meal);
+            await _storeSetField(name, s.type, 'mealTags', tags.length ? tags : null);
+            toast(`🍽 وجبات ${name}: ${tags.length ? tags.join('،') : 'لا شيء'}`);
+        });
+
+        // Priority save
+        card.querySelector('.sc-priority-save:not(.sc-meal-save)').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const inp = card.querySelector('.sc-priority-input');
+            const val = inp.value === '' ? null : parseInt(inp.value);
+            await _storeSetField(name, s.type, 'priority', val);
+            toast(`📶 أولوية ${name}: ${val ?? 'افتراضي'}`);
+            await _refreshStoresData();
+        });
+        card.querySelector('.sc-priority-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') card.querySelector('.sc-priority-save').click();
+        });
+
+        // Delete button
+        card.querySelector('.sc-delete-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm(`حذف متجر "${name}" نهائياً؟ لا يمكن التراجع.`)) return;
+            await _storeDelete(name, s.type);
+            toast(`🗑 تم حذف ${name}`);
+            await _refreshStoresData();
         });
 
         grid.appendChild(card);
@@ -4652,6 +4809,165 @@ function openCloseStoreModal(storeName, isCurrentlyClosed, reason, opensAt) {
         close();
         await _refreshStoresData();
         if (typeof cpUpdateStoreToggleBtn === 'function') cpUpdateStoreToggleBtn();
+    };
+}
+
+// ══ STORE MANAGEMENT HELPERS ════════════════════════════════
+// Find a store's Firebase key within its pattern type array
+async function _storeGetKey(storeName, type) {
+    const raw = await fbGet(`pattern/${type}`);
+    if (!raw) return null;
+    const entries = Object.entries(Array.isArray(raw) ? Object.fromEntries(raw.map((v,i)=>[i,v])) : raw);
+    const match = entries.find(([, v]) => v && v.companyname === storeName);
+    return match ? match[0] : null;
+}
+
+// Set a single field on a store's pattern entry
+async function _storeSetField(storeName, type, field, value) {
+    const key = await _storeGetKey(storeName, type);
+    if (key === null) { toast('لم يُعثر على المتجر في قاعدة البيانات', true); return; }
+    if (value === null) {
+        await fbSet(`pattern/${type}/${key}/${field}`, null);
+    } else {
+        await fbSet(`pattern/${type}/${key}/${field}`, value);
+    }
+}
+
+// Delete a store entirely from its pattern entry
+async function _storeDelete(storeName, type) {
+    const key = await _storeGetKey(storeName, type);
+    if (key === null) { toast('لم يُعثر على المتجر', true); return; }
+    await fbSet(`pattern/${type}/${key}`, null);
+    delete allStores[storeName];
+    await fbSet(`storeStatus/${storeName}`, null); // clean up status too
+}
+
+// ── Add Store Modal ──────────────────────────────────────────
+const ALL_TYPES = [
+    { key:'Restaurants',  label:'مطعم',       emoji:'🍔' },
+    { key:'ButcherShops', label:'ملحمة',       emoji:'🥩' },
+    { key:'BakeryShops',  label:'مخبز',        emoji:'🥖' },
+    { key:'Markets',      label:'سوبرماركت',   emoji:'🛒' },
+    { key:'GroceryShops', label:'بقالة',       emoji:'🧺' },
+    { key:'SweetsShops',  label:'حلويات',      emoji:'🍰' },
+    { key:'FishShops',    label:'أسماك',       emoji:'🐟' },
+    { key:'CoffeeShops',  label:'قهوة',        emoji:'☕' },
+    { key:'ChickenShops', label:'دجاج',        emoji:'🍗' },
+    { key:'DairyShops',   label:'ألبان',       emoji:'🥛' },
+    { key:'FlowerShops',  label:'زهور',        emoji:'💐' },
+    { key:'TobaccoShops', label:'تبغ',         emoji:'🚬' },
+    { key:'ToysShops',    label:'ألعاب',       emoji:'🧸' },
+    { key:'Taxi',         label:'تاكسي',       emoji:'🚕' },
+];
+
+function openAddStoreModal() {
+    const stale = document.getElementById('add-store-overlay');
+    if (stale) stale.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'add-store-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    const typeOptions = ALL_TYPES.map(t =>
+        `<option value="${t.key}">${t.emoji} ${t.label}</option>`
+    ).join('');
+
+    overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:420px;font-family:var(--font);direction:rtl;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h3 style="font-size:1rem;font-weight:800;color:var(--white);margin:0;">🏪 إضافة متجر جديد</h3>
+            <button id="as-close" style="background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="margin-bottom:12px;">
+            <label style="font-size:0.75rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">اسم المتجر <span style="color:var(--red)">*</span></label>
+            <input id="as-name" type="text" placeholder="e.g. Classic-Food" maxlength="60"
+                   style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--white);font-family:inherit;font-size:0.88rem;outline:none;box-sizing:border-box;"
+                   onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+            <div style="font-size:0.65rem;color:var(--gray);margin-top:3px;">استخدم حروف إنجليزية وشرطة — بدون مسافات</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+                <label style="font-size:0.75rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">النوع <span style="color:var(--red)">*</span></label>
+                <select id="as-type" style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:9px 10px;color:var(--white);font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;cursor:pointer;">
+                    ${typeOptions}
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">التقييم (اختياري)</label>
+                <input id="as-rank" type="number" placeholder="4.5" min="1" max="5" step="0.1"
+                       style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--white);font-family:var(--mono);font-size:0.88rem;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+            <div>
+                <label style="font-size:0.75rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">الأولوية</label>
+                <input id="as-priority" type="number" placeholder="1" min="1" max="99"
+                       style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--white);font-family:var(--mono);font-size:0.88rem;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+                <div style="font-size:0.65rem;color:var(--gray);margin-top:3px;">1 = الأعلى ظهوراً</div>
+            </div>
+            <div>
+                <label style="font-size:0.75rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">وقت التوصيل (دقيقة)</label>
+                <input id="as-delivery" type="number" placeholder="30" min="5" max="120"
+                       style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--white);font-family:var(--mono);font-size:0.88rem;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+            <button id="as-cancel" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px;color:var(--white);font-family:inherit;font-size:0.88rem;font-weight:700;cursor:pointer;">إلغاء</button>
+            <button id="as-confirm" style="flex:2;background:var(--orange);border:none;border-radius:12px;padding:11px;color:#fff;font-family:inherit;font-size:0.88rem;font-weight:800;cursor:pointer;">إضافة المتجر</button>
+        </div>
+    </div>`;
+
+    document.body.appendChild(overlay);
+    document.getElementById('as-name').focus();
+
+    const close = () => overlay.remove();
+    document.getElementById('as-close').onclick  = close;
+    document.getElementById('as-cancel').onclick = close;
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+    document.getElementById('as-confirm').onclick = async () => {
+        const btn      = document.getElementById('as-confirm');
+        const nameVal  = (document.getElementById('as-name')?.value || '').trim();
+        const typeVal  = document.getElementById('as-type')?.value;
+        const rankVal  = document.getElementById('as-rank')?.value;
+        const prioVal  = document.getElementById('as-priority')?.value;
+        const delivVal = document.getElementById('as-delivery')?.value;
+
+        if (!nameVal)  { toast('أدخل اسم المتجر', true); return; }
+        if (!typeVal)  { toast('اختر نوع المتجر', true); return; }
+        if (allStores[nameVal]) { toast('المتجر موجود مسبقاً', true); return; }
+
+        btn.disabled = true; btn.textContent = '…';
+
+        const entry = {
+            companyname: nameVal,
+            ...(rankVal  ? { rank: rankVal }         : {}),
+            ...(prioVal  ? { priority: parseInt(prioVal) } : {}),
+            ...(delivVal ? { deliveryTime: parseInt(delivVal) } : {}),
+        };
+
+        try {
+            // Push new store entry into pattern/{type}
+            const raw  = await fbGet(`pattern/${typeVal}`).catch(() => null) || {};
+            const list = Array.isArray(raw) ? raw : Object.values(raw);
+            list.push(entry);
+            // Write back as object (keyed 0..n)
+            const asObj = Object.fromEntries(list.map((v, i) => [i, v]));
+            await fbSet(`pattern/${typeVal}`, asObj);
+            toast(`✅ تم إضافة ${nameVal}`);
+            close();
+            await _refreshStoresData();
+        } catch(e) {
+            toast('فشل الإضافة: ' + e.message, true);
+            btn.disabled = false; btn.textContent = 'إضافة المتجر';
+        }
     };
 }
 
@@ -4928,18 +5244,108 @@ function renderSettings() {
                 </label>
             </div>
         </div>
-        <div class="settings-section">
-            <div class="settings-section-title">رسوم التوصيل</div>
+        <div class="settings-section" id="delivery-settings-section">
+            <div class="settings-section-title">🛵 رسوم التوصيل</div>
+
+            <!-- Flat fee row -->
             <div class="setting-row">
                 <div>
-                    <div class="setting-label">رسوم التوصيل لكل متجر ($)</div>
-                    <div class="setting-sub">القيمة الحالية المحددة في الكود: $2</div>
+                    <div class="setting-label">الرسوم الثابتة لكل متجر ($)</div>
+                    <div class="setting-sub">تُطبَّق عندما يكون الوضع الذكي غير مفعّل</div>
                 </div>
                 <input type="number" id="delivery-fee-input" value="2" min="0" step="0.5"
-                       style="width:70px;background:var(--surface2);border:1.5px solid var(--border);
-                              border-radius:var(--radius-md);padding:6px 10px;color:var(--white);
-                              font-family:var(--mono);outline:none;text-align:center;"
+                       style="width:70px;background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:6px 10px;color:var(--white);font-family:var(--mono);outline:none;text-align:center;"
                        onchange="setDeliveryFee(this.value)">
+            </div>
+
+            <!-- Smart delivery toggle -->
+            <div class="setting-row" style="border-top:1px solid var(--border);">
+                <div>
+                    <div class="setting-label" style="display:flex;align-items:center;gap:8px;">
+                        ✨ التوصيل الذكي
+                        <span id="smart-mode-badge" style="display:none;font-size:0.62rem;font-weight:800;background:rgba(255,92,0,0.15);color:var(--orange);border-radius:50px;padding:2px 8px;">مفعّل</span>
+                    </div>
+                    <div class="setting-sub">يحسب الرسوم تلقائياً بناءً على المسافة وإجمالي الطلب</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" id="toggle-smart-delivery" onchange="toggleSmartDelivery(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <!-- Smart delivery config (shown only when enabled) -->
+            <div id="smart-delivery-config" style="display:none;border-top:1px solid var(--border);padding:16px;">
+
+                <!-- Formula preview -->
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:0.72rem;color:var(--gray-light);">
+                    <div style="color:var(--orange);font-weight:800;margin-bottom:4px;">📐 الصيغة الحسابية</div>
+                    <code>رسوم = max(حد_أدنى, رسوم_أساسية + كم × معدل_كم) − خصم_الشريحة</code>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">الرسوم الأساسية ($)</label>
+                        <input type="number" id="sd-base-fee" value="1.5" min="0" step="0.25"
+                               style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--white);font-family:var(--mono);outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+                        <div style="font-size:0.65rem;color:var(--gray);margin-top:3px;">تُضاف لكل متجر بغض النظر عن المسافة</div>
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">معدل المسافة ($/كم)</label>
+                        <input type="number" id="sd-rate-km" value="0.3" min="0" step="0.05"
+                               style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--white);font-family:var(--mono);outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+                        <div style="font-size:0.65rem;color:var(--gray);margin-top:3px;">تُضرب في المسافة بالكيلومتر</div>
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">الحد الأدنى ($)</label>
+                        <input type="number" id="sd-min-fee" value="0.5" min="0" step="0.25"
+                               style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--white);font-family:var(--mono);outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+                    </div>
+                    <div>
+                        <label style="font-size:0.72rem;color:var(--gray);font-weight:700;display:block;margin-bottom:5px;">الحد الأقصى ($)</label>
+                        <input type="number" id="sd-max-fee" value="5.0" min="0" step="0.5"
+                               style="width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--white);font-family:var(--mono);outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border)'">
+                    </div>
+                </div>
+
+                <!-- Discount tiers -->
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:0.72rem;color:var(--gray);font-weight:800;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+                        <span>🏷 شرائح خصم الإجمالي</span>
+                        <button onclick="sdAddTier()" style="background:rgba(255,92,0,0.12);color:var(--orange);border:1px solid rgba(255,92,0,0.3);border-radius:8px;padding:4px 10px;font-family:var(--font);font-size:0.7rem;font-weight:800;cursor:pointer;">+ شريحة</button>
+                    </div>
+                    <div style="font-size:0.65rem;color:var(--gray);margin-bottom:8px;">إذا بلغ إجمالي المتجر الحد المحدد، يُخصم المبلغ من رسوم التوصيل</div>
+                    <div id="sd-tiers-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+                </div>
+
+                <!-- Live preview -->
+                <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:14px;">
+                    <div style="font-size:0.72rem;color:var(--gray);font-weight:800;margin-bottom:10px;">🧪 اختبار مباشر</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+                        <div>
+                            <label style="font-size:0.65rem;color:var(--gray);display:block;margin-bottom:4px;">إجمالي المتجر ($)</label>
+                            <input type="number" id="sd-test-total" value="10" min="0" step="1"
+                                   style="width:100%;background:var(--surface3,#1a1a2a);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--white);font-family:var(--mono);font-size:0.8rem;outline:none;box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.65rem;color:var(--gray);display:block;margin-bottom:4px;">المسافة (كم)</label>
+                            <input type="number" id="sd-test-km" value="3" min="0" step="0.5"
+                                   style="width:100%;background:var(--surface3,#1a1a2a);border:1px solid var(--border);border-radius:8px;padding:6px 8px;color:var(--white);font-family:var(--mono);font-size:0.8rem;outline:none;box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.65rem;color:var(--gray);display:block;margin-bottom:4px;">الرسوم المحسوبة</label>
+                            <div id="sd-test-result" style="background:rgba(255,92,0,0.1);border:1px solid rgba(255,92,0,0.3);border-radius:8px;padding:7px 8px;font-family:var(--mono);font-size:0.88rem;font-weight:800;color:var(--orange);text-align:center;">—</div>
+                        </div>
+                    </div>
+                    <button onclick="sdRunPreview()" style="width:100%;padding:8px;background:rgba(255,92,0,0.12);color:var(--orange);border:1px solid rgba(255,92,0,0.3);border-radius:8px;font-family:var(--font);font-weight:800;cursor:pointer;font-size:0.8rem;">▶ احسب</button>
+                </div>
+
+                <button onclick="sdSave()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:10px;font-family:var(--font);font-weight:800;cursor:pointer;font-size:0.88rem;">
+                    💾 حفظ إعدادات التوصيل الذكي
+                </button>
             </div>
         </div>
         <div class="settings-section">
@@ -5025,6 +5431,13 @@ function renderSettings() {
         const inp = document.getElementById('max-orders-input');
         if (inp && val) inp.value = val;
     }).catch(() => {});
+    // Load flat delivery fee
+    fbGet('settings/deliveryFee').then(val => {
+        const inp = document.getElementById('delivery-fee-input');
+        if (inp && val !== null) inp.value = val;
+    }).catch(() => {});
+    // Load smart delivery config
+    sdLoad();
     // Load keyword chips
     kwLoad();
 }
@@ -5150,6 +5563,142 @@ async function setDeliveryFee(val) {
         await fbSet('settings/deliveryFee', fee);
         toast(`✅ تم تحديث رسوم التوصيل: $${fee}`);
     } catch(e) { toast('فشل تحديث رسوم التوصيل', true); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SMART DELIVERY — admin settings functions
+═══════════════════════════════════════════════════════════════ */
+
+// Toggle smart delivery on/off
+async function toggleSmartDelivery(enabled) {
+    const config    = await fbGet('settings/smartDelivery').catch(() => null) || {};
+    const badge     = document.getElementById('smart-mode-badge');
+    const configDiv = document.getElementById('smart-delivery-config');
+    config.enabled  = enabled;
+    try {
+        await fbSet('settings/smartDelivery', config);
+        if (badge)     badge.style.display     = enabled ? 'inline-block' : 'none';
+        if (configDiv) configDiv.style.display = enabled ? 'block' : 'none';
+        toast(enabled ? '✨ التوصيل الذكي مفعّل' : '↩ تم التبديل إلى الرسوم الثابتة');
+    } catch(e) { toast('فشل تحديث الإعداد', true); }
+}
+
+// Add a new discount tier row
+let _sdTierIdx = 0;
+function sdAddTier(minTotal = '', discount = '') {
+    const list = document.getElementById('sd-tiers-list');
+    if (!list) return;
+    const idx = _sdTierIdx++;
+    const row = document.createElement('div');
+    row.id = `sd-tier-${idx}`;
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;';
+    row.innerHTML = `
+        <div style="flex:1;">
+            <label style="font-size:0.65rem;color:var(--gray);display:block;margin-bottom:3px;">إجمالي متجر ≥ ($)</label>
+            <input type="number" class="sd-tier-min" value="${minTotal}" min="0" step="1" placeholder="e.g. 15"
+                   style="width:100%;background:var(--surface3,#1a1a2a);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--white);font-family:var(--mono);font-size:0.8rem;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="flex:1;">
+            <label style="font-size:0.65rem;color:var(--gray);display:block;margin-bottom:3px;">خصم التوصيل ($)</label>
+            <input type="number" class="sd-tier-disc" value="${discount}" min="0" step="0.25" placeholder="e.g. 0.5"
+                   style="width:100%;background:var(--surface3,#1a1a2a);border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--white);font-family:var(--mono);font-size:0.8rem;outline:none;box-sizing:border-box;">
+        </div>
+        <button onclick="this.closest('[id^=sd-tier-]').remove()"
+                style="background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:0.8rem;flex-shrink:0;">✕</button>`;
+    list.appendChild(row);
+}
+
+// Read current tiers from DOM
+function sdReadTiers() {
+    return [...document.querySelectorAll('#sd-tiers-list > div')].map(row => ({
+        minTotal: parseFloat(row.querySelector('.sd-tier-min')?.value || 0) || 0,
+        discount: parseFloat(row.querySelector('.sd-tier-disc')?.value || 0) || 0,
+    })).filter(t => t.minTotal > 0);
+}
+
+// Live preview calculator
+function sdRunPreview() {
+    const baseFee   = parseFloat(document.getElementById('sd-base-fee')?.value) || 1.5;
+    const ratePerKm = parseFloat(document.getElementById('sd-rate-km')?.value)  || 0.3;
+    const minFee    = parseFloat(document.getElementById('sd-min-fee')?.value)  || 0.5;
+    const maxFee    = parseFloat(document.getElementById('sd-max-fee')?.value)  || 5.0;
+    const testTotal = parseFloat(document.getElementById('sd-test-total')?.value) || 0;
+    const testKm    = parseFloat(document.getElementById('sd-test-km')?.value)   || 0;
+    const tiers     = sdReadTiers();
+    const resultEl  = document.getElementById('sd-test-result');
+
+    const distFee = baseFee + testKm * ratePerKm;
+
+    // Find best tier discount
+    const sorted   = [...tiers].sort((a,b) => b.minTotal - a.minTotal);
+    let discount   = 0;
+    for (const tier of sorted) {
+        if (testTotal >= tier.minTotal) { discount = tier.discount; break; }
+    }
+
+    const fee = Math.min(maxFee, Math.max(minFee, distFee - discount));
+    if (resultEl) {
+        resultEl.textContent = `$${fee.toFixed(2)}`;
+        resultEl.title = `${baseFee} + ${testKm}×${ratePerKm} = ${distFee.toFixed(2)} − ${discount} → clamp(${minFee}, ${fee.toFixed(2)}, ${maxFee})`;
+    }
+}
+
+// Wire live preview on input change
+document.addEventListener('input', e => {
+    if (['sd-base-fee','sd-rate-km','sd-min-fee','sd-max-fee','sd-test-total','sd-test-km'].includes(e.target.id)
+        || e.target.classList.contains('sd-tier-min')
+        || e.target.classList.contains('sd-tier-disc')) {
+        sdRunPreview();
+    }
+});
+
+// Save all smart delivery settings to Firebase
+async function sdSave() {
+    const baseFee   = parseFloat(document.getElementById('sd-base-fee')?.value);
+    const ratePerKm = parseFloat(document.getElementById('sd-rate-km')?.value);
+    const minFee    = parseFloat(document.getElementById('sd-min-fee')?.value);
+    const maxFee    = parseFloat(document.getElementById('sd-max-fee')?.value);
+    const enabled   = document.getElementById('toggle-smart-delivery')?.checked ?? false;
+    const tiers     = sdReadTiers();
+
+    if ([baseFee, ratePerKm, minFee, maxFee].some(isNaN)) {
+        toast('تحقق من القيم المدخلة', true); return;
+    }
+
+    const payload = { enabled, baseFee, ratePerKm, minFee, maxFee, tiers };
+    try {
+        await fbSet('settings/smartDelivery', payload);
+        toast('💾 تم حفظ إعدادات التوصيل الذكي');
+    } catch(e) { toast('فشل الحفظ', true); }
+}
+
+// Load smart delivery settings into the UI
+async function sdLoad() {
+    const cfg = await fbGet('settings/smartDelivery').catch(() => null);
+    if (!cfg) return;
+
+    const toggle    = document.getElementById('toggle-smart-delivery');
+    const configDiv = document.getElementById('smart-delivery-config');
+    const badge     = document.getElementById('smart-mode-badge');
+
+    if (toggle)    toggle.checked             = !!cfg.enabled;
+    if (configDiv) configDiv.style.display    = cfg.enabled ? 'block' : 'none';
+    if (badge)     badge.style.display        = cfg.enabled ? 'inline-block' : 'none';
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+    set('sd-base-fee',  cfg.baseFee);
+    set('sd-rate-km',   cfg.ratePerKm);
+    set('sd-min-fee',   cfg.minFee);
+    set('sd-max-fee',   cfg.maxFee);
+
+    // Render tiers
+    const list = document.getElementById('sd-tiers-list');
+    if (list && cfg.tiers) {
+        list.innerHTML = '';
+        _sdTierIdx = 0;
+        cfg.tiers.forEach(t => sdAddTier(t.minTotal, t.discount));
+    }
+    sdRunPreview();
 }
 
 async function setMaxOrders(val) {

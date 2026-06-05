@@ -6,7 +6,134 @@
    ============================================================ */
 
 const RTDB_CART_URL = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
-const DELIVERY_FEE_PER_STORE = 2; // $2 per store
+let DELIVERY_FEE_PER_STORE = 2; // $2 default — overwritten by settings/deliveryFee on load
+
+/* ── Load flat delivery fee from Firebase settings once per session ─── */
+(async function _initFlatFee() {
+    try {
+        const r = await fetch(`${RTDB_CART_URL}/settings/deliveryFee.json`);
+        if (r.ok) {
+            const val = await r.json();
+            if (val !== null && !isNaN(parseFloat(val))) {
+                DELIVERY_FEE_PER_STORE = parseFloat(val);
+            }
+        }
+    } catch (_) {}
+})();
+
+/* ══════════════════════════════════════════════════════════════
+   SMART DELIVERY ENGINE
+   Reads settings/smartDelivery from Firebase once per session.
+   Formula: fee = max(minFee, baseFee + distKm × ratePerKm) − tierDiscount
+   Falls back to flat DELIVERY_FEE_PER_STORE if disabled or error.
+══════════════════════════════════════════════════════════════ */
+let _smartCfg       = null;   // loaded once: { enabled, baseFee, ratePerKm, minFee, tiers }
+let _smartCfgLoaded = false;
+let _storeLocs      = {};     // storeName → { lat, lng } fetched once per session
+
+async function _loadSmartCfg() {
+    if (_smartCfgLoaded) return _smartCfg;
+    try {
+        const r = await fetch(`${RTDB_CART_URL}/settings/smartDelivery.json`);
+        _smartCfg = r.ok ? await r.json() : null;
+    } catch (_) { _smartCfg = null; }
+    _smartCfgLoaded = true;
+    return _smartCfg;
+}
+
+async function _loadStoreLoc(storeName) {
+    if (_storeLocs[storeName]) return _storeLocs[storeName];
+    try {
+        // Search all pattern types for this store
+        const r = await fetch(`${RTDB_CART_URL}/pattern.json?shallow=true`);
+        if (!r.ok) return null;
+        const types = Object.keys(await r.json() || {});
+        for (const type of types) {
+            const r2 = await fetch(`${RTDB_CART_URL}/pattern/${type}.json`);
+            if (!r2.ok) continue;
+            const list = await r2.json();
+            if (!list) continue;
+            const match = Object.values(list).find(s => s && s.companyname === storeName);
+            if (match && match.lat && match.lng) {
+                _storeLocs[storeName] = { lat: parseFloat(match.lat), lng: parseFloat(match.lng) };
+                return _storeLocs[storeName];
+            }
+        }
+    } catch (_) {}
+    return null;
+}
+
+// Haversine distance in km between two lat/lng points
+function _haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2
+            + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Compute delivery fee for one store given customer coords and cart subtotal ($)
+async function _calcSmartFee(storeName, custLat, custLng, cartSubtotalUSD) {
+    const cfg = await _loadSmartCfg();
+    if (!cfg || !cfg.enabled) return DELIVERY_FEE_PER_STORE;
+
+    const baseFee   = parseFloat(cfg.baseFee   ?? 1.5);
+    const ratePerKm = parseFloat(cfg.ratePerKm ?? 0.3);
+    const minFee    = parseFloat(cfg.minFee    ?? 0.5);
+    const maxFee    = parseFloat(cfg.maxFee    ?? 5.0);
+
+    // Distance component
+    let distFee = baseFee;
+    if (custLat && custLng) {
+        const storeLoc = await _loadStoreLoc(storeName);
+        if (storeLoc) {
+            const km = _haversineKm(custLat, custLng, storeLoc.lat, storeLoc.lng);
+            distFee = baseFee + km * ratePerKm;
+        }
+    }
+
+    // Cart-total discount tiers (sorted desc so highest matching tier wins)
+    let discount = 0;
+    if (cfg.tiers && Array.isArray(cfg.tiers)) {
+        const sorted = [...cfg.tiers].sort((a,b) => b.minTotal - a.minTotal);
+        for (const tier of sorted) {
+            if (cartSubtotalUSD >= parseFloat(tier.minTotal)) {
+                discount = parseFloat(tier.discount);
+                break;
+            }
+        }
+    }
+
+    return Math.min(maxFee, Math.max(minFee, distFee - discount));
+}
+
+// Cached per-store fees for current render cycle (invalidated on cart change)
+let _feeCache       = {};   // storeName → fee $
+let _feeCacheSubtot = -1;   // subtotal when cache was built
+let _feeCacheLat    = null;
+let _feeCacheLng    = null;
+
+async function _getStoreFee(storeName, custLat, custLng, cartSubtotalUSD) {
+    const cacheKey = `${storeName}|${custLat}|${custLng}|${cartSubtotalUSD}`;
+    if (_feeCache[cacheKey] !== undefined) return _feeCache[cacheKey];
+    const fee = await _calcSmartFee(storeName, custLat, custLng, cartSubtotalUSD);
+    _feeCache[cacheKey] = fee;
+    return fee;
+}
+
+// Get current customer coords from cart location inputs or user profile
+function _getCustomerCoords() {
+    const lat = parseFloat(document.getElementById('cart-loc-lat')?.value || '')
+             || parseFloat(window.DelivoUser?.location?.lat || window.DelivoUser?.lat || '');
+    const lng = parseFloat(document.getElementById('cart-loc-lng')?.value || '')
+             || parseFloat(window.DelivoUser?.location?.lng || window.DelivoUser?.lng || '');
+    return { lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng };
+}
+
+// Expose so admin preview can call it
+window._calcSmartFee = _calcSmartFee;
+window._loadSmartCfg = _loadSmartCfg;
 
 /* ── First-free-delivery state (resolved once per session) ── */
 let _isFirstOrder       = false;  // true  → this checkout qualifies for free delivery
@@ -219,9 +346,10 @@ function initCart() {
     /* ── Store group section HTML ───────────────────────────── */
     function _renderStoreGroup(storeName, items) {
         const freeDelivery = _isFirstOrder;
-        const feeDisplay   = freeDelivery
+        // Placeholder — fee updates asynchronously via _updateStoreFeeHint
+        const feeDisplay = freeDelivery
             ? `<span style="text-decoration:line-through;color:#aaa;margin-left:4px;">$${DELIVERY_FEE_PER_STORE.toFixed(2)}</span> <span style="color:#22c55e;font-weight:800;">مجاناً 🎁</span>`
-            : `<strong>$${DELIVERY_FEE_PER_STORE.toFixed(2)}</strong>`;
+            : `<span class="fee-loading" style="color:var(--clr-gray-400);font-size:0.75em;">…</span>`;
 
         return `
         <div class="cart-store-group" id="csg-${_cslug(storeName)}">
@@ -235,10 +363,35 @@ function initCart() {
             <div class="cart-store-group__subtotal">
                 المجموع: <strong>${'$' + _storeUSD(items).toFixed(2)}</strong>
             </div>
-            <div class="cart-store-group__delivery-hint">
+            <div class="cart-store-group__delivery-hint" id="fee-hint-${_cslug(storeName)}">
                 🛵 رسوم توصيل هذا المتجر: ${feeDisplay}
             </div>
         </div>`;
+    }
+
+    // Async: fill in smart fee hint after DOM is ready
+    async function _updateStoreFeeHints() {
+        const cart    = window.DelivoCart;
+        const coords  = _getCustomerCoords();
+        const stores  = cart.getStores();
+        for (const storeName of stores) {
+            const items    = cart.getStoreItems(storeName);
+            const subtotal = _storeUSD(items);
+            const hintEl   = document.getElementById(`fee-hint-${_cslug(storeName)}`);
+            if (!hintEl) continue;
+            if (_isFirstOrder) continue; // banner already shown
+            try {
+                const fee = await _getStoreFee(storeName, coords.lat, coords.lng, subtotal);
+                const cfg = await _loadSmartCfg();
+                const isSmartMode = cfg && cfg.enabled;
+                const badge = isSmartMode
+                    ? `<span style="font-size:0.68em;background:rgba(255,92,0,0.12);color:var(--clr-orange);border-radius:4px;padding:1px 5px;margin-right:4px;">ذكي</span>`
+                    : '';
+                hintEl.innerHTML = `🛵 رسوم توصيل هذا المتجر: ${badge}<strong>$${fee.toFixed(2)}</strong>`;
+            } catch(_) {}
+        }
+        // Also refresh totals with smart fees
+        await _refreshTotalsAsync();
     }
 
     /* ── Single cart item row HTML ──────────────────────────── */
@@ -354,6 +507,7 @@ function initCart() {
     }
 
     function _refreshTotals() {
+        // Sync version — uses flat fee; replaced by async version when smart mode is on
         const cart         = window.DelivoCart;
         const subtotalEl   = document.getElementById('cart-subtotal');
         const deliveryEl   = document.getElementById('cart-delivery');
@@ -362,7 +516,6 @@ function initCart() {
         const subtotalUSD  = _cartTotalUSD();
         const storeCount   = cart.getStores().length;
 
-        // Apply free delivery if this is user's first order
         const deliveryFee  = _isFirstOrder ? 0 : storeCount * DELIVERY_FEE_PER_STORE;
         const grandTotal   = subtotalUSD + deliveryFee;
 
@@ -378,6 +531,43 @@ function initCart() {
 
         // Show/hide first-order banner
         if (bannerEl) bannerEl.style.display = _isFirstOrder ? 'flex' : 'none';
+
+        // Trigger async smart-fee update (non-blocking)
+        _updateStoreFeeHints().catch(() => {});
+    }
+
+    async function _refreshTotalsAsync() {
+        const cart         = window.DelivoCart;
+        const subtotalEl   = document.getElementById('cart-subtotal');
+        const deliveryEl   = document.getElementById('cart-delivery');
+        const grandtotalEl = document.getElementById('cart-grandtotal');
+        const bannerEl     = document.getElementById('cart-free-delivery-banner');
+        const subtotalUSD  = _cartTotalUSD();
+        const stores       = cart.getStores();
+        const coords       = _getCustomerCoords();
+
+        if (subtotalEl) subtotalEl.textContent = '$' + subtotalUSD.toFixed(2);
+        if (bannerEl)   bannerEl.style.display = _isFirstOrder ? 'flex' : 'none';
+
+        if (_isFirstOrder) {
+            const flatTotal = stores.length * DELIVERY_FEE_PER_STORE;
+            if (deliveryEl) deliveryEl.innerHTML = `<span style="text-decoration:line-through;color:#aaa;font-size:0.82em;">$${flatTotal.toFixed(2)}</span> <span style="color:#22c55e;font-weight:800;">مجاناً 🎁</span>`;
+            if (grandtotalEl) grandtotalEl.textContent = '$' + subtotalUSD.toFixed(2);
+            return;
+        }
+
+        // Sum per-store fees
+        let totalDelivery = 0;
+        for (const storeName of stores) {
+            const items   = cart.getStoreItems(storeName);
+            const storeSub = _storeUSD(items);
+            const fee     = await _getStoreFee(storeName, coords.lat, coords.lng, storeSub);
+            totalDelivery += fee;
+        }
+
+        const grandTotal = subtotalUSD + totalDelivery;
+        if (deliveryEl)   deliveryEl.textContent   = '$' + totalDelivery.toFixed(2);
+        if (grandtotalEl) grandtotalEl.textContent = '$' + grandTotal.toFixed(2);
     }
 
     function _syncStorePanelQty(id, qty) {
@@ -430,7 +620,7 @@ function initCart() {
             if (counterData && counterData.requestId) nextId = parseInt(counterData.requestId) + 1;
             else if (typeof counterData === 'number')  nextId = counterData + 1;
 
-            const note        = (document.getElementById('cart-note')?.value || '').trim();
+
             const userProfile = window.DelivoUser || {};
             const now         = new Date();
             const dateStr     = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
@@ -442,14 +632,16 @@ function initCart() {
             const orderLat = cartLat || String(userProfile.location?.lat || userProfile.lat || '');
             const orderLng = cartLng || String(userProfile.location?.lng || userProfile.lng || '');
 
-            // Compute effective delivery fee per store
-            const effectiveDeliveryFee = isFirstOrderNow ? 0 : DELIVERY_FEE_PER_STORE;
+            // Compute effective delivery fee per store (smart or flat)
+            const coords = _getCustomerCoords();
 
             // Write one request per store
             for (const storeName of stores) {
-                const storeItems = cart.getStoreItems(storeName);
-                const cartStr    = storeItems.map(i => `${i.qty}:${i.name}:${i.price}:${storeName}:${(i.notes||'').replace(/,/g,'،').replace(/:/g,'؛')}`).join(',');
-                const storeTotal = (parseFloat(_storeUSD(storeItems)) + effectiveDeliveryFee).toFixed(2);
+                const storeItems     = cart.getStoreItems(storeName);
+                const storeSub       = _storeUSD(storeItems);
+                const smartFee       = isFirstOrderNow ? 0 : await _getStoreFee(storeName, coords.lat, coords.lng, storeSub);
+                const cartStr        = storeItems.map(i => `${i.qty}:${i.name}:${i.price}:${storeName}:${(i.notes||'').replace(/,/g,'،').replace(/:/g,'؛')}`).join(',');
+                const storeTotal     = (storeSub + smartFee).toFixed(2);
                 const requestKey = `id_${nextId}`;
 
                 const requestObj = {
@@ -471,7 +663,6 @@ function initCart() {
                     trackorder   : '0',
                     username     : userProfile.username || user.email || '',
                     vault        : '0',
-                    xnote        : note,
                 };
 
                 const writeRequest = fetch(`${RTDB_CART_URL}/requests/${requestKey}.json`, {

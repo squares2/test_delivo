@@ -303,6 +303,9 @@
         </div>
         <div id="offers"></div>
 
+        <!-- Meal-time smart recommendations (populated by mealtime.js) -->
+        <section id="mealtime-section"></section>
+
         <section class="stores" id="stores-section">
             <div class="stores__header">
                 <h2 class="section-title">المتاجر الأكثر طلباً</h2>
@@ -833,7 +836,7 @@
                 <span class="cart-extras-toggle__icons">
                     <span id="cart-extras-loc-dot" class="cart-extras-dot" style="display:none">📍</span>
                 </span>
-                <span class="cart-extras-toggle__label">ملاحظات وموقع التوصيل</span>
+                <span class="cart-extras-toggle__label">موقع التوصيل</span>
                 <svg class="cart-extras-toggle__arrow" width="14" height="14" viewBox="0 0 24 24"
                      fill="none" stroke="currentColor" stroke-width="2.5"
                      stroke-linecap="round" stroke-linejoin="round">
@@ -843,29 +846,6 @@
 
             <!-- Collapsible extras panel -->
             <div class="cart-extras-panel" id="cart-extras-panel">
-
-                <!-- Order notes -->
-                <div class="cart-note-wrap" style="padding:0 0 10px;">
-                    <div class="cart-location__header" style="margin-bottom:6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                             stroke="currentColor" stroke-width="2.2"
-                             stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                        <span>ملاحظات الطلب</span>
-                        <span class="cart-location__optional">(اختياري)</span>
-                    </div>
-                    <textarea id="cart-note" class="cart-note-field"
-                              placeholder="مثال: لا ثوم، أضف صلصة حارة، رن الجرس…"
-                              rows="2" maxlength="200"
-                              style="width:100%;resize:none;border:1.5px solid var(--clr-gray-200);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:0.82rem;color:#333;background:#fafafa;outline:none;transition:border-color 0.2s;"
-                              onfocus="this.style.borderColor='var(--clr-orange)'"
-                              onblur="this.style.borderColor='var(--clr-gray-200)'"></textarea>
-                </div>
 
                 <div class="cart-location">
                     <div class="cart-location__header">
@@ -1002,6 +982,7 @@
     <script src="scripts/loader.js?v=13"></script>
     <script src="scripts/modals.js?v=7"></script>
     <script src="scripts/stores.js?v=7"></script>
+    <script src="scripts/mealtime.js?v=1"></script>
     <script src="scripts/categories.js?v=3"></script>
     <script src="scripts/cart.js?v=13"></script>
     <script src="scripts/store-panel.js?v=6"></script>
