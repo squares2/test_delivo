@@ -1,23 +1,39 @@
 /* ============================================================
-   scripts/back-handler.js  v4 — simplified & reliable
+   scripts/back-handler.js  v5
    
-   Two jobs only:
-   1. Back button while a layer is open → close that layer
-   2. Back button on clean home screen → exit confirm dialog
-      → window.close() called DIRECTLY inside user click (no setTimeout)
+   Core insight:
+   - replaceState on load → marks base entry, does NOT add entries
+   - pushState ONCE → gives us one back-press to intercept
+   - popstate fires → close layer OR show exit dialog
+   - After closing a layer, push again to keep catching
+   - Exit: history.back() to let OS/browser handle naturally
+     + window.close() as PWA bonus (works only in standalone)
    ============================================================ */
 
 (function () {
     'use strict';
 
-    /* ── Single fake entry so we always catch one back press ── */
-    history.replaceState({ delivo: true }, '');
-    history.pushState({ delivo: true }, '');
+    let _intercepting = false; // true = we have pushed a fake entry
+
+    /* ── Mark base entry ─────────────────────────────────────── */
+    history.replaceState({ delivoBase: true }, '');
+
+    /* ── Push one interception entry ─────────────────────────── */
+    function _arm() {
+        if (!_intercepting) {
+            history.pushState({ delivoLayer: true }, '');
+            _intercepting = true;
+        }
+    }
+
+    /* ── Disarm (we consumed the entry via popstate) ─────────── */
+    function _disarm() {
+        _intercepting = false;
+    }
 
     /* ── Layer detector ──────────────────────────────────────── */
     function _closeTopLayer() {
 
-        // Track modal
         const trackModal = document.getElementById('track-modal') ||
                            document.querySelector('.track-modal');
         if (trackModal && (trackModal.classList.contains('active') ||
@@ -26,7 +42,6 @@
             return true;
         }
 
-        // Orders modal
         const ordersModal = document.getElementById('modal-orders') ||
                             document.querySelector('.orders-modal');
         if (ordersModal && ordersModal.classList.contains('active')) {
@@ -34,22 +49,19 @@
             return true;
         }
 
-        // Any active modal overlay
-        const overlay = document.querySelector('.modal-overlay.active');
-        if (overlay) {
-            overlay.classList.remove('active');
+        const activeOverlay = document.querySelector('.modal-overlay.active');
+        if (activeOverlay) {
+            activeOverlay.classList.remove('active');
             document.body.classList.remove('modal-open');
             return true;
         }
 
-        // Track bottom sheet
         const trackSheet = document.getElementById('bb-track-sheet');
         if (trackSheet && trackSheet.classList.contains('open')) {
             if (typeof window._closeTrackSheet === 'function') window._closeTrackSheet();
             return true;
         }
 
-        // Store panel
         const sp = document.getElementById('store-panel') ||
                    document.querySelector('.store-panel');
         if (sp && (sp.classList.contains('open') || sp.classList.contains('active'))) {
@@ -57,14 +69,12 @@
             return true;
         }
 
-        // Cart sidebar
         const cart = document.getElementById('cart-sidebar');
         if (cart && cart.classList.contains('active')) {
             if (typeof window.closeCartSidebar === 'function') window.closeCartSidebar();
             return true;
         }
 
-        // Mobile nav
         const nav = document.getElementById('mobile-menu');
         if (nav && nav.classList.contains('open')) {
             nav.classList.remove('open');
@@ -75,6 +85,36 @@
 
         return false;
     }
+
+    /* ── Arm whenever a layer opens ──────────────────────────── */
+    // Watch for layers opening via MutationObserver — no patching needed
+    const _observer = new MutationObserver(() => {
+        if (_closeTopLayer !== null && _anyLayerOpen()) {
+            _arm();
+        }
+    });
+
+    function _anyLayerOpen() {
+        if (document.querySelector('.modal-overlay.active')) return true;
+        if (document.querySelector('#track-modal.active, .track-modal.active')) return true;
+        if (document.querySelector('#modal-orders.active, .orders-modal.active')) return true;
+        if (document.querySelector('#bb-track-sheet.open')) return true;
+        const sp = document.getElementById('store-panel') || document.querySelector('.store-panel');
+        if (sp && (sp.classList.contains('open') || sp.classList.contains('active'))) return true;
+        const cart = document.getElementById('cart-sidebar');
+        if (cart && cart.classList.contains('active')) return true;
+        const nav = document.getElementById('mobile-menu');
+        if (nav && nav.classList.contains('open')) return true;
+        return false;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        _observer.observe(document.body, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        });
+    });
 
     /* ── Exit dialog ─────────────────────────────────────────── */
     let _dialogOpen = false;
@@ -104,49 +144,57 @@
             overlay.classList.remove('exit-confirm-overlay--visible');
             setTimeout(() => overlay.remove(), 280);
             _dialogOpen = false;
-            // Re-push so next back is caught again
-            history.pushState({ delivo: true }, '');
+            _arm(); // re-arm so next back is caught
         }
 
-        // Stay — dismiss and re-push
-        document.getElementById('exit-stay').onclick = _dismiss;
-        overlay.addEventListener('click', e => { if (e.target === overlay) _dismiss(); });
-
-        // Exit — called directly in onclick (satisfies user-gesture requirement)
-        document.getElementById('exit-go').onclick = function () {
+        function _exit() {
             overlay.classList.remove('exit-confirm-overlay--visible');
             setTimeout(() => overlay.remove(), 280);
             _dialogOpen = false;
+            _disarm();
 
-            // window.close() works in PWA standalone and when opened via script
-            // In a regular browser tab it is silently ignored — that's fine,
-            // the user can just close the tab themselves
-            window.close();
-        };
+            // 1. PWA standalone: window.close() works (called in onclick = user gesture ✓)
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                          window.navigator.standalone === true;
+            if (isPWA) {
+                window.close();
+                return;
+            }
+
+            // 2. Regular browser tab:
+            // Go back to the real base entry (before our fake layer)
+            // This makes browser show "are you sure you want to leave" or closes tab
+            history.back();
+        }
+
+        document.getElementById('exit-stay').onclick = _dismiss;
+        document.getElementById('exit-go').onclick   = _exit;
+        overlay.addEventListener('click', e => { if (e.target === overlay) _dismiss(); });
     }
 
-    /* ── popstate — fires on every back/forward press ────────── */
-    window.addEventListener('popstate', function () {
+    /* ── popstate ────────────────────────────────────────────── */
+    window.addEventListener('popstate', function (e) {
+        _disarm();
+
+        // Back pressed while dialog open → dismiss (stay)
         if (_dialogOpen) {
-            // Back pressed while dialog open → dismiss dialog, stay in app
             const d = document.getElementById('exit-confirm-overlay');
             if (d) {
                 d.classList.remove('exit-confirm-overlay--visible');
                 setTimeout(() => d.remove(), 280);
-                _dialogOpen = false;
             }
-            history.pushState({ delivo: true }, '');
+            _dialogOpen = false;
+            _arm();
             return;
         }
 
         const closed = _closeTopLayer();
 
         if (closed) {
-            // Layer was closed — re-push so next back is caught
-            history.pushState({ delivo: true }, '');
+            // Layer closed — if another layer is still open, re-arm
+            setTimeout(() => { if (_anyLayerOpen()) _arm(); }, 80);
         } else {
-            // Nothing open → show exit dialog
-            // Do NOT re-push here — let the dialog handle it
+            // Nothing open → exit dialog
             _showExitDialog();
         }
     });
