@@ -1,101 +1,87 @@
 /* ============================================================
-   scripts/back-handler.js  v3
-   Intercepts back button to close UI layers one at a time.
-   On the base page (nothing open) shows an exit confirm dialog.
-
-   Exit strategy (PWA + browser):
-   ─ PWA standalone: history has only 1 entry at launch.
-     We push states as layers open. When all closed and back
-     pressed, we are at the real base → show exit dialog →
-     user confirms → window.close() (works in PWA) or
-     history.go(-history.length) as fallback.
-   ─ Browser tab: same flow; exit dialog cancels navigation.
-
-   Layer stack: push one history entry per layer open.
-   ─ Close: call history.back() which fires popstate → handler closes layer.
-   ─ This ensures Android hardware back steps through layers correctly.
+   scripts/back-handler.js  v4 — simplified & reliable
+   
+   Two jobs only:
+   1. Back button while a layer is open → close that layer
+   2. Back button on clean home screen → exit confirm dialog
+      → window.close() called DIRECTLY inside user click (no setTimeout)
    ============================================================ */
 
 (function () {
     'use strict';
 
-    /* ── State ───────────────────────────────────────────────── */
-    let _depth          = 0;   // how many history entries we've pushed
-    let _exitDialogOpen = false;
-    let _domReady       = false;
+    /* ── Single fake entry so we always catch one back press ── */
+    history.replaceState({ delivo: true }, '');
+    history.pushState({ delivo: true }, '');
 
-    /* ── Push / pop helpers ──────────────────────────────────── */
-    function _push() {
-        history.pushState({ delivoLayer: true, depth: ++_depth }, '');
-    }
+    /* ── Layer detector ──────────────────────────────────────── */
+    function _closeTopLayer() {
 
-    function _didPop() {
-        if (_depth > 0) _depth--;
-    }
-
-    /* ── Layer detector — returns close-fn or null ───────────── */
-    function _getTopLayer() {
-
-        // 1. Track modal
+        // Track modal
         const trackModal = document.getElementById('track-modal') ||
                            document.querySelector('.track-modal');
         if (trackModal && (trackModal.classList.contains('active') ||
-            trackModal.style.display === 'flex' || trackModal.open)) {
-            return () => typeof window._closeTrackModal === 'function' && window._closeTrackModal();
+                           trackModal.style.display === 'flex')) {
+            if (typeof window._closeTrackModal === 'function') window._closeTrackModal();
+            return true;
         }
 
-        // 2. Orders modal
+        // Orders modal
         const ordersModal = document.getElementById('modal-orders') ||
                             document.querySelector('.orders-modal');
         if (ordersModal && ordersModal.classList.contains('active')) {
-            return () => typeof closeOrdersModal === 'function' && closeOrdersModal();
+            if (typeof closeOrdersModal === 'function') closeOrdersModal();
+            return true;
         }
 
-        // 3. Any active .modal-overlay
-        const activeModal = document.querySelector('.modal-overlay.active');
-        if (activeModal) {
-            return () => {
-                activeModal.classList.remove('active');
-                document.body.classList.remove('modal-open');
-            };
+        // Any active modal overlay
+        const overlay = document.querySelector('.modal-overlay.active');
+        if (overlay) {
+            overlay.classList.remove('active');
+            document.body.classList.remove('modal-open');
+            return true;
         }
 
-        // 4. Track bottom sheet
+        // Track bottom sheet
         const trackSheet = document.getElementById('bb-track-sheet');
         if (trackSheet && trackSheet.classList.contains('open')) {
-            return () => typeof window._closeTrackSheet === 'function' && window._closeTrackSheet();
+            if (typeof window._closeTrackSheet === 'function') window._closeTrackSheet();
+            return true;
         }
 
-        // 5. Store panel
+        // Store panel
         const sp = document.getElementById('store-panel') ||
                    document.querySelector('.store-panel');
         if (sp && (sp.classList.contains('open') || sp.classList.contains('active'))) {
-            return () => typeof window.closeStorePanel === 'function' && window.closeStorePanel();
+            if (typeof window.closeStorePanel === 'function') window.closeStorePanel();
+            return true;
         }
 
-        // 6. Cart sidebar
+        // Cart sidebar
         const cart = document.getElementById('cart-sidebar');
         if (cart && cart.classList.contains('active')) {
-            return () => typeof window.closeCartSidebar === 'function' && window.closeCartSidebar();
+            if (typeof window.closeCartSidebar === 'function') window.closeCartSidebar();
+            return true;
         }
 
-        // 7. Mobile nav menu
+        // Mobile nav
         const nav = document.getElementById('mobile-menu');
         if (nav && nav.classList.contains('open')) {
-            return () => {
-                nav.classList.remove('open');
-                const btn = document.getElementById('mobile-menu-btn');
-                if (btn) btn.setAttribute('aria-expanded', 'false');
-            };
+            nav.classList.remove('open');
+            const btn = document.getElementById('mobile-menu-btn');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            return true;
         }
 
-        return null;
+        return false;
     }
 
-    /* ── Exit confirm dialog ─────────────────────────────────── */
-    function _showExitConfirm() {
-        if (_exitDialogOpen || document.getElementById('exit-confirm-overlay')) return;
-        _exitDialogOpen = true;
+    /* ── Exit dialog ─────────────────────────────────────────── */
+    let _dialogOpen = false;
+
+    function _showExitDialog() {
+        if (_dialogOpen) return;
+        _dialogOpen = true;
 
         const overlay = document.createElement('div');
         overlay.id = 'exit-confirm-overlay';
@@ -106,147 +92,63 @@
                 <h3 class="exit-confirm-title">إغلاق التطبيق</h3>
                 <p class="exit-confirm-msg">هل تريد فعلاً الخروج من Delivo؟</p>
                 <div class="exit-confirm-actions">
-                    <button class="exit-confirm-btn exit-confirm-btn--cancel" id="exit-cancel-btn">البقاء</button>
-                    <button class="exit-confirm-btn exit-confirm-btn--exit"   id="exit-do-btn">خروج</button>
+                    <button class="exit-confirm-btn exit-confirm-btn--cancel" id="exit-stay">البقاء</button>
+                    <button class="exit-confirm-btn exit-confirm-btn--exit"   id="exit-go">خروج</button>
                 </div>
             </div>`;
 
         document.body.appendChild(overlay);
         requestAnimationFrame(() => overlay.classList.add('exit-confirm-overlay--visible'));
 
-        function _closeDialog(andExit) {
+        function _dismiss() {
             overlay.classList.remove('exit-confirm-overlay--visible');
-            setTimeout(() => overlay.parentNode && overlay.parentNode.removeChild(overlay), 280);
-            _exitDialogOpen = false;
-
-            if (andExit) {
-                /* ── Real exit logic ── */
-                // 1. PWA installed: window.close() works
-                window.close();
-
-                // 2. If still here after 400ms → go back past our pushed entries
-                //    so browser/OS sees the real previous page (or exits tab)
-                setTimeout(() => {
-                    if (_depth > 0) {
-                        history.go(-(_depth + 1));
-                    } else {
-                        // Last resort: replace with a benign blank that auto-closes
-                        history.back();
-                    }
-                }, 400);
-            } else {
-                // Stay → re-push so next back press is caught again
-                _push();
-            }
+            setTimeout(() => overlay.remove(), 280);
+            _dialogOpen = false;
+            // Re-push so next back is caught again
+            history.pushState({ delivo: true }, '');
         }
 
-        document.getElementById('exit-cancel-btn').onclick = () => _closeDialog(false);
-        document.getElementById('exit-do-btn').onclick     = () => _closeDialog(true);
-        overlay.addEventListener('click', e => { if (e.target === overlay) _closeDialog(false); });
+        // Stay — dismiss and re-push
+        document.getElementById('exit-stay').onclick = _dismiss;
+        overlay.addEventListener('click', e => { if (e.target === overlay) _dismiss(); });
 
-        // Hardware back while dialog open → cancel (stay)
-        const _guardPop = () => { _closeDialog(false); };
-        window.addEventListener('popstate', _guardPop, { once: true });
+        // Exit — called directly in onclick (satisfies user-gesture requirement)
+        document.getElementById('exit-go').onclick = function () {
+            overlay.classList.remove('exit-confirm-overlay--visible');
+            setTimeout(() => overlay.remove(), 280);
+            _dialogOpen = false;
+
+            // window.close() works in PWA standalone and when opened via script
+            // In a regular browser tab it is silently ignored — that's fine,
+            // the user can just close the tab themselves
+            window.close();
+        };
     }
 
-    /* ── popstate handler ────────────────────────────────────── */
-    window.addEventListener('popstate', function (e) {
-        if (_exitDialogOpen) return;   // guarded above
+    /* ── popstate — fires on every back/forward press ────────── */
+    window.addEventListener('popstate', function () {
+        if (_dialogOpen) {
+            // Back pressed while dialog open → dismiss dialog, stay in app
+            const d = document.getElementById('exit-confirm-overlay');
+            if (d) {
+                d.classList.remove('exit-confirm-overlay--visible');
+                setTimeout(() => d.remove(), 280);
+                _dialogOpen = false;
+            }
+            history.pushState({ delivo: true }, '');
+            return;
+        }
 
-        _didPop();
+        const closed = _closeTopLayer();
 
-        const closer = _getTopLayer();
-        if (closer) {
-            closer();
-            // If another layer is still open, push again so next back is caught
-            setTimeout(() => {
-                if (_getTopLayer()) _push();
-            }, 60);
+        if (closed) {
+            // Layer was closed — re-push so next back is caught
+            history.pushState({ delivo: true }, '');
         } else {
-            // Nothing open → exit confirm
-            _showExitConfirm();
+            // Nothing open → show exit dialog
+            // Do NOT re-push here — let the dialog handle it
+            _showExitDialog();
         }
     });
-
-    /* ── Auto-push when a layer opens ───────────────────────── */
-    // We observe the window functions lazily so patching always catches
-    // the real function regardless of load order.
-
-    function _watch(openFnName, closeFnName) {
-        let _openPatched  = false;
-        let _closePatched = false;
-
-        function _tryPatch() {
-            if (!_openPatched && typeof window[openFnName] === 'function') {
-                const orig = window[openFnName];
-                window[openFnName] = function (...a) {
-                    _push();
-                    return orig.apply(this, a);
-                };
-                window[openFnName]._bhPatched = true;
-                _openPatched = true;
-            }
-            if (!_closePatched && typeof window[closeFnName] === 'function') {
-                const orig = window[closeFnName];
-                window[closeFnName] = function (...a) {
-                    // Don't touch history — popstate already fired or will fire
-                    return orig.apply(this, a);
-                };
-                _closePatched = true;
-            }
-        }
-
-        // Try immediately and retry until both patched
-        const iv = setInterval(() => {
-            _tryPatch();
-            if (_openPatched && _closePatched) clearInterval(iv);
-        }, 200);
-        setTimeout(() => clearInterval(iv), 8000); // stop after 8s
-    }
-
-    _watch('openStorePanel',  'closeStorePanel');
-    _watch('openCartSidebar', 'closeCartSidebar');
-    _watch('_openTrackSheet', '_closeTrackSheet');
-    _watch('openOrdersModal', 'closeOrdersModal');
-
-    // openModal / closeModal generic
-    setTimeout(() => {
-        if (typeof openModal === 'function' && !openModal._bhPatched) {
-            const orig = openModal;
-            window.openModal = function (id) { _push(); return orig(id); };
-            window.openModal._bhPatched = true;
-        }
-    }, 1000);
-
-    /* ── Mobile nav hamburger ────────────────────────────────── */
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('#mobile-menu-btn')) {
-            const menu = document.getElementById('mobile-menu');
-            if (menu) {
-                setTimeout(() => {
-                    if (menu.classList.contains('open')) _push();
-                    // close handled by popstate
-                }, 10);
-            }
-        }
-    }, true);
-
-    /* ── Push initial base entry so first back is always caught ─ */
-    // Only in PWA standalone mode (where history.length is 1)
-    function _init() {
-        _domReady = true;
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                      window.navigator.standalone === true;
-        if (isPWA && history.length <= 1) {
-            // Replace the base entry so we always have a catch-all beneath
-            history.replaceState({ delivoBase: true }, '');
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', _init);
-    } else {
-        _init();
-    }
 
 })();
