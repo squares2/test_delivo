@@ -9,6 +9,21 @@
     const RTDB = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
 
     /* ── Meal periods ──────────────────────────────────────── */
+    /* ══════════════════════════════════════════════════════════
+       TODO — RAMADAN UPDATE (add later):
+       sohoor: {
+           label:    'وقت السحور',
+           title:    'السحور على أبوابك 🌙✨',
+           sub:      'وجباتك قبل الفجر بوقت كافٍ',
+           icon:     '🌙',
+           modifier: 'mt-banner--dinner',
+           hours:    [1, 4],   // 1:00 AM → 3:59 AM
+       }
+       + Add 'sohoor' to MEAL_FALLBACK_TYPES:
+           sohoor: ['BakeryShops','Restaurants','SweetsShops','CoffeeShops'],
+       + Add Ramadan date-range check so sohoor only shows during Ramadan.
+    ══════════════════════════════════════════════════════════ */
+
     const MEALS = {
         breakfast: {
             label:    'وقت الفطور',

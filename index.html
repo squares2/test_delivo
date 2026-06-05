@@ -303,9 +303,6 @@
         </div>
         <div id="offers"></div>
 
-        <!-- Meal-time smart recommendations (populated by mealtime.js) -->
-        <section id="mealtime-section"></section>
-
         <section class="stores" id="stores-section">
             <div class="stores__header">
                 <h2 class="section-title">المتاجر الأكثر طلباً</h2>
@@ -343,31 +340,63 @@
         <section class="app-download section">
             <div class="container">
                 <div class="app-download__card">
-                    <!-- 1: QR code — far right (RTL) -->
-                    <div class="app-download__qr-wrap">
-                        <img src="assets/qr-code.png" alt="QR Code" class="app-download__qr-img">
-                    </div>
-                    <!-- 2: Store buttons — Google Play top, App Store bottom -->
-                    <div class="app-download__btns">
-                        <a href="#" class="store-btn">
-                            <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.64.24.98.24.4 0 .8-.11 1.15-.32L18.4 16.4l-3.26-3.26-11.96 10.62zM.5 1.4C.19 1.83 0 2.4 0 3.1v17.8c0 .7.19 1.27.5 1.7l.09.08 9.97-9.97v-.24L.59 1.32.5 1.4zM22.55 10.4l-3.01-1.71-3.38 3.38 3.38 3.38 3.03-1.72c.87-.49.87-1.3 0-1.79l-.02-.54zM4.11.32L18.18 8.6l-3.26 3.26L3.09.56C3.4.35 3.8.13 4.11.32z"/></svg></span>
-                            <span class="store-btn__label"><span class="store-btn__small">GET IT ON</span><span class="store-btn__name">Google Play</span></span>
-                        </a>
-                        <a href="#" class="store-btn">
-                            <span class="store-btn__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.78M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg></span>
-                            <span class="store-btn__label"><span class="store-btn__small">Download on the</span><span class="store-btn__name">App Store</span></span>
-                        </a>
-                    </div>
-                    <!-- 3: Text — title, tagline, desc -->
-                    <div class="app-download__text">
-                        <h2 class="app-download__title">حمل تطبيق <span>Delivo</span></h2>
-                        <p class="app-download__tagline">تجربة أسهل، أسرع وأفضل!</p>
-                        <p class="app-download__desc">حمل التطبيق الآن واستمتع بتجربة طلب طعام مميزة</p>
-                    </div>
-                    <!-- 4: Phone — far left, overflows top & bottom -->
+
+                    <!-- Decorative glows -->
+                    <div class="app-download__glow app-download__glow--1"></div>
+                    <div class="app-download__glow app-download__glow--2"></div>
+
+                    <!-- Phone — overflows left edge (LTR left = RTL right visual) -->
                     <div class="app-download__phone">
-                        <img src="assets/app-phone.png" alt="Delivo App" class="app-download__phone-img" onerror="this.style.display='none'">
+                        <img src="assets/app-phone.png" alt="Delivo App"
+                             class="app-download__phone-img">
                     </div>
+
+                    <!-- Content column: title → tagline → desc → buttons → qr -->
+                    <div class="app-download__content">
+                        <div class="app-download__badge">📱 حمل التطبيق الآن</div>
+                        <h2 class="app-download__title">
+                            حمل تطبيق <span>Delivo</span>
+                        </h2>
+                        <p class="app-download__tagline">تجربة أسهل، أسرع وأفضل!</p>
+                        <p class="app-download__desc">
+                            حمل التطبيق الآن واستمتع بتجربة طلب مميزة
+                        </p>
+
+                        <!-- Store buttons row -->
+                        <div class="app-download__btns">
+                            <a href="#" class="store-btn">
+                                <span class="store-btn__icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                                        <path d="M3.18 23.76c.3.17.64.24.98.24.4 0 .8-.11 1.15-.32L18.4 16.4l-3.26-3.26-11.96 10.62zM.5 1.4C.19 1.83 0 2.4 0 3.1v17.8c0 .7.19 1.27.5 1.7l.09.08 9.97-9.97v-.24L.59 1.32.5 1.4zM22.55 10.4l-3.01-1.71-3.38 3.38 3.38 3.38 3.03-1.72c.87-.49.87-1.3 0-1.79l-.02-.54zM4.11.32L18.18 8.6l-3.26 3.26L3.09.56C3.4.35 3.8.13 4.11.32z"/>
+                                    </svg>
+                                </span>
+                                <span class="store-btn__label">
+                                    <span class="store-btn__small">GET IT ON</span>
+                                    <span class="store-btn__name">Google Play</span>
+                                </span>
+                            </a>
+                            <a href="#" class="store-btn">
+                                <span class="store-btn__icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98l-.09.06c-.22.15-2.18 1.27-2.16 3.8.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.37 2.78M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                                    </svg>
+                                </span>
+                                <span class="store-btn__label">
+                                    <span class="store-btn__small">Download on the</span>
+                                    <span class="store-btn__name">App Store</span>
+                                </span>
+                            </a>
+                        </div>
+
+                        <!-- QR row -->
+                        <div class="app-download__qr-row">
+                            <div class="app-download__qr-wrap">
+                                <img src="assets/qr-code.png" alt="QR Code" class="app-download__qr-img">
+                            </div>
+                            <span class="app-download__qr-label">امسح للتحميل المباشر</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </section>
@@ -982,7 +1011,6 @@
     <script src="scripts/loader.js?v=13"></script>
     <script src="scripts/modals.js?v=7"></script>
     <script src="scripts/stores.js?v=7"></script>
-    <script src="scripts/mealtime.js?v=1"></script>
     <script src="scripts/categories.js?v=3"></script>
     <script src="scripts/cart.js?v=13"></script>
     <script src="scripts/store-panel.js?v=6"></script>
