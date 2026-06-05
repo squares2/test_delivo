@@ -22,7 +22,8 @@
 
     /* ── Helpers ─────────────────────────────────────────────── */
 
-    let _pushed = false;   // true = we have a fake history entry pending
+    let _pushed = false;
+    let _exitDialogOpen = false;
 
     function _push() {
         if (!_pushed) {
@@ -37,10 +38,9 @@
 
     /* ── Layer detectors ─────────────────────────────────────── */
 
-    // Returns the close function for the topmost open layer, or null
     function _getTopLayer() {
 
-        // 1. Track modal (full-screen, added by modal-auth.js)
+        // 1. Track modal
         const trackModal = document.getElementById('track-modal') ||
                            document.querySelector('.track-modal');
         if (trackModal && (trackModal.classList.contains('active') || trackModal.style.display === 'flex' || trackModal.open)) {
@@ -54,7 +54,7 @@
             return () => { if (typeof closeOrdersModal === 'function') closeOrdersModal(); };
         }
 
-        // 3. Any .modal-overlay that is active (login, account, edit-profile, loyalty…)
+        // 3. Any .modal-overlay that is active
         const activeModal = document.querySelector('.modal-overlay.active');
         if (activeModal) {
             return () => {
@@ -98,11 +98,10 @@
     /* ── Exit confirm dialog ─────────────────────────────────── */
 
     function _showExitConfirm() {
-        // Don't stack duplicates
         if (document.getElementById('exit-confirm-overlay')) return;
 
-        // Re-push so we stay on the page while dialog is open
-        _push();
+        _exitDialogOpen = true;
+        // No _push() here — we do NOT push a new entry while dialog is open
 
         const overlay = document.createElement('div');
         overlay.id = 'exit-confirm-overlay';
@@ -120,7 +119,6 @@
 
         document.body.appendChild(overlay);
 
-        // Animate in
         requestAnimationFrame(() => overlay.classList.add('exit-confirm-overlay--visible'));
 
         function _close() {
@@ -128,39 +126,54 @@
             setTimeout(() => { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 280);
         }
 
+        // Cancel — stay in app, re-push so next back press is intercepted again
         document.getElementById('exit-cancel-btn').addEventListener('click', () => {
             _close();
-            // Keep the fake entry so next back press triggers this again
+            _exitDialogOpen = false;
+            _push();
         });
 
+        // Confirm exit
         document.getElementById('exit-confirm-btn').addEventListener('click', () => {
-            /*_close();
+            _close();
+            _exitDialogOpen = false;
             _clearPush();
-            // Give the dialog time to close, then actually navigate back (exits)
-            setTimeout(() => history.back(), 300);*/
-			window.close();
+            setTimeout(() => {
+                // Try window.close() first (works if opened via window.open or PWA)
+                window.close();
+                // Fallback: navigate to a blank page to effectively "exit"
+                setTimeout(() => {
+                    window.location.replace('about:blank');
+                }, 300);
+            }, 300);
         });
 
         // Tap backdrop to cancel
         overlay.addEventListener('click', function(e) {
-            if (e.target === overlay) _close();
+            if (e.target === overlay) {
+                _close();
+                _exitDialogOpen = false;
+                _push();
+            }
         });
     }
 
     /* ── popstate — fired when back button is pressed ────────── */
 
     window.addEventListener('popstate', function(e) {
+        // Ignore popstate while exit dialog is open
+        if (_exitDialogOpen) return;
+
         _clearPush();
 
         const closer = _getTopLayer();
         if (closer) {
             closer();
-            // Re-push so the next back press is also intercepted
             setTimeout(() => {
                 if (_getTopLayer()) _push();
             }, 50);
         } else {
-            // Nothing open → would exit the app → show confirm instead
+            // Nothing open → show exit confirm
             _showExitConfirm();
         }
     });
@@ -229,7 +242,7 @@
             };
         }
 
-        // ── generic modal open/close (openModal / closeModal) ──
+        // ── generic modal open/close ──
         if (typeof openModal === 'function' && !openModal._backPatched) {
             const _origOpen = openModal;
             window.openModal = function(id) {
@@ -249,7 +262,6 @@
         }
     }
 
-    // Patch immediately, then again after a tick in case scripts load late
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             _patchAll();
@@ -261,18 +273,17 @@
     }
 
     /* ── Mobile nav menu — patch hamburger click ─────────────── */
-    // This is wired inline in index.html so we watch for it via delegation
+
     document.addEventListener('click', function(e) {
         if (e.target.closest('#mobile-menu-btn')) {
             const menu = document.getElementById('mobile-menu');
             if (menu) {
-                // Delay to read state after the click handler toggles the class
                 setTimeout(() => {
                     if (menu.classList.contains('open')) _push();
                     else _clearPush();
                 }, 10);
             }
         }
-    }, true); // capture phase so we run after the existing handler
+    }, true);
 
 })();
