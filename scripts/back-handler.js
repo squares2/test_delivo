@@ -134,10 +134,11 @@
         });
 
         document.getElementById('exit-confirm-btn').addEventListener('click', () => {
-            _close();
+            /*_close();
             _clearPush();
             // Give the dialog time to close, then actually navigate back (exits)
-            setTimeout(() => history.back(), 300);
+            setTimeout(() => history.back(), 300);*/
+			window.close();
         });
 
         // Tap backdrop to cancel
