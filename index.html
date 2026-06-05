@@ -21,7 +21,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Delivo">
-    <link rel="stylesheet" href="styles/base.css?v=7">
+    <link rel="stylesheet" href="styles/base.css?v=16">
     <link rel="stylesheet" href="styles/navbar.css?v=7">
     <link rel="stylesheet" href="styles/hero.css?v=7">
     <link rel="stylesheet" href="styles/cards.css?v=7">
@@ -45,24 +45,33 @@
         <button class="ios-top-banner__close" id="ios-top-banner-close" aria-label="إغلاق">✕</button>
     </div>
 
-    <!-- SPLASH SCREEN — shown instantly, fades when loaded -->
+    <!-- SPLASH SCREEN — cinematic multi-layer animation -->
     <div id="delivo-splash" aria-hidden="true">
-        <div class="splash__inner">
-            <picture class="splash__logo-wrap">
-                <!-- WebP: served to all modern browsers (Chrome, Firefox, Safari 14+) -->
-                <source
-                    type="image/webp"
-                    srcset="assets/splash-logo.webp"
-                    sizes="(max-width: 400px) 78vw, 300px">
-                <!-- PNG fallback for older browsers -->
-                <img class="splash__logo"
-                     src="assets/splash-logo.png"
-                     alt="Delivo"
-                     width="900" height="1046"
-                     fetchpriority="high"
-                     decoding="sync">
-            </picture>
-            <div class="splash__spinner" aria-label="جاري التحميل"></div>
+        <div class="splash__scene" id="splash-scene">
+
+            <!-- Layer 1: arc ring — spins in from top -->
+            <img class="splash__arc-layer"
+                 src="assets/splash-bg.png" alt=""
+                 fetchpriority="high" decoding="sync" draggable="false">
+
+            <!-- Layer 2: marker pin — drops from above -->
+            <img class="splash__marker-layer"
+                 src="assets/splash-bg.png" alt=""
+                 decoding="async" draggable="false">
+
+            <!-- Layer 3: wordmark — rises from below -->
+            <img class="splash__word-layer"
+                 src="assets/splash-bg.png" alt=""
+                 decoding="async" draggable="false">
+
+            <!-- SVG speed streaks injected by JS -->
+
+            <!-- Moto: flies in from left, lands in marker gap -->
+            <img class="splash__moto"
+                 id="splash-moto"
+                 src="assets/splash-moto.png" alt=""
+                 fetchpriority="high" decoding="sync" draggable="false">
+
         </div>
     </div>
 
@@ -965,7 +974,8 @@
     <script src="scripts/firebase-init.js?v=7"></script>
     <script src="scripts/modal-auth.js?v=25"></script>
     <script src="scripts/onboarding.js?v=1"></script>
-    <script src="scripts/loader.js?v=8"></script>
+
+    <script src="scripts/loader.js?v=13"></script>
     <script src="scripts/modals.js?v=7"></script>
     <script src="scripts/stores.js?v=7"></script>
     <script src="scripts/categories.js?v=3"></script>

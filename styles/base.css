@@ -184,11 +184,18 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
 /* ── FOUC guard ───────────────────────────────────────────── */
 
 /* ═══════════════════════════════════════════════════════════
-   SPLASH SCREEN
-   Full-screen, shown before body.loaded fires.
-   Orange bg, centered logo, pulsing spinner below.
-   Fades out via JS when app is ready.
+   SPLASH — two-layer cinematic animation  v5
+   splash-bg.png  : arc + wordmark + marker  (512×512)
+   splash-moto.png: moto + rider, transparent (167×143)
+   
+   Sequence:
+   0.0s  bg fades in (arc + wordmark + marker)
+   0.12s moto launches from left off-screen
+   0.12→1.17s moto travels with decel, lands at x=46% y=49%
+   0.75s SVG speed streaks burst in moto's wake (left side)
+   streaks draw + fade over ~0.5s
 ═══════════════════════════════════════════════════════════ */
+
 #delivo-splash {
     position: fixed;
     inset: 0;
@@ -197,59 +204,150 @@ body.modal-open { overflow: hidden; max-width: 100vw; }
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Slow fade so the transition from OS splash feels intentional */
-    transition: opacity 0.65s ease, visibility 0.65s ease;
+    overflow: hidden;
+    transition: opacity 0.7s ease, visibility 0.7s ease;
 }
 #delivo-splash.hiding {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
 }
-#delivo-splash.hidden {
-    display: none;
+#delivo-splash.hidden { display: none; }
+
+/* ── Scene — square matching splash-bg.png ─────────────── */
+.splash__scene {
+    position: relative;
+    width:  clamp(240px, 72vw, 290px);
+    height: clamp(240px, 72vw, 290px);
 }
 
-.splash__inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    padding: 32px 24px;
-    max-width: 100vw;
-    box-sizing: border-box;
-    flex: 1;
-}
-
-/* ── HD logo — smooth anti-aliased rendering on all screens ── */
-.splash__logo-wrap {
-    display: block;
-    width: clamp(200px, 72vw, 290px);
-    height: auto;
-    flex-shrink: 0;
-}
-.splash__logo-wrap img,
-.splash__logo-wrap source {
+/* ── Background: arc ring + wordmark + marker ───────────── */
+/* Builds up in 3 layers: arc spins → marker drops → wordmark rises */
+.splash__bg {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    height: auto;
+    height: 100%;
     object-fit: contain;
-    object-position: center;
     image-rendering: auto;
-    -ms-interpolation-mode: bicubic;
-    -webkit-font-smoothing: antialiased;
-    animation: splash-pop 0.45s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+
+    /* Clip the bg into 3 horizontal regions using clip-path
+       Each region gets its own entrance — JS adds .sp-bg-ready */
+    opacity: 0;
 }
 
-/* ── Spinner hidden — clean look, no loading indicator ──────── */
+/* Simple fade-in for the whole bg — 
+   We animate regions via pseudo-layering in JS approach below */
+.splash__bg.sp-bg-ready {
+    animation: sp-bg-fade 0.4s ease 0s both;
+}
+@keyframes sp-bg-fade {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Arc ring — cloned overlay, spins in ───────────────── */
+.splash__arc-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* show only top 38% (arc ring region) */
+    clip-path: inset(0 0 62% 0);
+    transform-origin: 50% 25%;
+    opacity: 0;
+    animation: sp-arc-spin 0.75s cubic-bezier(0.22,1,0.36,1) 0.08s both;
+}
+@keyframes sp-arc-spin {
+    0%   { opacity:0; transform: rotate(-30deg) scale(0.55); }
+    55%  { opacity:1; }
+    100% { opacity:1; transform: rotate(0deg)   scale(1);    }
+}
+
+/* ── Wordmark "delivo" — rises from below ───────────────── */
+.splash__word-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* show only bottom 35% (wordmark + tagline) */
+    clip-path: inset(65% 0 0 0);
+    opacity: 0;
+    animation: sp-word-rise 0.55s cubic-bezier(0.34,1.45,0.64,1) 0.45s both;
+}
+@keyframes sp-word-rise {
+    0%   { opacity:0; transform: translateY(20px); }
+    100% { opacity:1; transform: translateY(0);    }
+}
+
+/* ── Marker / map-pin — drops from above ────────────────── */
+.splash__marker-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* middle band: marker pin area ~38%-65% */
+    clip-path: inset(38% 30% 35% 30%);
+    opacity: 0;
+    animation: sp-marker-drop 0.45s cubic-bezier(0.34,1.56,0.64,1) 0.3s both;
+}
+@keyframes sp-marker-drop {
+    0%   { opacity:0; transform: translateY(-18px) scale(0.7); }
+    100% { opacity:1; transform: translateY(0)     scale(1);   }
+}
+
+/* ── Moto ────────────────────────────────────────────────── */
+/*
+  Rider centre from full logo analysis: x=46%, y=49%
+  Moto 167×143 rendered at 38% scene width → 106×91px in 280px scene
+  top  = 49% − (91/280/2)  = 49% − 16.3% = 32.7%
+  left = 46% − (106/280/2) = 46% − 18.9% = 27.0%
+*/
+.splash__moto {
+    position: absolute;
+    width:  32%;          /* measured from target: 53.7% of scene */
+    height: auto;
+    image-rendering: auto;
+    z-index: 4;
+    top:  30.5%;            /* down: +4% from previous 28% */
+    left: 33.8%;            /* back (right): centre x=49.4% − width/2 */
+    /* start far left off-screen, slight forward tilt */
+    transform: translateX(-130vw) rotate(-6deg);
+    opacity: 0;
+    transition:
+        transform 1.05s cubic-bezier(0.18, 1, 0.32, 1) 0.12s,
+        opacity   0.14s ease                            0.12s;
+    will-change: transform, opacity;
+}
+.splash__moto.sp-moto-land {
+    transform: translateX(0) rotate(0deg);
+    opacity: 1;
+}
+
+/* ── Speed streaks SVG (injected by JS) ─────────────────── */
+/*
+  Zone: left of moto, same vertical band
+  top=33%, left=-10%, width=39% (−10% → 27% moto left edge)
+  height=32% (matches moto height)
+*/
+/* ── Speed lines — div-based, trail behind moving moto ────── */
+/*
+  Lines are div elements with gradient background.
+  Each scales in from the RIGHT (moto side) using scaleX,
+  holds briefly, then fades out as the moto lands.
+  Total animation fits within the moto's 1.05s travel time.
+*/
+@keyframes sp-line-run {
+    0%   { transform: scaleX(0); opacity: 0;   }
+    15%  { opacity: 1;           }
+    55%  { transform: scaleX(1); opacity: 0.85; }
+    100% { transform: scaleX(1); opacity: 0;    }
+}
+
 .splash__spinner { display: none; }
-
-/* ── Entrance animation ───────────────────────────────────── */
-@keyframes splash-pop {
-    from { transform: scale(0.82) translateY(10px); opacity: 0; }
-    to   { transform: scale(1)    translateY(0);    opacity: 1; }
-}
-
-/* body hidden until loaded class — splash covers during this time */
 body        { visibility: hidden; }
 body.loaded { visibility: visible; }
 /* ── PWA Install Banner ───────────────────────────────────── */
