@@ -177,6 +177,7 @@ function openStorePanel(storeId, storeName, storeType) {
 
 function _openStorePanelNow(storeId, storeName, storeType) {
     _currentStore = { id: storeId, name: storeName, type: storeType };
+    window._currentStore = _currentStore;
     const overlay = document.getElementById('store-panel-overlay');
     const panel   = document.getElementById('store-panel');
     if (!overlay || !panel) return;
@@ -227,19 +228,61 @@ function closeStorePanel() {
     if (overlay) overlay.classList.remove('active');
     if (panel)   panel.classList.remove('active');
     document.body.classList.remove('modal-open');
+    window._currentStore = null;
     const wrap = document.getElementById('sp-subcat-wrap');
     if (wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
     _currentStore = null;
     _activeTab    = null;
 }
 
+/* ── Closed-store: humanise the opensAt string ────────────── */
+function _formatOpensAt(raw) {
+    if (!raw) return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    // Already human-readable Arabic (admin typed it): return as-is
+    // Try to parse ISO / "YYYY-MM-DD HH:mm"
+    const dt = new Date(s);
+    if (!isNaN(dt)) {
+        const now  = new Date();
+        const diff = dt - now;
+        if (diff <= 0) return null; // already past — treat as open
+        // Compare calendar dates (not milliseconds) to avoid timezone "today/tomorrow" errors
+        const nowDate  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dtDate   = new Date(dt.getFullYear(),  dt.getMonth(),  dt.getDate());
+        const dayDiff  = Math.round((dtDate - nowDate) / 86400000);
+        const timeStr  = dt.toLocaleTimeString('ar-LB', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const dayNames = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+        const monthNames = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+        if (dayDiff === 0) return `اليوم الساعة ${timeStr}`;
+        if (dayDiff === 1) return `غداً الساعة ${timeStr}`;
+        if (dayDiff < 7)   return `${dayNames[dt.getDay()]} الساعة ${timeStr}`;
+        // Beyond 7 days — build date manually to avoid locale formatting issues
+        const sameYear = dt.getFullYear() === now.getFullYear();
+        const datePart = sameYear
+            ? `${dt.getDate()} ${monthNames[dt.getMonth()]}`
+            : `${dt.getDate()} ${monthNames[dt.getMonth()]} ${dt.getFullYear()}`;
+        return `${dayNames[dt.getDay()]} ${datePart} الساعة ${timeStr}`;
+    }
+    return s; // return as-is if unparseable
+}
+
 /* ── Load & render ────────────────────────────────────────── */
 async function _loadStorePanel(storeName, storeType) {
     const body = document.getElementById('sp-body');
     try {
-        const _cacheKey   = `pattern_${storeType}`;
-        const patternData = _spCache[_cacheKey] || await rtdbGet(`pattern/${storeType}`);
+        // ── Check closed status first (fast parallel fetch) ──
+        const [patternData, storeStatusData] = await Promise.all([
+            (_spCache[`pattern_${storeType}`]
+                ? Promise.resolve(_spCache[`pattern_${storeType}`])
+                : rtdbGet(`pattern/${storeType}`).then(d => { _spCache[`pattern_${storeType}`] = d; return d; })
+            ),
+            rtdbGet(`storeStatus/${storeName}`).catch(() => null),
+        ]);
+
+        const _cacheKey = `pattern_${storeType}`;
         _spCache[_cacheKey] = patternData;
+
         let storeMeta = null;
         if (patternData && typeof patternData === 'object') {
             storeMeta = Object.values(patternData).find(s => s && s.companyname === storeName);
@@ -247,6 +290,50 @@ async function _loadStorePanel(storeName, storeType) {
 
         const metaEl = document.getElementById('sp-hero-meta');
         const emoji  = STORE_TYPE_EMOJI[storeType] || '🏪';
+
+        // ── Handle closed state ───────────────────────────────
+        const isClosed = storeStatusData && (storeStatusData.closed === true || storeStatusData.closed === '1' || storeStatusData.closed === 1);
+        if (isClosed) {
+            const reason   = storeStatusData.reason  || 'المتجر مغلق مؤقتاً';
+            const opensAt  = _formatOpensAt(storeStatusData.opensAt);
+            const opensRaw = storeStatusData.opensAt || '';
+
+            // Hero meta badge
+            if (metaEl) {
+                metaEl.innerHTML = `
+                    <span class="sp-hero__badge">${emoji} ${_typeLabel(storeType)}</span>
+                    <span class="sp-hero__badge" style="background:rgba(239,68,68,0.15);color:#ef4444;border-color:rgba(239,68,68,0.3);">🔴 مغلق الآن</span>
+                `;
+            }
+
+            // Body: full closed screen
+            body.innerHTML = `
+            <div class="sp-closed">
+                <div class="sp-closed__shutter">
+                    <span class="sp-closed__shutter-icon">🔒</span>
+                    <span class="sp-closed__shutter-dot"></span>
+                </div>
+                <div class="sp-closed__title">المتجر مغلق الآن</div>
+                <div class="sp-closed__reason">${reason}</div>
+                ${opensAt ? `
+                <div class="sp-closed__opens">
+                    <span class="sp-closed__opens-icon">🕐</span>
+                    <div class="sp-closed__opens-text">
+                        <div class="sp-closed__opens-label">موعد الفتح</div>
+                        <div class="sp-closed__opens-time">${opensAt}</div>
+                    </div>
+                </div>` : ''}
+                <div class="sp-closed__divider"></div>
+                <p class="sp-closed__cta">تفضّل بزيارتنا لاحقاً —<br><strong>سنكون بخدمتك قريباً!</strong></p>
+            </div>`;
+            // Hide tabs and cart bar since store is closed
+            document.getElementById('sp-tabs-inner').innerHTML = '';
+            const subcatWrap = document.getElementById('sp-subcat-wrap');
+            if (subcatWrap) { subcatWrap.style.display = 'none'; subcatWrap.innerHTML = ''; }
+            return;
+        }
+
+        // ── Normal open flow below ────────────────────────────
         if (storeMeta) {
             metaEl.innerHTML = `
                 <span class="sp-hero__badge">${emoji} ${_typeLabel(storeType)}</span>
@@ -621,6 +708,8 @@ function initStorePanel() {
     });
 
     window.openStorePanel         = openStorePanel;
+    window._currentStore          = null;   // kept in sync by listener
+    window._spCache               = _spCache;
     window.spSelectMain           = spSelectMain;
     window.spSelectSub            = spSelectSub;
     window.closeStorePanel        = closeStorePanel;

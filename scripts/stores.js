@@ -166,11 +166,22 @@ async function renderTopStores() {
     /* Show skeleton while loading */
     renderSkeletons(section);
 
-    const counts = await fetchStoreCounts();
+    const [counts, storeStatusRaw] = await Promise.all([
+        fetchStoreCounts(),
+        fetch(`${STORES_RTDB_URL}/storeStatus.json`).then(r => r.json()).catch(() => null),
+    ]);
+    const storeStatus = storeStatusRaw || {};
 
     /* Sort registry by request count descending, take top 5 */
     const ranked = [...STORE_REGISTRY]
-        .map(s => ({ ...s, requests: counts[s.rtdbKey.toLowerCase()] || 0 }))
+        .map(s => {
+            const st     = storeStatus[s.rtdbKey] || storeStatus[s.name] || null;
+            const closed = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+            return { ...s, requests: counts[s.rtdbKey.toLowerCase()] || 0,
+                     _closed: closed,
+                     _closedReason: closed ? (st.reason  || '') : '',
+                     _opensAt:      closed ? (st.opensAt || '') : '' };
+        })
         .sort((a, b) => b.requests - a.requests)
         .slice(0, 5);
 
@@ -190,10 +201,41 @@ async function renderTopStores() {
             : `background-image:url('${store.img}');`;
         const storeEmoji = store.emoji || (store.type === 'restaurants' ? '🍽️' : store.type === 'supermarket' ? '🛒' : store.type === 'meat' ? '🥩' : store.type === 'coffee' ? '☕' : store.type === 'sweets' ? '🍰' : store.type === 'bakery' ? '🥖' : store.type === 'fish' ? '🐟' : '🏪');
 
+        // Compute opens-at chip for closed stores
+        let opensChipTop = '';
+        if (store._closed && store._opensAt) {
+            const dt = new Date(store._opensAt);
+            let opensStr = store._opensAt;
+            if (!isNaN(dt) && dt > new Date()) {
+                const now3      = new Date();
+                const nowDate3  = new Date(now3.getFullYear(), now3.getMonth(), now3.getDate());
+                const dtDate3   = new Date(dt.getFullYear(),  dt.getMonth(),  dt.getDate());
+                const dayDiff3  = Math.round((dtDate3 - nowDate3) / 86400000);
+                const t         = dt.toLocaleTimeString('ar-LB', { hour:'2-digit', minute:'2-digit', hour12:true });
+                const days      = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+                const months3   = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+                const sameYear3 = dt.getFullYear() === now3.getFullYear();
+                if (dayDiff3 === 0)      opensStr = `اليوم ${t}`;
+                else if (dayDiff3 === 1) opensStr = `غداً ${t}`;
+                else if (dayDiff3 < 7)  opensStr = `${days[dt.getDay()]} ${t}`;
+                else {
+                    const datePart3 = sameYear3
+                        ? `${dt.getDate()} ${months3[dt.getMonth()]}`
+                        : `${dt.getDate()} ${months3[dt.getMonth()]} ${dt.getFullYear()}`;
+                    opensStr = `${days[dt.getDay()]} ${datePart3} ${t}`;
+                }
+            }
+            opensChipTop = `<div class="store-card__opens-chip">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                يفتح ${opensStr}
+            </div>`;
+        }
+
         scroll.insertAdjacentHTML('beforeend', `
-        <div class="store-card ${isTop ? 'store-card--top' : ''}"
+        <div class="store-card ${isTop ? 'store-card--top' : ''} ${store._closed ? 'store-card--closed' : ''}"
              data-store-id="${store.id}"
-             data-store-type="${store.type}">
+             data-store-type="${store.type}"
+             style="${store._closed ? 'pointer-events:none;cursor:not-allowed;' : ''}">
 
             <!-- Rank badge -->
             <div class="store-card__rank"
@@ -207,7 +249,7 @@ async function renderTopStores() {
                      style="display:none"
                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                 <div class="store-card__thumb-fallback" style="display:none;align-items:center;justify-content:center;width:100%;height:100%;font-size:2.5rem;background:#f7f7f8;">${storeEmoji}</div>
-                <button class="store-card__wish" aria-label="حفظ">
+                ${!store._closed ? `<button class="store-card__wish" aria-label="حفظ">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                          stroke="#fff" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round">
@@ -218,13 +260,19 @@ async function renderTopStores() {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>4.5
-                </div>
+                </div>` : ''}
+                ${store._closed ? `<div class="store-card__closed-badge">
+                    <span class="store-card__closed-badge__icon">🔒</span>
+                    <span class="store-card__closed-badge__label">مغلق الآن</span>
+                </div>` : ''}
 
             </div>
 
             <div class="store-card__body">
                 <p class="store-card__name">${store.name}</p>
                 <p class="store-card__tags">${store.tags}</p>
+                ${store._closed && store._closedReason ? `<p class="store-card__closed-reason">${store._closedReason}</p>` : ''}
+                ${store._closed ? opensChipTop : ''}
 
                 <!-- Request stat bar -->
                 <div class="store-card__stat">
@@ -307,7 +355,7 @@ const SP_TYPE_MAP = {
 
 /* ── Event wiring ──────────────────────────────────────────── */
 function wireStoreEvents(section) {
-    section.querySelectorAll('.store-card:not(.store-card--skeleton)').forEach(card => {
+    section.querySelectorAll('.store-card:not(.store-card--skeleton):not(.store-card--closed)').forEach(card => {
         card.addEventListener('click', () => {
             const storeId   = card.getAttribute('data-store-id');
             const storeType = card.getAttribute('data-store-type');

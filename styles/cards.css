@@ -1136,3 +1136,88 @@
     object-fit: cover;
     display: block;
 }
+/* ══════════════════════════════════════════════════════════════
+   CLOSED STORE — cards.css addition
+   Applied to store cards in both categories dropdown and top-5 section
+══════════════════════════════════════════════════════════════ */
+
+/* Base closed card state */
+.store-card--closed {
+    cursor: not-allowed !important;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Thumb overlay — subtle dark veil over the image */
+.store-card--closed .store-card__thumb,
+.store-card--closed .store-card__thumb.store-thumb {
+    filter: grayscale(0.6) brightness(0.75);
+    transition: filter 0.3s;
+}
+
+/* Closed badge — replaces the "soon" badge on the thumb */
+.store-card__closed-badge {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: rgba(10, 10, 18, 0.62);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    border-radius: inherit;
+    z-index: 2;
+}
+.store-card__closed-badge__icon {
+    font-size: 1.35rem;
+    line-height: 1;
+    filter: grayscale(0.3);
+}
+.store-card__closed-badge__label {
+    font-size: clamp(0.58rem, 1.6vw, 0.68rem);
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    background: rgba(239, 68, 68, 0.85);
+    border-radius: 50px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+/* Opening-time chip — shown in the card body */
+.store-card__opens-chip {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: clamp(0.52rem, 1.3vw, 0.64rem);
+    font-weight: 700;
+    color: var(--clr-gray-500);
+    background: var(--clr-gray-100);
+    border: 1px solid var(--clr-gray-200);
+    border-radius: 10px;          /* pill → rounded rect so text can wrap */
+    padding: 4px 7px;
+    margin-top: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    white-space: normal;          /* allow wrapping */
+    line-height: 1.35;
+    word-break: break-word;
+}
+.store-card__opens-chip svg {
+    flex-shrink: 0;
+    margin-top: 2px;              /* align icon with first line of text */
+    color: var(--clr-gray-400);
+}
+
+/* Reason text in footer of closed card */
+.store-card__closed-reason {
+    font-size: clamp(0.52rem, 1.3vw, 0.62rem);
+    color: #ef4444;
+    font-weight: 600;
+    margin-top: 3px;
+    line-height: 1.35;
+    word-break: break-word;      /* full text, no clamp */
+}

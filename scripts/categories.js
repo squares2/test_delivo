@@ -67,13 +67,22 @@ function _closeDropdown() {
 
 async function _fetchStores(fbKey) {
     if (_cache[fbKey]) return _cache[fbKey];
-    const res  = await fetch(`${RTDB_BASE}/pattern/${fbKey}.json`);
-    if (!res.ok) throw new Error(`Firebase ${res.status}`);
-    const data = await res.json();
+    const [patternRes, statusRes] = await Promise.all([
+        fetch(`${RTDB_BASE}/pattern/${fbKey}.json`),
+        fetch(`${RTDB_BASE}/storeStatus.json`).catch(() => null),
+    ]);
+    if (!patternRes.ok) throw new Error(`Firebase ${patternRes.status}`);
+    const data   = await patternRes.json();
+    const status = statusRes && statusRes.ok ? await statusRes.json().catch(() => null) : null;
     if (!data) { _cache[fbKey] = []; return []; }
     const arr = Object.values(data)
         .filter(s => s && s.companyname)
-        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99));
+        .sort((a, b) => (parseInt(a.rank) || 99) - (parseInt(b.rank) || 99))
+        .map(s => {
+            const st     = status && status[s.companyname];
+            const closed = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+            return closed ? { ...s, _closed: true, _closedReason: st.reason || '', _opensAt: st.opensAt || '' } : s;
+        });
     _cache[fbKey] = arr;
     return arr;
 }
@@ -89,7 +98,8 @@ function _renderStores(stores, catKey, catMeta) {
     countEl.textContent = stores.length + ' متجر';
     scrollEl.innerHTML  = stores.map(s => _storeCardHTML(s, catKey, catMeta.fbKey)).join('');
     scrollEl.querySelectorAll('.store-card[data-store-name]').forEach(card => {
-        if (card.classList.contains('store-card--soon')) return;
+        if (card.classList.contains('store-card--soon'))   return;
+        if (card.classList.contains('store-card--closed')) return;
         card.addEventListener('click', () => {
             if (typeof openStorePanel === 'function')
                 openStorePanel(card.dataset.storeId, card.dataset.storeName, card.dataset.fbType);
@@ -99,15 +109,50 @@ function _renderStores(stores, catKey, catMeta) {
 }
 
 function _storeCardHTML(store, catKey, fbType) {
-    const name   = store.companyname;
-    const rank   = store.rank ? parseFloat(store.rank).toFixed(1) : null;
-    const isSoon = store.soon == '1' || store.soon === 1;
-    const imgUrl = `${STORE_IMG}/${encodeURIComponent(name.toLowerCase())}.png`;
-    const id     = name.toLowerCase().replace(/\s+/g, '-');
+    const name     = store.companyname;
+    const rank     = store.rank ? parseFloat(store.rank).toFixed(1) : null;
+    const isSoon   = store.soon == '1' || store.soon === 1;
+    const isClosed = !!store._closed;
+    const imgUrl   = `${STORE_IMG}/${encodeURIComponent(name.toLowerCase())}.png`;
+    const id       = name.toLowerCase().replace(/\s+/g, '-');
+
+    // Resolve "opens at" human string
+    let opensChip = '';
+    if (isClosed && store._opensAt) {
+        const dt = new Date(store._opensAt);
+        let opensStr = store._opensAt;
+        if (!isNaN(dt) && dt > new Date()) {
+            const now2       = new Date();
+            const nowDate2   = new Date(now2.getFullYear(), now2.getMonth(), now2.getDate());
+            const dtDate2    = new Date(dt.getFullYear(),  dt.getMonth(),  dt.getDate());
+            const dayDiff2   = Math.round((dtDate2 - nowDate2) / 86400000);
+            const t          = dt.toLocaleTimeString('ar-LB', { hour:'2-digit', minute:'2-digit', hour12:true });
+            const days       = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+            const months     = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+            const sameYear2  = dt.getFullYear() === now2.getFullYear();
+            if (dayDiff2 === 0)      opensStr = `اليوم ${t}`;
+            else if (dayDiff2 === 1) opensStr = `غداً ${t}`;
+            else if (dayDiff2 < 7)  opensStr = `${days[dt.getDay()]} ${t}`;
+            else {
+                const datePart2 = sameYear2
+                    ? `${dt.getDate()} ${months[dt.getMonth()]}`
+                    : `${dt.getDate()} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
+                opensStr = `${days[dt.getDay()]} ${datePart2} ${t}`;
+            }
+        }
+        opensChip = `<div class="store-card__opens-chip">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            يفتح ${opensStr}
+        </div>`;
+    }
+
+    const stateClass  = isClosed ? 'store-card--closed' : isSoon ? 'store-card--soon' : '';
+    const stateStyle  = (isClosed || isSoon) ? 'cursor:default;pointer-events:none;' : 'cursor:pointer;';
+
     return `
-    <div class="store-card ${isSoon ? 'store-card--soon' : ''}"
+    <div class="store-card ${stateClass}"
          data-store-name="${name}" data-store-id="${id}" data-fb-type="${fbType}"
-         style="cursor:${isSoon?'default':'pointer'};flex-shrink:0;">
+         style="${stateStyle}flex-shrink:0;">
         <div class="store-card__thumb" style="position:relative;">
             <img src="${imgUrl}" alt="${name}"
                  style="width:100%;height:100%;object-fit:cover;display:block;"
@@ -116,13 +161,19 @@ function _storeCardHTML(store, catKey, fbType) {
                         justify-content:center;font-size:2rem;background:var(--clr-gray-100);">
                 ${_catEmoji(catKey)}</div>
             ${rank ? `<div class="store-card__rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${rank}</div>` : ''}
-            ${isSoon ? `<div class="store-card__soon-badge">قريباً</div>` : ''}
+            ${isClosed ? `<div class="store-card__closed-badge">
+                <span class="store-card__closed-badge__icon">🔒</span>
+                <span class="store-card__closed-badge__label">مغلق الآن</span>
+            </div>` : isSoon ? `<div class="store-card__soon-badge">قريباً</div>` : ''}
         </div>
         <div class="store-card__body">
             <p class="store-card__name">${name}</p>
             <p class="store-card__tags">${_catLabel(catKey)}</p>
+            ${isClosed && store._closedReason ? `<p class="store-card__closed-reason">${store._closedReason}</p>` : ''}
             <div class="store-card__footer">
-                <span class="store-card__min-label">${isSoon ? 'قريباً' : 'اضغط للطلب'}</span>
+                ${isClosed ? opensChip || '<span class="store-card__min-label" style="color:#9898a6;">مغلق مؤقتاً</span>'
+                           : isSoon ? '<span class="store-card__min-label">قريباً</span>'
+                           : '<span class="store-card__min-label">اضغط للطلب</span>'}
             </div>
         </div>
     </div>`;
@@ -174,3 +225,5 @@ function _catLabel(cat) {
 
 window.initCategories   = initCategories;
 window.closeCatDropdown = _closeDropdown;
+// Allow the realtime listener to bust the cache so next open re-fetches
+window._invalidateCategoriesCache = function() { _cache = {}; };

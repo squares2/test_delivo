@@ -303,7 +303,7 @@ input, select, textarea { font-family: var(--font); }
 
 /* ── Content area ───────────────────────────────────────────── */
 .content { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); }
-.panel { display: none; flex: 1; overflow: hidden; min-height: 0; }
+.panel { display: none; flex: 1; overflow: hidden; min-height: 0; flex-direction: column; }
 .panel.active { display: flex; flex-direction: column; }
 
 /* ── Panel header ───────────────────────────────────────────── */
@@ -587,6 +587,21 @@ input, select, textarea { font-family: var(--font); }
 .cp-badge { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,.3);
     border-radius:50px; font-size:0.62rem; font-weight:900; padding:2px 9px; }
 .cp-badge.orange { background:var(--orange-faint); color:var(--orange); border-color:rgba(255,92,0,.3); }
+.cp-store-toggle-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 50px;
+    border: 1.5px solid rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.1); color: var(--red);
+    font-family: var(--font); font-size: 0.75rem; font-weight: 800;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+.cp-store-toggle-btn:hover { background: rgba(239,68,68,0.2); }
+.cp-store-toggle-btn.is-closed {
+    border-color: rgba(34,197,94,0.4);
+    background: rgba(34,197,94,0.1); color: var(--green);
+}
+.cp-store-toggle-btn.is-closed:hover { background: rgba(34,197,94,0.2); }
 .cp-logout { margin-right:auto; background:none; border:1.5px solid var(--border); border-radius:var(--radius-sm);
     color:var(--gray-light); font-family:var(--font); font-size:var(--fs-xs); font-weight:800;
     padding:5px 12px; cursor:pointer; transition:border-color .15s,color .15s; }
@@ -923,16 +938,100 @@ input, select, textarea { font-family: var(--font); }
 }
 
 /* ─── STORES PANEL ──────────────────────────────────────────── */
-.stores-grid { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; overflow-y: auto; }
+.stores-grid {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    overflow-y: auto;
+    align-content: start;
+    flex: 1;
+    min-height: 0;
+}
 .store-card-admin {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius-lg); overflow: hidden; transition: border-color 0.2s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    min-height: 175px;   /* thumb 80 + body ~55 + button ~40 */
 }
 .store-card-admin:hover { border-color: var(--orange); }
+
+/* Closed store admin card */
+.store-card-admin.sc-closed { border-color: rgba(239,68,68,0.35); }
+.store-card-admin.sc-closed .sc-thumb { filter: grayscale(0.5) brightness(0.7); }
+.sc-closed-overlay {
+    position:absolute; inset:0; background:rgba(10,10,18,0.6); backdrop-filter:blur(2px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    font-size:1.4rem; z-index:2;
+}
+.sc-closed-lbl {
+    font-size:0.6rem; font-weight:900; color:#fff; letter-spacing:0.8px;
+    background:rgba(239,68,68,0.85); border-radius:50px; padding:2px 7px;
+}
+.sc-closed-reason {
+    font-size:0.65rem; color:var(--red); font-weight:600;
+    margin-top:3px; line-height:1.4;
+    word-break: break-word;
+}
+.sc-opens-at {
+    font-size:0.62rem; color:var(--gray); font-weight:600; margin-top:4px;
+    display:flex; align-items:center; gap:4px;
+}
+
+/* Close/open button — always visible at bottom of card */
+.sc-close-actions {
+    border-top: 1px solid var(--border);
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    margin-top: auto;          /* push to bottom regardless of card height */
+    flex-shrink: 0;
+}
+.sc-status-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 10px;
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.sc-status-btn:active { transform: scale(0.97); }
+.sc-status-btn--close {
+    background: rgba(239,68,68,0.12);
+    color: var(--red);
+    border: 1.5px solid rgba(239,68,68,0.3);
+}
+.sc-status-btn--close:hover { background: rgba(239,68,68,0.22); }
+.sc-status-btn--open {
+    background: rgba(34,197,94,0.12);
+    color: var(--green);
+    border: 1.5px solid rgba(34,197,94,0.3);
+}
+.sc-status-btn--open:hover { background: rgba(34,197,94,0.22); }
+
 .sc-thumb {
-    height: 80px; background: var(--surface2);
-    display: flex; align-items: center; justify-content: center; font-size: 2rem;
-    position: relative; overflow: hidden;
+    height: 80px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
 }
 .sc-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .sc-type-badge {
@@ -940,7 +1039,7 @@ input, select, textarea { font-family: var(--font); }
     background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
     border-radius: 50px; padding: 2px 7px; font-size: 0.6rem; font-weight: 800; color: var(--white);
 }
-.sc-body { padding: 10px 12px; }
+.sc-body { padding: 10px 12px; flex: 1; }
 .sc-name { font-size: 0.88rem; font-weight: 800; color: var(--white); margin-bottom: 4px; }
 .sc-meta { display: flex; justify-content: space-between; }
 .sc-items { font-size: 0.7rem; color: var(--gray); }
@@ -1583,6 +1682,10 @@ input, select, textarea { font-family: var(--font); }
                          font-size:0.72rem;font-weight:900;color:#fff;" id="cp-avatar"></span>
             <span style="font-size:0.78rem;font-weight:700;color:var(--gray-light);" id="cp-username"></span>
         </span>
+        <button class="cp-store-toggle-btn" id="cp-store-toggle-btn" title="فتح / إغلاق المتجر">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span id="cp-store-toggle-label">إغلاق المتجر</span>
+        </button>
         <button class="cp-logout" id="cp-logout-btn">خروج</button>
     </div>
     <div class="cp-toolbar">
@@ -2652,7 +2755,7 @@ function doLogout() {
 // ── Load all data ─────────────────────────────────────────────
 async function loadAllData() {
     try {
-        const [orders, drivers, users, devices, pattern, admins, blacklist] = await Promise.all([
+        const [orders, drivers, users, devices, pattern, admins, blacklist, storeStatusAll] = await Promise.all([
             fbGet('requests'),
             fbGet('drivers'),
             fsGetCollection('users'),
@@ -2660,6 +2763,7 @@ async function loadAllData() {
             fbGet('pattern'),
             fbGet('adminUsers').catch(()  => null),
             fbGet('blacklist').catch(()   => null),
+            fbGet('storeStatus').catch(() => null),
         ]);
 
         allOrders    = orders    || {};
@@ -2692,7 +2796,14 @@ async function loadAllData() {
             Object.entries(pattern).forEach(([type, list]) => {
                 const arr = Array.isArray(list) ? list : Object.values(list);
                 arr.filter(s => s && s.companyname).forEach(s => {
-                    allStores[s.companyname] = { ...s, type };
+                    const st = storeStatusAll && storeStatusAll[s.companyname];
+                    const cl = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+                    allStores[s.companyname] = {
+                        ...s, type,
+                        _closed:        cl || false,
+                        _closedReason:  cl ? (st.reason  || '') : '',
+                        _opensAt:       cl ? (st.opensAt || '') : '',
+                    };
                 });
             });
         }
@@ -2833,9 +2944,146 @@ function startAutoRefresh() {
                 document.querySelectorAll(`tr[data-sub="${uuid}"]`).forEach(r => r.style.display = '');
             });
             if (wrap) requestAnimationFrame(() => { wrap.scrollTop = scrollTop; });
+
+        // ── Stores ───────────────────────────────────────────
+        } else if (id === 'stores') {
+            const grid      = document.getElementById('stores-grid');
+            const scrollTop = grid ? grid.scrollTop : 0;
+            await _refreshStoresData();
+            if (grid) requestAnimationFrame(() => { grid.scrollTop = scrollTop; });
         }
 
     }, 12000);
+
+    // ── Real-time storeStatus SSE listener (admin) ────────────
+    _startAdminStoreStatusSSE();
+}
+
+// ── Admin SSE listener for storeStatus — updates cards without polling ──
+function _startAdminStoreStatusSSE() {
+    const RTDB = 'https://deliveryonline-300f7-default-rtdb.firebaseio.com';
+    let _lastStatus = {};
+    let _sse = null;
+    let _retryMs = 2000;
+
+    function _applyAdminPatch(storeName, newSt) {
+        // Find this store's card in the admin stores-grid
+        const grid = document.getElementById('stores-grid');
+        if (!grid) return;
+
+        const card = [...grid.querySelectorAll('.store-card-admin')].find(c => {
+            const nameEl = c.querySelector('.sc-name');
+            return nameEl && nameEl.textContent.trim() === storeName;
+        });
+        if (!card) return;
+
+        const isClosed = newSt && (newSt.closed === true || newSt.closed === '1' || newSt.closed === 1);
+        const closedReason = isClosed ? (newSt.reason || '') : '';
+        const opensAt      = isClosed ? (newSt.opensAt || '') : '';
+
+        // Update card class
+        card.classList.toggle('sc-closed', isClosed);
+
+        // Update thumb overlay
+        const thumb = card.querySelector('.sc-thumb');
+        let overlay = card.querySelector('.sc-closed-overlay');
+        if (isClosed && !overlay && thumb) {
+            overlay = document.createElement('div');
+            overlay.className = 'sc-closed-overlay';
+            overlay.innerHTML = '<span>🔒</span><span class="sc-closed-lbl">مغلق</span>';
+            thumb.appendChild(overlay);
+        } else if (!isClosed && overlay) {
+            overlay.remove();
+        }
+
+        // Update reason and opens-at in body
+        const body = card.querySelector('.sc-body');
+        if (body) {
+            let reasonEl = body.querySelector('.sc-closed-reason');
+            let opensEl  = body.querySelector('.sc-opens-at');
+            if (isClosed) {
+                if (!reasonEl) {
+                    reasonEl = document.createElement('div');
+                    reasonEl.className = 'sc-closed-reason';
+                    body.appendChild(reasonEl);
+                }
+                reasonEl.textContent = closedReason || 'مغلق مؤقتاً';
+                if (opensAt) {
+                    if (!opensEl) {
+                        opensEl = document.createElement('div');
+                        opensEl.className = 'sc-opens-at';
+                        body.appendChild(opensEl);
+                    }
+                    opensEl.innerHTML = _fmtOpensAt(opensAt);
+                } else if (opensEl) opensEl.remove();
+            } else {
+                reasonEl?.remove();
+                opensEl?.remove();
+            }
+        }
+
+        // Update action button
+        const btn = card.querySelector('.sc-status-btn');
+        if (btn) {
+            btn.className = `sc-status-btn ${isClosed ? 'sc-status-btn--open' : 'sc-status-btn--close'}`;
+            btn.innerHTML = isClosed
+                ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg> فتح المتجر`
+                : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> إغلاق المتجر`;
+            // Re-wire click with new state
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                openCloseStoreModal(storeName, isClosed, closedReason, opensAt);
+            };
+        }
+
+        // Also update allStores cache
+        if (allStores[storeName]) {
+            allStores[storeName]._closed        = isClosed;
+            allStores[storeName]._closedReason  = closedReason;
+            allStores[storeName]._opensAt       = opensAt;
+        }
+    }
+
+    function _processSnapshot(newStatus) {
+        newStatus = newStatus || {};
+        const allNames = new Set([...Object.keys(_lastStatus), ...Object.keys(newStatus)]);
+        allNames.forEach(name => {
+            const oldSt = _lastStatus[name] || null;
+            const newSt = newStatus[name]   || null;
+            const changed = JSON.stringify(oldSt) !== JSON.stringify(newSt);
+            if (changed) _applyAdminPatch(name, newSt);
+        });
+        _lastStatus = newStatus;
+    }
+
+    function _connect() {
+        if (_sse) { try { _sse.close(); } catch(_) {} }
+        _sse = new EventSource(`${RTDB}/storeStatus.json?accept=text/event-stream`);
+        _sse.addEventListener('put', e => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.path === '/') {
+                    _processSnapshot(msg.data);
+                } else {
+                    const name = msg.path.replace(/^\//, '');
+                    const next = { ..._lastStatus };
+                    msg.data === null ? delete next[name] : (next[name] = msg.data);
+                    _processSnapshot(next);
+                }
+                _retryMs = 2000;
+            } catch(_) {}
+        });
+        _sse.onerror = () => {
+            _sse.close();
+            setTimeout(_connect, _retryMs);
+            _retryMs = Math.min(_retryMs * 2, 30000);
+        };
+    }
+
+    // Fetch initial snapshot then open stream
+    fetch(`${RTDB}/storeStatus.json`)
+        .then(r => r.json()).then(d => { _lastStatus = d || {}; }).catch(() => {})
+        .finally(() => _connect());
 }
 
 // Smart drivers refresh — skips re-render if a modal is open to avoid
@@ -4228,12 +4476,19 @@ function renderStores() {
         const card = document.createElement('div');
         card.className = 'store-card-admin';
         card.style.cursor = 'pointer';
+        const isClosed  = s._closed === true || s._closed === '1' || s._closed === 1;
+        const closedReason = s._closedReason || '';
+        const opensAt      = s._opensAt      || '';
+
+        card.className = 'store-card-admin' + (isClosed ? ' sc-closed' : '');
+        card.style.cursor = 'default';
         card.innerHTML = `
             <div class="sc-thumb">
                 <img src="${imgPath}" alt="${name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                 <div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:2rem;">${emoji}</div>
                 <div class="sc-type-badge">${typeLabel}</div>
                 ${newOrders > 0 ? `<div style="position:absolute;top:6px;left:6px;background:var(--orange);color:#fff;font-size:0.6rem;font-weight:800;padding:2px 7px;border-radius:50px;">🔴 ${newOrders} جديد</div>` : ''}
+                ${isClosed ? `<div class="sc-closed-overlay"><span>🔒</span><span class="sc-closed-lbl">مغلق</span></div>` : ''}
             </div>
             <div class="sc-body">
                 <div class="sc-name">${name}</div>
@@ -4241,19 +4496,212 @@ function renderStores() {
                     <span class="sc-items">${ordCount} طلب إجمالي</span>
                     <span class="sc-rank">${s.rank ? '⭐ '+s.rank : ''}</span>
                 </div>
-                ${s.soon ? `<div style="font-size:0.65rem;color:var(--gray);margin-top:4px;">⏱ وقت التوصيل: ${s.soon} دقيقة</div>` : ''}
+                ${isClosed ? `<div class="sc-closed-reason">${closedReason || 'مغلق مؤقتاً'}</div>` : ''}
+                ${isClosed && opensAt ? `<div class="sc-opens-at">${_fmtOpensAt(opensAt)}</div>` : ''}
+            </div>
+            <div class="sc-close-actions">
+                <button class="sc-status-btn ${isClosed ? 'sc-status-btn--open' : 'sc-status-btn--close'}">
+                    ${isClosed
+                        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg> فتح المتجر`
+                        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> إغلاق المتجر`
+                    }
+                </button>
             </div>`;
 
-        // Click → show on map
-        card.addEventListener('click', () => {
-            if (s.lat && s.lng) {
-                switchPanel('map');
-                setTimeout(() => adminMap && adminMap.setView([s.lat, s.lng], 16), 150);
-            }
+        // Close/open button
+        card.querySelector('.sc-status-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCloseStoreModal(name, isClosed, closedReason, opensAt);
         });
 
         grid.appendChild(card);
     });
+}
+
+// ══ CLOSE-STORE MODAL ══════════════════════════════════════════
+let _closeStoreModal = null;
+
+function openCloseStoreModal(storeName, isCurrentlyClosed, reason, opensAt) {
+    // Remove any stale overlay from a previous call
+    const stale = document.getElementById('cs-modal-overlay');
+    if (stale) stale.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'cs-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;width:100%;max-width:460px;font-family:var(--font);direction:rtl;';
+
+    // Pre-fill opensAt into datetime-local format (local time, not UTC)
+    let dtPreFill = '';
+    if (opensAt && !isNaN(new Date(opensAt))) {
+        const d = new Date(opensAt);
+        dtPreFill = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    const txtPreFill = (opensAt && isNaN(new Date(opensAt))) ? opensAt : '';
+
+    box.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <h3 style="font-size:1.05rem;font-weight:800;color:var(--white);margin:0;">
+                ${isCurrentlyClosed ? '⚙️ إدارة الإغلاق' : '🔴 إغلاق المتجر'}
+            </h3>
+            <button id="cs-close-x" style="background:none;border:none;color:var(--gray);font-size:1.2rem;cursor:pointer;padding:4px;">✕</button>
+        </div>
+        <div style="font-size:0.82rem;color:var(--gray);margin-bottom:16px;">
+            المتجر: <strong style="color:var(--white);">${storeName}</strong>
+            ${isCurrentlyClosed ? '<span style="display:inline-block;margin-right:8px;font-size:0.68rem;background:rgba(239,68,68,0.15);color:#ef4444;border-radius:50px;padding:2px 8px;font-weight:800;">🔒 مغلق الآن</span>' : ''}
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label style="font-size:0.78rem;color:var(--gray-light);font-weight:700;display:block;margin-bottom:6px;">سبب الإغلاق</label>
+            <input id="cs-reason" type="text" maxlength="120"
+                placeholder="مثال: عطلة رسمية، إجازة أسبوعية، تجديد…"
+                value="${reason || ''}"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border-bright);border-radius:10px;padding:9px 12px;color:var(--white);font-family:inherit;font-size:0.85rem;outline:none;box-sizing:border-box;"
+                onfocus="this.style.borderColor='var(--orange)'" onblur="this.style.borderColor='var(--border-bright)'">
+        </div>
+
+        <div style="margin-bottom:22px;">
+            <label style="font-size:0.78rem;color:var(--gray-light);font-weight:700;display:block;margin-bottom:6px;">
+                موعد الفتح
+                <span style="font-weight:400;opacity:0.6;">(اختياري — تاريخ/وقت أو نص عربي)</span>
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:5px;">
+                <input id="cs-opens-dt" type="datetime-local"
+                    value="${dtPreFill}"
+                    style="flex:1;min-width:160px;background:var(--surface2);border:1px solid var(--border-bright);border-radius:10px;padding:9px 12px;color:var(--white);font-family:inherit;font-size:0.82rem;outline:none;box-sizing:border-box;"
+                    onfocus="this.style.borderColor='var(--orange)';document.getElementById('cs-opens-txt').value='';"
+                    onblur="this.style.borderColor='var(--border-bright)'">
+                <input id="cs-opens-txt" type="text" placeholder="مثال: غداً صباحاً الساعة 9"
+                    maxlength="60"
+                    value="${txtPreFill}"
+                    style="flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border-bright);border-radius:10px;padding:9px 12px;color:var(--white);font-family:inherit;font-size:0.82rem;outline:none;box-sizing:border-box;"
+                    onfocus="this.style.borderColor='var(--orange)';document.getElementById('cs-opens-dt').value='';"
+                    onblur="this.style.borderColor='var(--border-bright)'">
+            </div>
+            <p style="font-size:0.68rem;color:var(--gray);margin-top:5px;">استخدم التاريخ/الوقت لحساب تلقائي، أو اكتب نصاً حراً بالعربية</p>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="cs-cancel" style="flex:1;min-width:100px;background:var(--surface2);border:1px solid var(--border-bright);border-radius:12px;padding:11px;color:var(--white);font-family:inherit;font-size:0.85rem;font-weight:700;cursor:pointer;">إلغاء</button>
+            ${isCurrentlyClosed ? `
+            <button id="cs-update" style="flex:1;min-width:120px;background:rgba(255,92,0,0.15);border:1.5px solid rgba(255,92,0,0.4);border-radius:12px;padding:11px;color:var(--orange);font-family:inherit;font-size:0.85rem;font-weight:800;cursor:pointer;">💾 تحديث المعلومات</button>
+            <button id="cs-confirm" style="flex:1;min-width:120px;background:var(--green);border:none;border-radius:12px;padding:11px;color:#fff;font-family:inherit;font-size:0.85rem;font-weight:800;cursor:pointer;">🟢 فتح المتجر</button>
+            ` : `
+            <button id="cs-confirm" style="flex:1;min-width:120px;background:var(--red);border:none;border-radius:12px;padding:11px;color:#fff;font-family:inherit;font-size:0.85rem;font-weight:800;cursor:pointer;">🔴 إغلاق المتجر</button>
+            `}
+        </div>`;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const close = () => { overlay.remove(); };
+    document.getElementById('cs-close-x').onclick = close;
+    document.getElementById('cs-cancel').onclick   = close;
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+    // Helper: read form values and write to Firebase
+    async function _writeClosedStatus(keepClosed) {
+        const reasonVal  = (document.getElementById('cs-reason')?.value || '').trim();
+        const dtVal      = document.getElementById('cs-opens-dt')?.value;
+        const txtVal     = (document.getElementById('cs-opens-txt')?.value || '').trim();
+        const opensAtVal = dtVal ? new Date(dtVal).toISOString() : (txtVal || '');
+        if (keepClosed) {
+            // Update info while keeping store closed
+            await fbSet(`storeStatus/${storeName}`, {
+                closed:    true,
+                reason:    reasonVal || 'مغلق مؤقتاً',
+                opensAt:   opensAtVal,
+                closedAt:  new Date().toISOString(),
+                closedBy:  currentAdmin?.username || 'admin',
+            });
+            toast(`💾 تم تحديث معلومات ${storeName}`);
+        } else if (isCurrentlyClosed) {
+            // Open the store
+            await fbSet(`storeStatus/${storeName}`, null);
+            toast(`✅ تم فتح ${storeName}`);
+        } else {
+            // Close the store
+            await fbSet(`storeStatus/${storeName}`, {
+                closed:    true,
+                reason:    reasonVal || 'مغلق مؤقتاً',
+                opensAt:   opensAtVal,
+                closedAt:  new Date().toISOString(),
+                closedBy:  currentAdmin?.username || 'admin',
+            });
+            toast(`🔒 تم إغلاق ${storeName}`);
+        }
+    }
+
+    // "Update info" button (only when already closed)
+    document.getElementById('cs-update')?.addEventListener('click', async () => {
+        const btn = document.getElementById('cs-update');
+        btn.disabled = true; btn.textContent = '…';
+        await _writeClosedStatus(true);
+        close();
+        await _refreshStoresData();
+        if (typeof cpUpdateStoreToggleBtn === 'function') cpUpdateStoreToggleBtn();
+    });
+
+    document.getElementById('cs-confirm').onclick = async () => {
+        const btn = document.getElementById('cs-confirm');
+        btn.disabled = true; btn.textContent = '…';
+        await _writeClosedStatus(false);
+
+        close();
+        await _refreshStoresData();
+        if (typeof cpUpdateStoreToggleBtn === 'function') cpUpdateStoreToggleBtn();
+    };
+}
+
+// ── Format opensAt ISO string → human Arabic label for admin cards ──
+function _fmtOpensAt(raw) {
+    if (!raw) return '';
+    const dt = new Date(raw);
+    if (isNaN(dt)) return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;opacity:0.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${raw}`;
+    const now     = new Date();
+    const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dtDate  = new Date(dt.getFullYear(),  dt.getMonth(),  dt.getDate());
+    const dayDiff = Math.round((dtDate - nowDate) / 86400000);
+    const t       = dt.toLocaleTimeString('ar-LB', { hour:'2-digit', minute:'2-digit', hour12:true });
+    const days    = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    let label;
+    if (dayDiff <= 0)      label = 'اليوم الساعة ' + t;
+    else if (dayDiff === 1) label = 'غداً الساعة ' + t;
+    else if (dayDiff < 7)   label = days[dt.getDay()] + ' الساعة ' + t;
+    else {
+        const mn = ['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
+        const sameYr = dt.getFullYear() === now.getFullYear();
+        const dp = sameYr ? `${dt.getDate()} ${mn[dt.getMonth()]}` : `${dt.getDate()} ${mn[dt.getMonth()]} ${dt.getFullYear()}`;
+        label = `${['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'][dt.getDay()]} ${dp} الساعة ${t}`;
+    }
+    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;opacity:0.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> يفتح ${label}`;
+}
+
+// Shared helper — re-fetch pattern + storeStatus and re-render the stores grid
+async function _refreshStoresData() {
+    const [pattern, storeStatusAll] = await Promise.all([
+        fbGet('pattern'),
+        fbGet('storeStatus').catch(() => null),
+    ]);
+    if (pattern) {
+        allStores = {};
+        Object.entries(pattern).forEach(([type, list]) => {
+            const arr = Array.isArray(list) ? list : Object.values(list);
+            arr.filter(s => s && s.companyname).forEach(s => {
+                const st = storeStatusAll && storeStatusAll[s.companyname];
+                const cl = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+                allStores[s.companyname] = {
+                    ...s, type,
+                    _closed:       cl || false,
+                    _closedReason: cl ? (st.reason  || '') : '',
+                    _opensAt:      cl ? (st.opensAt || '') : '',
+                };
+            });
+        });
+    }
+    if (typeof renderStores === 'function') renderStores();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -4880,6 +5328,39 @@ async function startCompanyPortal() {
 
     await cpLoadOrders();
     cpRefreshTimer = setInterval(cpLoadOrders, 20000);
+
+    // ── Store open/close button ──────────────────────────────
+    await cpUpdateStoreToggleBtn();
+    document.getElementById('cp-store-toggle-btn')?.addEventListener('click', async () => {
+        const storeName = currentAdmin.linkedStore || '';
+        if (!storeName) return;
+        const st = await fbGet(`storeStatus/${storeName}`).catch(() => null);
+        const isClosed = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+        openCloseStoreModal(storeName, isClosed, st?.reason || '', st?.opensAt || '');
+        // After modal closes, update button state
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('cs-modal-overlay')) {
+                observer.disconnect();
+                cpUpdateStoreToggleBtn();
+            }
+        });
+        observer.observe(document.body, { childList: true });
+    });
+}
+
+async function cpUpdateStoreToggleBtn() {
+    const btn   = document.getElementById('cp-store-toggle-btn');
+    const label = document.getElementById('cp-store-toggle-label');
+    if (!btn || !label) return;
+    const storeName = currentAdmin?.linkedStore || '';
+    if (!storeName) { btn.style.display = 'none'; return; }
+    const st       = await fbGet(`storeStatus/${storeName}`).catch(() => null);
+    const isClosed = st && (st.closed === true || st.closed === '1' || st.closed === 1);
+    btn.classList.toggle('is-closed', isClosed);
+    btn.querySelector('svg path')?.setAttribute('d',
+        isClosed ? 'M7 11V7a5 5 0 0 1 9.9-1' : 'M7 11V7a5 5 0 0 1 10 0v4'
+    );
+    label.textContent = isClosed ? 'فتح المتجر' : 'إغلاق المتجر';
 }
 
 async function cpLoadOrders() {
@@ -5089,8 +5570,8 @@ function cpRender() {
             card.className = 'coc';
             card.dataset.key = key;
 
-            // Expand if: was expanded before refresh OR is a brand-new order
-            if (expandedKeys.has(key) || (isNew && !renderedKeys.has(key))) {
+            // Expand only if it was already open before this refresh
+            if (expandedKeys.has(key)) {
                 card.classList.add('expanded');
             }
 
