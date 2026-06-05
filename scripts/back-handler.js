@@ -1,39 +1,54 @@
 /* ============================================================
-   scripts/back-handler.js  v5
+   scripts/back-handler.js  v6 — double-back-to-exit
    
-   Core insight:
-   - replaceState on load → marks base entry, does NOT add entries
-   - pushState ONCE → gives us one back-press to intercept
-   - popstate fires → close layer OR show exit dialog
-   - After closing a layer, push again to keep catching
-   - Exit: history.back() to let OS/browser handle naturally
-     + window.close() as PWA bonus (works only in standalone)
+   Strategy:
+   - MutationObserver watches for open layers
+   - When a layer opens → push one history entry
+   - popstate fires → close top layer OR show "back again to exit" toast
+   - Second back within 2s → window.close() for PWA
    ============================================================ */
 
 (function () {
     'use strict';
 
-    let _intercepting = false; // true = we have pushed a fake entry
+    /* ── State ───────────────────────────────────────────────── */
+    let _armed       = false;   // we have a pushed entry in history
+    let _exitReady   = false;   // first back on clean screen already pressed
+    let _exitTimer   = null;
 
-    /* ── Mark base entry ─────────────────────────────────────── */
-    history.replaceState({ delivoBase: true }, '');
-
-    /* ── Push one interception entry ─────────────────────────── */
+    /* ── Arm / disarm ────────────────────────────────────────── */
     function _arm() {
-        if (!_intercepting) {
-            history.pushState({ delivoLayer: true }, '');
-            _intercepting = true;
+        if (!_armed) {
+            history.pushState({ delivo: true }, '');
+            _armed = true;
         }
     }
 
-    /* ── Disarm (we consumed the entry via popstate) ─────────── */
     function _disarm() {
-        _intercepting = false;
+        _armed = false;
     }
 
-    /* ── Layer detector ──────────────────────────────────────── */
-    function _closeTopLayer() {
+    /* ── Layer open detector ─────────────────────────────────── */
+    function _anyLayerOpen() {
+        if (document.querySelector('.modal-overlay.active'))          return true;
+        if (document.querySelector('#track-modal.active'))            return true;
+        if (document.querySelector('.track-modal.active'))            return true;
+        if (document.querySelector('#modal-orders.active'))           return true;
+        if (document.querySelector('.orders-modal.active'))           return true;
+        if (document.querySelector('#bb-track-sheet.open'))           return true;
+        const sp = document.getElementById('store-panel') ||
+                   document.querySelector('.store-panel');
+        if (sp && (sp.classList.contains('open') ||
+                   sp.classList.contains('active')))                  return true;
+        const cart = document.getElementById('cart-sidebar');
+        if (cart && cart.classList.contains('active'))                return true;
+        const nav = document.getElementById('mobile-menu');
+        if (nav && nav.classList.contains('open'))                    return true;
+        return false;
+    }
 
+    /* ── Close top layer ─────────────────────────────────────── */
+    function _closeTopLayer() {
         const trackModal = document.getElementById('track-modal') ||
                            document.querySelector('.track-modal');
         if (trackModal && (trackModal.classList.contains('active') ||
@@ -41,40 +56,34 @@
             if (typeof window._closeTrackModal === 'function') window._closeTrackModal();
             return true;
         }
-
         const ordersModal = document.getElementById('modal-orders') ||
                             document.querySelector('.orders-modal');
         if (ordersModal && ordersModal.classList.contains('active')) {
             if (typeof closeOrdersModal === 'function') closeOrdersModal();
             return true;
         }
-
-        const activeOverlay = document.querySelector('.modal-overlay.active');
-        if (activeOverlay) {
-            activeOverlay.classList.remove('active');
+        const overlay = document.querySelector('.modal-overlay.active');
+        if (overlay) {
+            overlay.classList.remove('active');
             document.body.classList.remove('modal-open');
             return true;
         }
-
         const trackSheet = document.getElementById('bb-track-sheet');
         if (trackSheet && trackSheet.classList.contains('open')) {
             if (typeof window._closeTrackSheet === 'function') window._closeTrackSheet();
             return true;
         }
-
         const sp = document.getElementById('store-panel') ||
                    document.querySelector('.store-panel');
         if (sp && (sp.classList.contains('open') || sp.classList.contains('active'))) {
             if (typeof window.closeStorePanel === 'function') window.closeStorePanel();
             return true;
         }
-
         const cart = document.getElementById('cart-sidebar');
         if (cart && cart.classList.contains('active')) {
             if (typeof window.closeCartSidebar === 'function') window.closeCartSidebar();
             return true;
         }
-
         const nav = document.getElementById('mobile-menu');
         if (nav && nav.classList.contains('open')) {
             nav.classList.remove('open');
@@ -82,121 +91,126 @@
             if (btn) btn.setAttribute('aria-expanded', 'false');
             return true;
         }
-
         return false;
     }
 
-    /* ── Arm whenever a layer opens ──────────────────────────── */
-    // Watch for layers opening via MutationObserver — no patching needed
-    const _observer = new MutationObserver(() => {
-        if (_closeTopLayer !== null && _anyLayerOpen()) {
-            _arm();
-        }
-    });
+    /* ── Double-back exit toast ──────────────────────────────── */
+    function _showExitToast() {
+        // Remove any existing toast
+        const old = document.getElementById('exit-toast');
+        if (old) old.remove();
 
-    function _anyLayerOpen() {
-        if (document.querySelector('.modal-overlay.active')) return true;
-        if (document.querySelector('#track-modal.active, .track-modal.active')) return true;
-        if (document.querySelector('#modal-orders.active, .orders-modal.active')) return true;
-        if (document.querySelector('#bb-track-sheet.open')) return true;
-        const sp = document.getElementById('store-panel') || document.querySelector('.store-panel');
-        if (sp && (sp.classList.contains('open') || sp.classList.contains('active'))) return true;
-        const cart = document.getElementById('cart-sidebar');
-        if (cart && cart.classList.contains('active')) return true;
-        const nav = document.getElementById('mobile-menu');
-        if (nav && nav.classList.contains('open')) return true;
-        return false;
-    }
+        const toast = document.createElement('div');
+        toast.id = 'exit-toast';
+        toast.setAttribute('role', 'alert');
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(20,20,20,0.93);
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 700;
+            padding: 12px 22px;
+            border-radius: 50px;
+            z-index: 99999;
+            white-space: nowrap;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.08);
+            opacity: 0;
+            transition: opacity 0.22s, transform 0.22s;
+            pointer-events: none;
+            direction: rtl;
+        `;
+        toast.textContent = '🚪 اضغط مرة أخرى للخروج';
+        document.body.appendChild(toast);
 
-    document.addEventListener('DOMContentLoaded', () => {
-        _observer.observe(document.body, {
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['class', 'style']
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(-50%) translateY(0)';
         });
-    });
 
-    /* ── Exit dialog ─────────────────────────────────────────── */
-    let _dialogOpen = false;
+        // Auto-dismiss after 2.5s
+        _exitTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(-50%) translateY(20px)';
+            setTimeout(() => toast.remove(), 250);
+            _exitReady = false;
+            _exitTimer = null;
+            // Re-arm so next single back shows toast again
+            _arm();
+        }, 2500);
+    }
 
-    function _showExitDialog() {
-        if (_dialogOpen) return;
-        _dialogOpen = true;
+    /* ── Do exit ─────────────────────────────────────────────── */
+    function _doExit() {
+        if (_exitTimer) { clearTimeout(_exitTimer); _exitTimer = null; }
+        const toast = document.getElementById('exit-toast');
+        if (toast) toast.remove();
+        _exitReady = false;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'exit-confirm-overlay';
-        overlay.className = 'exit-confirm-overlay';
-        overlay.innerHTML = `
-            <div class="exit-confirm-box" role="dialog" aria-modal="true">
-                <div class="exit-confirm-icon">🚪</div>
-                <h3 class="exit-confirm-title">إغلاق التطبيق</h3>
-                <p class="exit-confirm-msg">هل تريد فعلاً الخروج من Delivo؟</p>
-                <div class="exit-confirm-actions">
-                    <button class="exit-confirm-btn exit-confirm-btn--cancel" id="exit-stay">البقاء</button>
-                    <button class="exit-confirm-btn exit-confirm-btn--exit"   id="exit-go">خروج</button>
-                </div>
-            </div>`;
-
-        document.body.appendChild(overlay);
-        requestAnimationFrame(() => overlay.classList.add('exit-confirm-overlay--visible'));
-
-        function _dismiss() {
-            overlay.classList.remove('exit-confirm-overlay--visible');
-            setTimeout(() => overlay.remove(), 280);
-            _dialogOpen = false;
-            _arm(); // re-arm so next back is caught
-        }
-
-        function _exit() {
-            overlay.classList.remove('exit-confirm-overlay--visible');
-            setTimeout(() => overlay.remove(), 280);
-            _dialogOpen = false;
-            _disarm();
-
-            // 1. PWA standalone: window.close() works (called in onclick = user gesture ✓)
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                          window.navigator.standalone === true;
-            if (isPWA) {
-                window.close();
-                return;
-            }
-
-            // 2. Regular browser tab:
-            // Go back to the real base entry (before our fake layer)
-            // This makes browser show "are you sure you want to leave" or closes tab
+        // PWA standalone: window.close() works (called from user gesture chain)
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                      window.navigator.standalone === true;
+        if (isPWA) {
+            window.close();
+            // Fallback if close doesn't work immediately
+            setTimeout(() => { history.go(-(history.length)); }, 300);
+        } else {
+            // Browser tab: just let it go naturally
             history.back();
         }
-
-        document.getElementById('exit-stay').onclick = _dismiss;
-        document.getElementById('exit-go').onclick   = _exit;
-        overlay.addEventListener('click', e => { if (e.target === overlay) _dismiss(); });
     }
 
     /* ── popstate ────────────────────────────────────────────── */
-    window.addEventListener('popstate', function (e) {
+    window.addEventListener('popstate', function () {
         _disarm();
-
-        // Back pressed while dialog open → dismiss (stay)
-        if (_dialogOpen) {
-            const d = document.getElementById('exit-confirm-overlay');
-            if (d) {
-                d.classList.remove('exit-confirm-overlay--visible');
-                setTimeout(() => d.remove(), 280);
-            }
-            _dialogOpen = false;
-            _arm();
-            return;
-        }
 
         const closed = _closeTopLayer();
 
         if (closed) {
-            // Layer closed — if another layer is still open, re-arm
+            // Layer closed — re-arm if more layers still open
             setTimeout(() => { if (_anyLayerOpen()) _arm(); }, 80);
+            return;
+        }
+
+        // Nothing open — double-back logic
+        if (_exitReady) {
+            // Second back within window → exit
+            _doExit();
         } else {
-            // Nothing open → exit dialog
-            _showExitDialog();
+            // First back on clean screen → show toast
+            _exitReady = true;
+            _showExitToast();
+            // Don't re-arm here — the next popstate = second back = exit
         }
     });
+
+    /* ── MutationObserver: arm when any layer opens ──────────── */
+    let _observing = false;
+    function _startObserver() {
+        if (_observing) return;
+        _observing = true;
+        const observer = new MutationObserver(() => {
+            if (_anyLayerOpen() && !_armed) _arm();
+        });
+        observer.observe(document.body, {
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _startObserver);
+    } else {
+        _startObserver();
+    }
+
+    /* ── Initial state ───────────────────────────────────────── */
+    // Mark base entry so we always have a bottom to land on
+    history.replaceState({ delivoBase: true }, '');
 
 })();
